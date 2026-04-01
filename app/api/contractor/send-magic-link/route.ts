@@ -23,24 +23,38 @@ export async function POST(request: NextRequest) {
   try {
     // Find contractor by email
     const supabase = getSupabaseAdmin();
-    const { data: site } = await supabase
+    const { data: site, error: dbError } = await supabase
       .from("contractor_sites")
       .select("id, email, business_name")
       .ilike("email", normalizedEmail)
       .single();
 
-    if (!site) return genericResponse;
+    if (dbError) {
+      console.error("[magic-link] DB lookup error:", dbError.message);
+      return genericResponse;
+    }
+
+    if (!site) {
+      console.log("[magic-link] No site found for email:", normalizedEmail);
+      return genericResponse;
+    }
+
+    console.log("[magic-link] Found site:", site.business_name, "for", normalizedEmail);
 
     // Rate limit: 1 token per email per minute
     if (await hasRecentToken(normalizedEmail)) {
+      console.log("[magic-link] Rate limited:", normalizedEmail);
       return genericResponse;
     }
 
     // Create token and send email
     const token = await createMagicLinkToken(site.id, normalizedEmail);
+    console.log("[magic-link] Token created, sending email to:", site.email);
+
     await sendMagicLinkEmail(site.email!, token, site.business_name);
-  } catch {
-    // Swallow errors — don't reveal whether email exists
+    console.log("[magic-link] Email sent successfully");
+  } catch (err) {
+    console.error("[magic-link] Error:", err instanceof Error ? err.message : err);
   }
 
   return genericResponse;
