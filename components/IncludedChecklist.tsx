@@ -18,38 +18,11 @@ export default function IncludedChecklist() {
         <div className="grid items-center gap-12 md:grid-cols-2">
           {/* Static phone mockup */}
           <div className="flex justify-center">
-            <div className="flex h-[540px] w-[260px] flex-col rounded-[2.5rem] border-4 border-gray-700 bg-[#12151f] p-4 shadow-2xl overflow-hidden">
-              <div className="mx-auto mb-4 h-5 w-24 flex-shrink-0 rounded-full bg-gray-800" />
-              <div className="flex flex-1 flex-col items-center justify-center space-y-3 text-center">
-                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#1a1e2e]">
-                  <span className="text-base font-bold text-white">BH</span>
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-white">
-                    Blue Hen HVAC
-                  </h3>
-                  <p className="text-xs text-[#9aa0b8]">Wilmington, DE</p>
-                </div>
-                <div className="flex items-center justify-center gap-1">
-                  <div className="h-1.5 w-1.5 rounded-full bg-green-500" />
-                  <span className="text-[10px] text-green-400">
-                    Available now
-                  </span>
-                </div>
-                <div className="space-y-1.5">
-                  <div className="rounded-lg bg-[#e03535] py-1.5 text-[10px] font-semibold text-white">
-                    Call (302) 555-0147
-                  </div>
-                  <div className="rounded-lg bg-[#1a4d2e] py-1.5 text-[10px] font-semibold text-[#4ade80]">
-                    Text us instead
-                  </div>
-                  <div className="rounded-lg bg-[#1a2a4a] py-1.5 text-[10px] font-semibold text-[#5b8ef0]">
-                    Save to contacts
-                  </div>
-                </div>
-              </div>
-              <div className="mx-auto mt-4 h-1 w-14 flex-shrink-0 rounded-full bg-gray-600" />
-            </div>
+            <img
+              src="/phone-demo-home.png"
+              alt="Example contractor business card"
+              className="w-[300px] rounded-2xl shadow-2xl"
+            />
           </div>
 
           {/* Checklist */}
