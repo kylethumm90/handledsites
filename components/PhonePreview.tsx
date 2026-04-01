@@ -35,14 +35,7 @@ export default function PhonePreview({
   };
 
   return (
-    <div
-      className="relative mx-auto w-[340px]"
-      style={{
-        background: "linear-gradient(135deg, #f0f4ff 0%, #e8f0fe 100%)",
-        borderRadius: "24px",
-        padding: "2.5rem 2rem",
-      }}
-    >
+    <div className="relative mx-auto w-[280px]">
       {/* Phone frame */}
       <div
         className="mx-auto flex h-[580px] w-[280px] flex-col rounded-[2.5rem] border-4 overflow-hidden"
@@ -56,7 +49,7 @@ export default function PhonePreview({
         <div className="mx-auto mt-2 mb-1 h-4 w-20 flex-shrink-0 rounded-full" style={{ backgroundColor: "#1e2433", position: "relative", zIndex: 10 }} />
 
         {/* Cover photo */}
-        <div className="relative h-[80px] w-full flex-shrink-0 overflow-hidden">
+        <div className="relative h-[120px] w-full flex-shrink-0 overflow-hidden">
           <img
             src={TRADE_IMAGES[trade] || TRADE_IMAGES["default"]}
             alt=""
