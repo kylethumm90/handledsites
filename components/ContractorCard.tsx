@@ -123,6 +123,12 @@ export default function ContractorCard({ contractor }: Props) {
         <ServicesGrid services={contractor.services} />
       )}
 
+      {/* Reviews */}
+      <ReviewStars
+        reviewCount={contractor.review_count}
+        avgRating={contractor.avg_rating}
+      />
+
       {/* Location pill */}
       <div className="flex justify-center">
         <div className="flex items-center gap-1.5 rounded-full bg-card-surface px-4 py-2">
@@ -132,12 +138,6 @@ export default function ContractorCard({ contractor }: Props) {
           </span>
         </div>
       </div>
-
-      {/* Reviews */}
-      <ReviewStars
-        reviewCount={contractor.review_count}
-        avgRating={contractor.avg_rating}
-      />
 
       {/* Footer */}
       <div className="pt-4 text-center">
