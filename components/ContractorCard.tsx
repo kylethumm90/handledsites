@@ -39,8 +39,8 @@ export default function ContractorCard({ contractor }: Props) {
         />
       </div>
 
-      {/* Avatar — overlapping cover by 50% */}
-      <div className="relative z-10 flex justify-center" style={{ marginTop: "-40px" }}>
+      {/* Avatar — overlapping cover by 50% (40px avatar + 20px space-y-5 gap) */}
+      <div className="relative z-10 flex justify-center" style={{ marginTop: "-60px" }}>
         {contractor.logo_url ? (
           <img
             src={contractor.logo_url}
