@@ -66,3 +66,32 @@ CREATE POLICY "Public read contractor-assets" ON storage.objects
   FOR SELECT
   TO anon
   USING (bucket_id = 'contractor-assets');
+
+-- ============================================
+-- Magic link auth tables
+-- ============================================
+
+-- 10. Auth tokens for magic link login (15min expiry, single-use)
+CREATE TABLE contractor_auth_tokens (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  site_id UUID NOT NULL REFERENCES contractor_sites(id) ON DELETE CASCADE,
+  token_hash TEXT NOT NULL,
+  email TEXT NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  used_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_contractor_auth_tokens_hash ON contractor_auth_tokens (token_hash);
+
+-- 11. Browser sessions (24h expiry)
+CREATE TABLE contractor_sessions (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  site_id UUID NOT NULL REFERENCES contractor_sites(id) ON DELETE CASCADE,
+  session_hash TEXT NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_contractor_sessions_hash ON contractor_sessions (session_hash);
+
