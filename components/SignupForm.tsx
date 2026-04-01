@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { getSupabaseClient } from "@/lib/supabase";
 import { generateUniqueSlug } from "@/lib/slug";
-import { TRADES, SERVICES, US_STATES } from "@/lib/constants";
+import { TRADES, TRADE_SERVICES, US_STATES, Trade } from "@/lib/constants";
 import PhonePreview from "./PhonePreview";
 import SuccessState from "./SuccessState";
 
@@ -45,12 +45,18 @@ export default function SignupForm() {
 
   const phoneDigits = form.phone.replace(/\D/g, "");
 
+  const availableServices = form.trade
+    ? TRADE_SERVICES[form.trade as Trade] || []
+    : [];
+
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
     if (name === "phone") {
       setForm((f) => ({ ...f, phone: formatPhoneInput(value) }));
+    } else if (name === "trade") {
+      setForm((f) => ({ ...f, trade: value, services: [] }));
     } else {
       setForm((f) => ({ ...f, [name]: value }));
     }
@@ -271,31 +277,33 @@ export default function SignupForm() {
           </div>
 
           {/* Services */}
-          <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700">
-              Services offered *
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              {SERVICES.map((service) => (
-                <label
-                  key={service}
-                  className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors ${
-                    form.services.includes(service)
-                      ? "border-gray-900 bg-gray-900 text-white"
-                      : "border-gray-200 text-gray-700 hover:border-gray-300"
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={form.services.includes(service)}
-                    onChange={() => handleServiceToggle(service)}
-                    className="sr-only"
-                  />
-                  {service}
-                </label>
-              ))}
+          {availableServices.length > 0 && (
+            <div>
+              <label className="mb-2 block text-sm font-medium text-gray-700">
+                Services offered *
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {availableServices.map((service) => (
+                  <label
+                    key={service}
+                    className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors ${
+                      form.services.includes(service)
+                        ? "border-gray-900 bg-gray-900 text-white"
+                        : "border-gray-200 text-gray-700 hover:border-gray-300"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={form.services.includes(service)}
+                      onChange={() => handleServiceToggle(service)}
+                      className="sr-only"
+                    />
+                    {service}
+                  </label>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Licensed & Insured */}
           <label className="flex items-center gap-2 cursor-pointer">

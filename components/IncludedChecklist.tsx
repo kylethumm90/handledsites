@@ -18,9 +18,9 @@ export default function IncludedChecklist() {
         <div className="grid items-center gap-12 md:grid-cols-2">
           {/* Static phone mockup */}
           <div className="flex justify-center">
-            <div className="w-[260px] rounded-[2.5rem] border-4 border-gray-700 bg-[#12151f] p-4 shadow-2xl">
-              <div className="mx-auto mb-4 h-5 w-24 rounded-full bg-gray-800" />
-              <div className="space-y-3 text-center">
+            <div className="flex h-[540px] w-[260px] flex-col rounded-[2.5rem] border-4 border-gray-700 bg-[#12151f] p-4 shadow-2xl overflow-hidden">
+              <div className="mx-auto mb-4 h-5 w-24 flex-shrink-0 rounded-full bg-gray-800" />
+              <div className="flex flex-1 flex-col items-center justify-center space-y-3 text-center">
                 <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#1a1e2e]">
                   <span className="text-base font-bold text-white">BH</span>
                 </div>
@@ -48,7 +48,7 @@ export default function IncludedChecklist() {
                   </div>
                 </div>
               </div>
-              <div className="mx-auto mt-4 h-1 w-14 rounded-full bg-gray-600" />
+              <div className="mx-auto mt-4 h-1 w-14 flex-shrink-0 rounded-full bg-gray-600" />
             </div>
           </div>
 

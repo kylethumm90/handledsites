@@ -37,12 +37,12 @@ export default function PhonePreview({
   return (
     <div className="relative mx-auto w-[280px]">
       {/* Phone frame */}
-      <div className="rounded-[2.5rem] border-4 border-gray-700 bg-card-bg p-4 shadow-2xl">
+      <div className="flex h-[580px] flex-col rounded-[2.5rem] border-4 border-gray-700 bg-card-bg p-4 shadow-2xl overflow-hidden">
         {/* Notch */}
-        <div className="mx-auto mb-4 h-5 w-24 rounded-full bg-gray-800" />
+        <div className="mx-auto mb-4 h-5 w-24 flex-shrink-0 rounded-full bg-gray-800" />
 
         {/* Card content */}
-        <div className="space-y-4 text-center">
+        <div className="flex flex-1 flex-col items-center justify-center space-y-4 text-center">
           {/* Avatar */}
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-card-surface">
             <span className="text-lg font-bold text-white">
@@ -90,7 +90,7 @@ export default function PhonePreview({
         </div>
 
         {/* Home indicator */}
-        <div className="mx-auto mt-4 h-1 w-16 rounded-full bg-gray-600" />
+        <div className="mx-auto mt-4 h-1 w-16 flex-shrink-0 rounded-full bg-gray-600" />
       </div>
     </div>
   );
