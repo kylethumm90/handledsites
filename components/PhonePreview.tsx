@@ -53,7 +53,7 @@ export default function PhonePreview({
         }}
       >
         {/* Notch */}
-        <div className="mx-auto mt-3 mb-2 h-5 w-24 flex-shrink-0 rounded-full" style={{ backgroundColor: "#1e2433", position: "relative", zIndex: 10 }} />
+        <div className="mx-auto mt-2 mb-1 h-4 w-20 flex-shrink-0 rounded-full" style={{ backgroundColor: "#1e2433", position: "relative", zIndex: 10 }} />
 
         {/* Cover photo */}
         <div className="relative h-[80px] w-full flex-shrink-0 overflow-hidden">
