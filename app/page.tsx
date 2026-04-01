@@ -26,19 +26,20 @@ export default function Home() {
             >
               More calls. Five minutes. Free.
             </h1>
+
+            {/* Mobile phone preview */}
+            <div className="mb-6 flex justify-center lg:hidden">
+              <img
+                src="/phone-demo-home.png"
+                alt="Example contractor site"
+                className="w-[240px]"
+              />
+            </div>
+
             <p className="mx-auto max-w-xl text-lg text-gray-600 md:mx-0">
               A mobile business page with tap-to-call, your services, and a QR
               code you can share anywhere. Built for contractors. Free forever.
             </p>
-          </div>
-
-          {/* Mobile phone preview */}
-          <div className="mb-8 flex justify-center lg:hidden">
-            <img
-              src="/phone-demo-home.png"
-              alt="Example contractor site"
-              className="w-[240px]"
-            />
           </div>
 
           {/* Form + Preview */}
