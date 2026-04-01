@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { validateSessionFromCookie } from "@/lib/contractor-auth";
 import { getSupabaseAdmin, ContractorSite } from "@/lib/supabase";
 import ContractorSiteEditor from "@/components/ContractorSiteEditor";
+import LogoutButton from "@/components/LogoutButton";
 
 export const dynamic = "force-dynamic";
 
@@ -26,20 +27,7 @@ export default async function ContractorEditPage() {
           <span className="text-sm font-bold text-gray-900">
             handled.sites
           </span>
-          <form action="/api/contractor/logout" method="POST">
-            <button
-              type="submit"
-              className="text-xs text-gray-500 hover:text-gray-700"
-              onClick={(e) => {
-                e.preventDefault();
-                fetch("/api/contractor/logout", { method: "POST" }).then(() => {
-                  window.location.href = "/contractor/login";
-                });
-              }}
-            >
-              Sign out
-            </button>
-          </form>
+          <LogoutButton />
         </div>
       </nav>
       <main className="mx-auto max-w-3xl px-6 py-8">
