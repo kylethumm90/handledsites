@@ -25,6 +25,7 @@ import {
   AlertTriangle,
   ThermometerSun,
   Gauge,
+  Sun,
   type LucideIcon,
 } from "lucide-react";
 
@@ -35,6 +36,7 @@ export const TRADE_ICONS: Record<string, LucideIcon> = {
   Electrical: Zap,
   Landscaping: Trees,
   Painting: Paintbrush,
+  Solar: Sun,
   "General Contractor": Hammer,
   Other: Settings2,
 };
@@ -81,6 +83,13 @@ export const SERVICE_ICONS: Record<string, LucideIcon> = {
   "Cabinet Refinishing": Layers,
   "Drywall Repair": Hammer,
   Staining: Paintbrush,
+
+  // Solar
+  "Panel Installation": Sun,
+  "System Design": Layers,
+  "Roof Assessment": Home,
+  "Battery Storage": Zap,
+  "Maintenance & Repair": Wrench,
 
   // General Contractor
   Remodeling: Building,

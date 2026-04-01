@@ -5,6 +5,7 @@ export const TRADES = [
   "Electrical",
   "Landscaping",
   "Painting",
+  "Solar",
   "General Contractor",
   "Other",
 ] as const;
@@ -18,6 +19,7 @@ export const TRADE_SERVICES: Record<Trade, string[]> = {
   Electrical: ["Wiring & Rewiring", "Panel Upgrades", "Outlet Install", "Lighting", "Emergency Electrical", "Free Estimates"],
   Landscaping: ["Lawn Care", "Tree Trimming", "Hardscaping", "Irrigation", "Seasonal Cleanup", "Free Estimates"],
   Painting: ["Interior Painting", "Exterior Painting", "Cabinet Refinishing", "Drywall Repair", "Staining", "Free Estimates"],
+  Solar: ["Panel Installation", "System Design", "Roof Assessment", "Battery Storage", "Maintenance & Repair", "Free Estimates"],
   "General Contractor": ["Remodeling", "Additions", "Framing", "Concrete Work", "Demolition", "Free Estimates"],
   Other: ["Repairs", "Installations", "Maintenance", "Inspections", "Emergency", "Free Estimates"],
 };
@@ -82,9 +84,10 @@ export const TRADE_IMAGES: Record<string, string> = {
   "HVAC": "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=800",
   "Roofing": "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800",
   "Plumbing": "https://images.unsplash.com/photo-1585704032915-c3400ca199e7?w=800",
-  "Electrical": "https://images.unsplash.com/photo-1558618047-f4e80d5fce48?w=800",
+  "Electrical": "/cover-electrician.png",
   "Landscaping": "/cover-landscaping.png",
   "Painting": "https://images.unsplash.com/photo-1562259949-e8e7689d7828?w=800",
+  "Solar": "/cover-solar.png",
   "General Contractor": "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=800",
   "default": "/cover-default.png",
 };

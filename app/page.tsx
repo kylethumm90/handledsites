@@ -24,13 +24,11 @@ export default function Home() {
               className="mb-4 text-4xl font-extrabold leading-tight text-gray-900 md:text-5xl lg:text-6xl"
               style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800 }}
             >
-              You&apos;re missing jobs
-              <br />
-              because nobody answered.
+              More calls. Five minutes. Free.
             </h1>
             <p className="mx-auto max-w-xl text-lg text-gray-600 md:mx-0">
-              handled.sites builds you a free website designed to turn visitors
-              into phone calls. Set it up in 5 minutes. Free forever.
+              Set up your free business site in minutes and start getting called
+              today.
             </p>
           </div>
 
