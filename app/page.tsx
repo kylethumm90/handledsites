@@ -32,6 +32,15 @@ export default function Home() {
             </p>
           </div>
 
+          {/* Mobile phone preview */}
+          <div className="mb-8 flex justify-center lg:hidden">
+            <img
+              src="/phone-demo-home.png"
+              alt="Example contractor site"
+              className="w-[240px]"
+            />
+          </div>
+
           {/* Form + Preview */}
           <SignupForm />
         </div>
