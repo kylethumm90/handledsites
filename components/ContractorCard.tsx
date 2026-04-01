@@ -100,7 +100,7 @@ export default function ContractorCard({ contractor }: Props) {
       {/* Footer */}
       <div className="pt-4 text-center">
         <a href="/" className="inline-block">
-          <img src="/logo-dark.png" alt="handled." style={{ height: '16px', width: 'auto', opacity: 0.5 }} />
+          <img src="/logo-light.png" alt="handled." style={{ height: '16px', width: 'auto', opacity: 0.5 }} />
         </a>
       </div>
     </div>
