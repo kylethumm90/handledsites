@@ -37,11 +37,26 @@ export default function PhonePreview({
   };
 
   return (
-    <div className="relative mx-auto w-[280px]">
+    <div
+      className="relative mx-auto w-[340px]"
+      style={{
+        background: "linear-gradient(135deg, #f0f4ff 0%, #e8f0fe 100%)",
+        borderRadius: "24px",
+        padding: "2.5rem 2rem",
+      }}
+    >
       {/* Phone frame */}
-      <div className="flex h-[580px] flex-col rounded-[2.5rem] border-4 border-gray-700 bg-card-bg p-4 shadow-2xl overflow-hidden">
+      <div
+        className="mx-auto flex h-[580px] w-[280px] flex-col rounded-[2.5rem] border-4 overflow-hidden"
+        style={{
+          borderColor: "#1e2433",
+          backgroundColor: "#161926",
+          boxShadow: "0 32px 64px rgba(0,0,0,0.18), 0 8px 24px rgba(0,0,0,0.12)",
+        }}
+      >
+        <div className="flex-1 flex flex-col p-4">
         {/* Notch */}
-        <div className="mx-auto mb-4 h-5 w-24 flex-shrink-0 rounded-full bg-gray-800" />
+        <div className="mx-auto mb-4 h-5 w-24 flex-shrink-0 rounded-full" style={{ backgroundColor: "#1e2433" }} />
 
         {/* Card content */}
         <div className="flex flex-1 flex-col items-center justify-center space-y-4 text-center">
@@ -99,8 +114,9 @@ export default function PhonePreview({
           </div>
         </div>
 
+        </div>
         {/* Home indicator */}
-        <div className="mx-auto mt-4 h-1 w-16 flex-shrink-0 rounded-full bg-gray-600" />
+        <div className="mx-auto mb-2 mt-4 h-1 w-16 flex-shrink-0 rounded-full bg-gray-600" />
       </div>
     </div>
   );
