@@ -4,8 +4,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ContractorSite } from "@/lib/supabase";
 import { TRADES, TRADE_SERVICES, US_STATES, Trade } from "@/lib/constants";
-import { ExternalLink, Trash2 } from "lucide-react";
+import { ExternalLink, Trash2, Copy, Check } from "lucide-react";
 import Link from "next/link";
+import { QRCodeSVG } from "qrcode.react";
 import ImageUpload from "./ImageUpload";
 
 type Props = { site: ContractorSite };
@@ -19,6 +20,7 @@ export default function AdminSiteEditor({ site }: Props) {
 
   const [logoUrl, setLogoUrl] = useState(site.logo_url);
   const [coverImageUrl, setCoverImageUrl] = useState(site.cover_image_url);
+  const [qrRedirectUrl, setQrRedirectUrl] = useState(site.qr_redirect_url ?? "");
 
   // Contractor info (was read-only, now editable)
   const [businessName, setBusinessName] = useState(site.business_name);
@@ -94,6 +96,7 @@ export default function AdminSiteEditor({ site }: Props) {
           badge_free_estimates: badgeFreeEstimates,
           badge_emergency: badgeEmergency,
           badge_family_owned: badgeFamilyOwned,
+          qr_redirect_url: qrRedirectUrl || null,
         }),
       });
       if (!res.ok) throw new Error("Save failed");
@@ -406,6 +409,13 @@ export default function AdminSiteEditor({ site }: Props) {
         </div>
       </div>
 
+      {/* QR Code */}
+      <AdminQRSection
+        slug={site.slug}
+        qrRedirectUrl={qrRedirectUrl}
+        onRedirectChange={setQrRedirectUrl}
+      />
+
       {/* Delete zone */}
       <div className="mt-8 rounded-xl border border-red-100 bg-red-50 p-5">
         <div className="flex items-center justify-between">
@@ -444,6 +454,85 @@ export default function AdminSiteEditor({ site }: Props) {
               Delete
             </button>
           )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AdminQRSection({
+  slug,
+  qrRedirectUrl,
+  onRedirectChange,
+}: {
+  slug: string;
+  qrRedirectUrl: string;
+  onRedirectChange: (url: string) => void;
+}) {
+  const [copied, setCopied] = useState(false);
+  const baseUrl =
+    typeof window !== "undefined"
+      ? window.location.origin
+      : "https://handledsites.com";
+  const qrUrl = `${baseUrl}/qr/${slug}`;
+  const currentDestination = qrRedirectUrl || `${baseUrl}/${slug}`;
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(qrUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="mt-8 rounded-xl border border-gray-200 bg-white p-5">
+      <h2 className="mb-4 text-sm font-semibold text-gray-900">QR Code</h2>
+      <div className="flex items-start gap-6">
+        <div className="flex-shrink-0 rounded-lg border border-gray-100 bg-white p-3">
+          <QRCodeSVG value={qrUrl} size={140} level="M" />
+        </div>
+        <div className="min-w-0 flex-1 space-y-3">
+          <div>
+            <p className="text-xs text-gray-500">
+              This QR code is permanent — it always encodes the same URL.
+              Change the redirect destination below.
+            </p>
+            <div className="mt-2 flex items-center gap-2">
+              <span className="truncate rounded-md bg-gray-50 px-2 py-1 text-xs font-mono text-gray-700">
+                {qrUrl}
+              </span>
+              <button
+                onClick={handleCopy}
+                className="flex items-center gap-1 rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-200"
+              >
+                {copied ? (
+                  <>
+                    <Check className="h-3 w-3" />
+                    Copied
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-3 w-3" />
+                    Copy
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-500">
+              Redirect destination
+            </label>
+            <input
+              type="url"
+              value={qrRedirectUrl}
+              onChange={(e) => onRedirectChange(e.target.value)}
+              placeholder={currentDestination}
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-gray-400 focus:outline-none"
+            />
+            <p className="mt-1 text-xs text-gray-400">
+              Leave empty to redirect to their handled.sites card
+            </p>
+          </div>
         </div>
       </div>
     </div>

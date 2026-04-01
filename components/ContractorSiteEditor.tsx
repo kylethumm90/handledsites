@@ -3,7 +3,8 @@
 import { useState } from "react";
 import type { ContractorSite } from "@/lib/supabase";
 import { TRADES, TRADE_SERVICES, US_STATES, Trade } from "@/lib/constants";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Copy, Check } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import ImageUpload from "./ImageUpload";
 
 type Props = { site: ContractorSite };
@@ -324,6 +325,64 @@ export default function ContractorSiteEditor({ site }: Props) {
               className="w-full rounded-lg bg-gray-900 py-2.5 text-sm font-semibold text-white hover:bg-gray-800 disabled:opacity-50"
             >
               {saving ? "Saving..." : "Save changes"}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* QR Code */}
+      <QRSection slug={site.slug} />
+    </div>
+  );
+}
+
+function QRSection({ slug }: { slug: string }) {
+  const [copied, setCopied] = useState(false);
+  const baseUrl =
+    typeof window !== "undefined"
+      ? window.location.origin
+      : "https://handledsites.com";
+  const qrUrl = `${baseUrl}/qr/${slug}`;
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(qrUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="mt-8 rounded-xl border border-gray-200 bg-white p-5">
+      <h2 className="mb-4 text-sm font-semibold text-gray-900">
+        Your QR Code
+      </h2>
+      <div className="flex items-start gap-6">
+        <div className="flex-shrink-0 rounded-lg border border-gray-100 bg-white p-3">
+          <QRCodeSVG value={qrUrl} size={140} level="M" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-xs text-gray-500">
+            This QR code is permanent. Print it on flyers, truck decals, or
+            business cards — you can change where it goes later.
+          </p>
+          <div className="mt-3 flex items-center gap-2">
+            <span className="truncate rounded-md bg-gray-50 px-2 py-1 text-xs font-mono text-gray-700">
+              {qrUrl}
+            </span>
+            <button
+              onClick={handleCopy}
+              className="flex items-center gap-1 rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-200"
+            >
+              {copied ? (
+                <>
+                  <Check className="h-3 w-3" />
+                  Copied
+                </>
+              ) : (
+                <>
+                  <Copy className="h-3 w-3" />
+                  Copy
+                </>
+              )}
             </button>
           </div>
         </div>

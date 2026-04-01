@@ -37,6 +37,7 @@ export type ContractorSite = {
   badge_family_owned: boolean;
   logo_url: string | null;
   cover_image_url: string | null;
+  qr_redirect_url: string | null;
   banner_message: string;
   hours_start: number;
   hours_end: number;

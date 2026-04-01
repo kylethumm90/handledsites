@@ -19,6 +19,7 @@ CREATE TABLE contractor_sites (
   badge_family_owned BOOLEAN NOT NULL DEFAULT false,
   logo_url TEXT,
   cover_image_url TEXT,
+  qr_redirect_url TEXT,
   banner_message TEXT NOT NULL DEFAULT 'Now booking spring projects — call today!',
   hours_start INTEGER NOT NULL DEFAULT 7,
   hours_end INTEGER NOT NULL DEFAULT 19,
