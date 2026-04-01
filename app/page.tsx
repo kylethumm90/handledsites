@@ -21,8 +21,8 @@ export default function Home() {
               FREE FOR INDEPENDENT CONTRACTORS
             </p>
             <h1
-              className="mb-4 text-4xl font-bold leading-tight text-gray-900 md:text-5xl lg:text-6xl"
-              style={{ fontFamily: "'DM Serif Display', serif" }}
+              className="mb-4 text-4xl font-extrabold leading-tight text-gray-900 md:text-5xl lg:text-6xl"
+              style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800 }}
             >
               You&apos;re missing jobs
               <br />
