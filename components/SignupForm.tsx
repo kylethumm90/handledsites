@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { getSupabaseClient } from "@/lib/supabase";
-import { generateUniqueSlug } from "@/lib/slug";
+import { generateUniqueSlug, checkDuplicateContact } from "@/lib/slug";
 import { TRADES, TRADE_SERVICES, US_STATES, Trade } from "@/lib/constants";
 import PhonePreview from "./PhonePreview";
 import SuccessState from "./SuccessState";
@@ -137,6 +137,16 @@ export default function SignupForm() {
     setSubmitting(true);
 
     try {
+      const duplicateError = await checkDuplicateContact(
+        phoneDigits,
+        form.email || null
+      );
+      if (duplicateError) {
+        setError(duplicateError);
+        setSubmitting(false);
+        return;
+      }
+
       const slug = await generateUniqueSlug(form.businessName);
       const supabase = getSupabaseClient();
 

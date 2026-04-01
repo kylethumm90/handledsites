@@ -30,6 +30,10 @@ CREATE TABLE contractor_sites (
 -- 2. Create index on slug for fast lookups
 CREATE INDEX idx_contractor_sites_slug ON contractor_sites (slug);
 
+-- 2b. Unique constraints on phone and email to prevent duplicates
+CREATE UNIQUE INDEX idx_contractor_sites_phone ON contractor_sites (phone);
+CREATE UNIQUE INDEX idx_contractor_sites_email ON contractor_sites (lower(email)) WHERE email IS NOT NULL;
+
 -- 3. Enable Row Level Security
 ALTER TABLE contractor_sites ENABLE ROW LEVEL SECURITY;
 
