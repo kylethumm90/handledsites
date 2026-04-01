@@ -99,12 +99,9 @@ export default function ContractorCard({ contractor }: Props) {
 
       {/* Footer */}
       <div className="pt-4 text-center">
-        <p className="text-xs text-card-muted/50">
-          powered by{" "}
-          <a href="/" className="underline hover:text-card-muted">
-            handled.sites
-          </a>
-        </p>
+        <a href="/" className="inline-block">
+          <img src="/logo-dark.png" alt="handled." style={{ height: '16px', width: 'auto', opacity: 0.5 }} />
+        </a>
       </div>
     </div>
   );
