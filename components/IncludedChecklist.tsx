@@ -21,7 +21,7 @@ export default function IncludedChecklist() {
             <img
               src="/phone-demo-home.png"
               alt="Example contractor business card"
-              className="w-[300px] rounded-2xl shadow-2xl"
+              className="w-[300px]"
             />
           </div>
 
