@@ -82,12 +82,12 @@ export const DEFAULT_BANNER_MESSAGE = "Now booking spring projects — call toda
 
 export const TRADE_IMAGES: Record<string, string> = {
   "HVAC": "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=800",
-  "Roofing": "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800",
+  "Roofing": "/cover-roofing.png",
   "Plumbing": "https://images.unsplash.com/photo-1585704032915-c3400ca199e7?w=800",
   "Electrical": "/cover-electrician.png",
   "Landscaping": "/cover-landscaping.png",
   "Painting": "https://images.unsplash.com/photo-1562259949-e8e7689d7828?w=800",
   "Solar": "/cover-solar.png",
-  "General Contractor": "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=800",
+  "General Contractor": "/cover-contractor.png",
   "default": "/cover-default.png",
 };
