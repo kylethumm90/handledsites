@@ -86,4 +86,5 @@ export const TRADE_IMAGES: Record<string, string> = {
   "Landscaping": "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=800",
   "Painting": "https://images.unsplash.com/photo-1562259949-e8e7689d7828?w=800",
   "General Contractor": "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=800",
+  "default": "/cover-default.png",
 };

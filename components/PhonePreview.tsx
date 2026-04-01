@@ -1,7 +1,6 @@
 "use client";
 
-import { Phone } from "lucide-react";
-import { TRADE_ICONS } from "@/lib/icons";
+import { Phone, Shield } from "lucide-react";
 import { TRADE_IMAGES } from "@/lib/constants";
 
 type Props = {
@@ -26,8 +25,6 @@ export default function PhonePreview({
     .slice(0, 2)
     .map((w) => w[0]?.toUpperCase() || "")
     .join("");
-
-  const TradeIcon = TRADE_ICONS[trade] || TRADE_ICONS["Other"];
 
   const formatPhone = (p: string) => {
     const digits = p.replace(/\D/g, "");
@@ -60,21 +57,15 @@ export default function PhonePreview({
 
         {/* Cover photo */}
         <div className="relative h-[80px] w-full flex-shrink-0 overflow-hidden">
-          {trade && TRADE_IMAGES[trade] ? (
-            <>
-              <img
-                src={TRADE_IMAGES[trade]}
-                alt=""
-                className="absolute inset-0 h-full w-full object-cover"
-              />
-              <div
-                className="absolute inset-0"
-                style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.15), rgba(0,0,0,0.55))" }}
-              />
-            </>
-          ) : (
-            <div className="h-full w-full" style={{ backgroundColor: "#1e2433" }} />
-          )}
+          <img
+            src={TRADE_IMAGES[trade] || TRADE_IMAGES["default"]}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+          <div
+            className="absolute inset-0"
+            style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.15), rgba(0,0,0,0.55))" }}
+          />
         </div>
 
         {/* Avatar — overlapping cover by 50% */}
@@ -111,12 +102,19 @@ export default function PhonePreview({
             </p>
           </div>
 
-          {/* Trade badge */}
-          <div className="flex items-center justify-center gap-1">
-            <TradeIcon className="h-3 w-3 text-card-muted" />
-            <span className="text-xs text-card-muted">
-              {trade || "Your Trade"}
-            </span>
+          {/* Badge pill */}
+          <div
+            className="inline-flex items-center gap-1"
+            style={{
+              background: "#1e2235",
+              border: "1px solid rgba(255,255,255,0.08)",
+              fontSize: "9px",
+              padding: "3px 8px",
+              borderRadius: "20px",
+            }}
+          >
+            <Shield className="h-2.5 w-2.5 text-card-muted" />
+            <span className="text-card-muted">Licensed & Insured</span>
           </div>
 
           {/* Available dot */}

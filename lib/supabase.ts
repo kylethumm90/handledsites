@@ -31,7 +31,10 @@ export type ContractorSite = {
   trade: string;
   services: string[];
   slug: string;
-  licensed_insured: boolean;
+  badge_licensed: boolean;
+  badge_free_estimates: boolean;
+  badge_emergency: boolean;
+  badge_family_owned: boolean;
   logo_url: string | null;
   cover_image_url: string | null;
   banner_message: string;

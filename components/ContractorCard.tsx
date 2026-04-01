@@ -1,16 +1,24 @@
 import type { ContractorSite } from "@/lib/supabase";
 import { TRADE_ICONS } from "@/lib/icons";
 import { TRADE_IMAGES } from "@/lib/constants";
-import { MapPin, Shield } from "lucide-react";
+import { MapPin, Shield, Tag, Clock, Heart } from "lucide-react";
 import BannerStrip from "./BannerStrip";
 import AvailabilityDot from "./AvailabilityDot";
 import CTAButtons from "./CTAButtons";
 import ServicesGrid from "./ServicesGrid";
 import ReviewStars from "./ReviewStars";
+import type { LucideIcon } from "lucide-react";
 
 type Props = {
   contractor: ContractorSite;
 };
+
+const BADGE_CONFIG: { key: keyof ContractorSite; label: string; icon: LucideIcon }[] = [
+  { key: "badge_licensed", label: "Licensed & Insured", icon: Shield },
+  { key: "badge_free_estimates", label: "Free Estimates", icon: Tag },
+  { key: "badge_emergency", label: "24/7 Emergency", icon: Clock },
+  { key: "badge_family_owned", label: "Family Owned", icon: Heart },
+];
 
 export default function ContractorCard({ contractor }: Props) {
   const initials = contractor.business_name
@@ -21,6 +29,8 @@ export default function ContractorCard({ contractor }: Props) {
 
   const TradeIcon = TRADE_ICONS[contractor.trade] || TRADE_ICONS["Other"];
 
+  const activeBadges = BADGE_CONFIG.filter((b) => contractor[b.key]);
+
   return (
     <div className="mx-auto w-full max-w-[420px] space-y-5 p-5">
       {/* Banner */}
@@ -29,7 +39,7 @@ export default function ContractorCard({ contractor }: Props) {
       {/* Cover photo */}
       <div className="relative h-[160px] w-full overflow-hidden rounded-xl">
         <img
-          src={contractor.cover_image_url || TRADE_IMAGES[contractor.trade] || ""}
+          src={contractor.cover_image_url || TRADE_IMAGES[contractor.trade] || TRADE_IMAGES["default"]}
           alt=""
           className="absolute inset-0 h-full w-full object-cover"
         />
@@ -69,12 +79,26 @@ export default function ContractorCard({ contractor }: Props) {
             {contractor.city}, {contractor.state}
           </p>
         </div>
-        {contractor.licensed_insured && (
-          <div className="mt-2 flex items-center justify-center gap-1">
-            <Shield className="h-3.5 w-3.5 text-card-save-fg" />
-            <span className="text-xs font-medium text-card-save-fg">
-              Licensed & Insured
-            </span>
+
+        {/* Trust badges */}
+        {activeBadges.length > 0 && (
+          <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+            {activeBadges.map((badge) => (
+              <div
+                key={badge.key}
+                className="inline-flex items-center gap-1"
+                style={{
+                  background: "#1e2235",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  fontSize: "11px",
+                  padding: "4px 10px",
+                  borderRadius: "20px",
+                }}
+              >
+                <badge.icon className="h-3 w-3 text-card-muted" />
+                <span className="text-card-muted">{badge.label}</span>
+              </div>
+            ))}
           </div>
         )}
       </div>

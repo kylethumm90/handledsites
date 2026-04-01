@@ -16,7 +16,10 @@ type FormData = {
   state: string;
   trade: string;
   services: string[];
-  licensedInsured: boolean;
+  badgeLicensed: boolean;
+  badgeFreeEstimates: boolean;
+  badgeEmergency: boolean;
+  badgeFamilyOwned: boolean;
 };
 
 const initialForm: FormData = {
@@ -28,8 +31,18 @@ const initialForm: FormData = {
   state: "",
   trade: "",
   services: [],
-  licensedInsured: false,
+  badgeLicensed: false,
+  badgeFreeEstimates: false,
+  badgeEmergency: false,
+  badgeFamilyOwned: false,
 };
+
+const TRUST_BADGES = [
+  { key: "badgeLicensed" as const, label: "Licensed & Insured" },
+  { key: "badgeFreeEstimates" as const, label: "Free estimates" },
+  { key: "badgeEmergency" as const, label: "24/7 emergency service" },
+  { key: "badgeFamilyOwned" as const, label: "Family owned & operated" },
+];
 
 function formatPhoneInput(value: string): string {
   const digits = value.replace(/\D/g, "").slice(0, 10);
@@ -40,6 +53,7 @@ function formatPhoneInput(value: string): string {
 
 export default function SignupForm() {
   const [form, setForm] = useState<FormData>(initialForm);
+  const [step, setStep] = useState(1);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [honeypot, setHoneypot] = useState("");
@@ -91,21 +105,27 @@ export default function SignupForm() {
     }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleNextStep = () => {
     setError("");
-
-    // Honeypot check
-    if (honeypot) return;
-
-    // Validation
+    if (!form.businessName || !form.ownerName || !form.city || !form.state) {
+      setError("Please fill in all required fields.");
+      return;
+    }
     if (phoneDigits.length !== 10) {
       setError("Please enter a valid 10-digit phone number.");
       return;
     }
+    setStep(2);
+  };
 
-    if (!form.businessName || !form.ownerName || !form.city || !form.state || !form.trade) {
-      setError("Please fill in all required fields.");
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+
+    if (honeypot) return;
+
+    if (!form.trade) {
+      setError("Please select your trade.");
       return;
     }
 
@@ -120,7 +140,6 @@ export default function SignupForm() {
       const slug = await generateUniqueSlug(form.businessName);
       const supabase = getSupabaseClient();
 
-      // Upload logo if provided
       let logoUrl: string | null = null;
       if (logoFile) {
         const ext = logoFile.name.split(".").pop() || "png";
@@ -147,7 +166,10 @@ export default function SignupForm() {
           trade: form.trade,
           services: form.services,
           slug,
-          licensed_insured: form.licensedInsured,
+          badge_licensed: form.badgeLicensed,
+          badge_free_estimates: form.badgeFreeEstimates,
+          badge_emergency: form.badgeEmergency,
+          badge_family_owned: form.badgeFamilyOwned,
           logo_url: logoUrl,
         });
 
@@ -192,11 +214,14 @@ export default function SignupForm() {
         onSubmit={handleSubmit}
         className="rounded-2xl border border-gray-100 bg-white p-8 shadow-sm"
       >
-        <h2 className="mb-6 text-xl font-semibold text-gray-900">
-          Create your free card
-        </h2>
+        <div className="mb-6 flex items-center justify-between">
+          <h2 className="text-xl font-semibold text-gray-900">
+            Create your free card
+          </h2>
+          <span className="text-xs text-gray-400">Step {step} of 2</span>
+        </div>
 
-        {/* Honeypot — hidden from humans */}
+        {/* Honeypot */}
         <div className="absolute -left-[9999px]" aria-hidden="true">
           <input
             type="text"
@@ -209,219 +234,254 @@ export default function SignupForm() {
         </div>
 
         <div className="space-y-4">
-          {/* Business Name */}
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
-              Business name *
-            </label>
-            <input
-              type="text"
-              name="businessName"
-              value={form.businessName}
-              onChange={handleChange}
-              placeholder="Blue Hen HVAC"
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:outline-none"
-              required
-            />
-          </div>
-
-          {/* Logo Upload */}
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
-              Company logo
-            </label>
-            <div className="flex items-center gap-3">
-              {logoPreview ? (
-                <img
-                  src={logoPreview}
-                  alt="Logo preview"
-                  className="h-12 w-12 rounded-lg object-cover"
-                />
-              ) : (
-                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gray-100 text-xs text-gray-400">
-                  Logo
-                </div>
-              )}
-              <label className="cursor-pointer rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700 transition-colors hover:border-gray-300">
-                {logoFile ? "Change logo" : "Upload logo"}
+          {step === 1 && (
+            <>
+              {/* Business Name */}
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Business name *
+                </label>
                 <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleLogoChange}
-                  className="sr-only"
+                  type="text"
+                  name="businessName"
+                  value={form.businessName}
+                  onChange={handleChange}
+                  placeholder="Blue Hen HVAC"
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:outline-none"
                 />
-              </label>
-              {logoFile && (
-                <button
-                  type="button"
-                  onClick={() => { setLogoFile(null); setLogoPreview(null); }}
-                  className="text-xs text-gray-400 hover:text-gray-600"
-                >
-                  Remove
-                </button>
-              )}
-            </div>
-            <p className="mt-1 text-xs text-gray-400">Square format, under 2MB</p>
-          </div>
+              </div>
 
-          {/* Owner Name */}
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
-              Owner name *
-            </label>
-            <input
-              type="text"
-              name="ownerName"
-              value={form.ownerName}
-              onChange={handleChange}
-              placeholder="John Smith"
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:outline-none"
-              required
-            />
-          </div>
-
-          {/* Phone */}
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
-              Phone number *
-            </label>
-            <input
-              type="tel"
-              name="phone"
-              value={form.phone}
-              onChange={handleChange}
-              placeholder="(302) 555-0147"
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:outline-none"
-              required
-            />
-          </div>
-
-          {/* Email */}
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
-              Email
-            </label>
-            <input
-              type="email"
-              name="email"
-              value={form.email}
-              onChange={handleChange}
-              placeholder="john@bluehenHVAC.com"
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:outline-none"
-            />
-          </div>
-
-          {/* City & State */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">
-                City *
-              </label>
-              <input
-                type="text"
-                name="city"
-                value={form.city}
-                onChange={handleChange}
-                placeholder="Wilmington"
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:outline-none"
-                required
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">
-                State *
-              </label>
-              <select
-                name="state"
-                value={form.state}
-                onChange={handleChange}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-gray-400 focus:outline-none"
-                required
-              >
-                <option value="">Select state</option>
-                {US_STATES.map((s) => (
-                  <option key={s.value} value={s.value}>
-                    {s.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Trade */}
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
-              Trade *
-            </label>
-            <select
-              name="trade"
-              value={form.trade}
-              onChange={handleChange}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-gray-400 focus:outline-none"
-              required
-            >
-              <option value="">Select your trade</option>
-              {TRADES.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Services */}
-          {availableServices.length > 0 && (
-            <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">
-                Services offered *
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                {availableServices.map((service) => (
-                  <label
-                    key={service}
-                    className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors ${
-                      form.services.includes(service)
-                        ? "border-gray-900 bg-gray-900 text-white"
-                        : "border-gray-200 text-gray-700 hover:border-gray-300"
-                    }`}
-                  >
+              {/* Logo Upload */}
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Company logo
+                </label>
+                <div className="flex items-center gap-3">
+                  {logoPreview ? (
+                    <img
+                      src={logoPreview}
+                      alt="Logo preview"
+                      className="h-12 w-12 rounded-lg object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gray-100 text-xs text-gray-400">
+                      Logo
+                    </div>
+                  )}
+                  <label className="cursor-pointer rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700 transition-colors hover:border-gray-300">
+                    {logoFile ? "Change logo" : "Upload logo"}
                     <input
-                      type="checkbox"
-                      checked={form.services.includes(service)}
-                      onChange={() => handleServiceToggle(service)}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleLogoChange}
                       className="sr-only"
                     />
-                    {service}
                   </label>
-                ))}
+                  {logoFile && (
+                    <button
+                      type="button"
+                      onClick={() => { setLogoFile(null); setLogoPreview(null); }}
+                      className="text-xs text-gray-400 hover:text-gray-600"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+                <p className="mt-1 text-xs text-gray-400">Square format, under 2MB</p>
               </div>
-            </div>
+
+              {/* Owner Name */}
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Owner name *
+                </label>
+                <input
+                  type="text"
+                  name="ownerName"
+                  value={form.ownerName}
+                  onChange={handleChange}
+                  placeholder="John Smith"
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:outline-none"
+                />
+              </div>
+
+              {/* Phone */}
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Phone number *
+                </label>
+                <input
+                  type="tel"
+                  name="phone"
+                  value={form.phone}
+                  onChange={handleChange}
+                  placeholder="(302) 555-0147"
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:outline-none"
+                />
+              </div>
+
+              {/* Email */}
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  name="email"
+                  value={form.email}
+                  onChange={handleChange}
+                  placeholder="john@bluehenHVAC.com"
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:outline-none"
+                />
+              </div>
+
+              {/* City & State */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">
+                    City *
+                  </label>
+                  <input
+                    type="text"
+                    name="city"
+                    value={form.city}
+                    onChange={handleChange}
+                    placeholder="Wilmington"
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">
+                    State *
+                  </label>
+                  <select
+                    name="state"
+                    value={form.state}
+                    onChange={handleChange}
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-gray-400 focus:outline-none"
+                  >
+                    <option value="">Select state</option>
+                    {US_STATES.map((s) => (
+                      <option key={s.value} value={s.value}>
+                        {s.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {error && <p className="text-sm text-red-600">{error}</p>}
+
+              <button
+                type="button"
+                onClick={handleNextStep}
+                className="w-full rounded-lg bg-gray-900 py-3 text-sm font-semibold text-white transition-colors hover:bg-gray-800"
+              >
+                Next
+              </button>
+            </>
           )}
 
-          {/* Licensed & Insured */}
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={form.licensedInsured}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, licensedInsured: e.target.checked }))
-              }
-              className="h-4 w-4 rounded border-gray-300 text-gray-900 focus:ring-gray-900"
-            />
-            <span className="text-sm text-gray-700">Licensed & Insured</span>
-          </label>
+          {step === 2 && (
+            <>
+              {/* Trade */}
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Trade *
+                </label>
+                <select
+                  name="trade"
+                  value={form.trade}
+                  onChange={handleChange}
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-gray-400 focus:outline-none"
+                >
+                  <option value="">Select your trade</option>
+                  {TRADES.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-          {error && (
-            <p className="text-sm text-red-600">{error}</p>
+              {/* Services */}
+              {availableServices.length > 0 && (
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-gray-700">
+                    Services offered *
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {availableServices.map((service) => (
+                      <label
+                        key={service}
+                        className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors ${
+                          form.services.includes(service)
+                            ? "border-gray-900 bg-gray-900 text-white"
+                            : "border-gray-200 text-gray-700 hover:border-gray-300"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={form.services.includes(service)}
+                          onChange={() => handleServiceToggle(service)}
+                          className="sr-only"
+                        />
+                        {service}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Trust Badges */}
+              <div>
+                <label className="mb-2 block text-sm font-medium text-gray-700">
+                  Trust badges
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {TRUST_BADGES.map((badge) => (
+                    <label
+                      key={badge.key}
+                      className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors ${
+                        form[badge.key]
+                          ? "border-gray-900 bg-gray-900 text-white"
+                          : "border-gray-200 text-gray-700 hover:border-gray-300"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={form[badge.key]}
+                        onChange={(e) =>
+                          setForm((f) => ({ ...f, [badge.key]: e.target.checked }))
+                        }
+                        className="sr-only"
+                      />
+                      {badge.label}
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {error && <p className="text-sm text-red-600">{error}</p>}
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => { setStep(1); setError(""); }}
+                  className="flex-1 rounded-lg border border-gray-200 py-3 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
+                >
+                  Back
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="flex-[2] rounded-lg bg-gray-900 py-3 text-sm font-semibold text-white transition-colors hover:bg-gray-800 disabled:opacity-50"
+                >
+                  {submitting ? "Creating your card..." : "Create my free card"}
+                </button>
+              </div>
+            </>
           )}
-
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full rounded-lg bg-gray-900 py-3 text-sm font-semibold text-white transition-colors hover:bg-gray-800 disabled:opacity-50"
-          >
-            {submitting ? "Creating your card..." : "Create my free card"}
-          </button>
         </div>
       </form>
 
@@ -433,6 +493,7 @@ export default function SignupForm() {
           city={form.city}
           state={form.state}
           trade={form.trade}
+          logoUrl={logoPreview}
         />
       </div>
     </div>
