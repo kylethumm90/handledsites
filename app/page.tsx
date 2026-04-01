@@ -17,14 +17,13 @@ export default function Home() {
               className="mb-4 text-4xl font-bold leading-tight text-gray-900 md:text-5xl lg:text-6xl"
               style={{ fontFamily: "'Instrument Serif', serif" }}
             >
-              Your business card,
+              You&apos;re missing jobs
               <br />
-              on the internet.
+              because nobody answered.
             </h1>
             <p className="mx-auto max-w-xl text-lg text-gray-600 md:mx-0">
-              Create a free mobile business card website in 60 seconds. Get
-              found by AI search engines, convert visitors to calls, and share
-              your link anywhere.
+              handled.sites gives you a free mobile business card that makes you
+              easy to find and easy to call. Takes 5 minutes. Free forever.
             </p>
           </div>
 

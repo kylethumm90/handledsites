@@ -11,14 +11,16 @@ export const TRADES = [
 
 export type Trade = (typeof TRADES)[number];
 
-export const SERVICES = [
-  "Repairs",
-  "Installations",
-  "Maintenance",
-  "Inspections",
-  "Emergency",
-  "Free estimates",
-] as const;
+export const TRADE_SERVICES: Record<Trade, string[]> = {
+  HVAC: ["AC Repair", "Furnace Install", "Duct Cleaning", "System Tune-Up", "Emergency HVAC", "Free Estimates"],
+  Roofing: ["Roof Repair", "Roof Replacement", "Inspections", "Gutter Install", "Leak Repair", "Free Estimates"],
+  Plumbing: ["Drain Cleaning", "Pipe Repair", "Water Heater", "Fixture Install", "Emergency Plumbing", "Free Estimates"],
+  Electrical: ["Wiring & Rewiring", "Panel Upgrades", "Outlet Install", "Lighting", "Emergency Electrical", "Free Estimates"],
+  Landscaping: ["Lawn Care", "Tree Trimming", "Hardscaping", "Irrigation", "Seasonal Cleanup", "Free Estimates"],
+  Painting: ["Interior Painting", "Exterior Painting", "Cabinet Refinishing", "Drywall Repair", "Staining", "Free Estimates"],
+  "General Contractor": ["Remodeling", "Additions", "Framing", "Concrete Work", "Demolition", "Free Estimates"],
+  Other: ["Repairs", "Installations", "Maintenance", "Inspections", "Emergency", "Free Estimates"],
+};
 
 export const US_STATES = [
   { value: "AL", label: "Alabama" },
