@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ContractorSite } from "@/lib/supabase";
+import { TRADES, TRADE_SERVICES, US_STATES, Trade } from "@/lib/constants";
 import { ExternalLink, Trash2 } from "lucide-react";
 import Link from "next/link";
 
@@ -15,6 +16,17 @@ export default function AdminSiteEditor({ site }: Props) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [message, setMessage] = useState("");
 
+  // Contractor info (was read-only, now editable)
+  const [businessName, setBusinessName] = useState(site.business_name);
+  const [ownerName, setOwnerName] = useState(site.owner_name);
+  const [phone, setPhone] = useState(site.phone);
+  const [email, setEmail] = useState(site.email ?? "");
+  const [city, setCity] = useState(site.city);
+  const [state, setState] = useState(site.state);
+  const [trade, setTrade] = useState(site.trade);
+  const [services, setServices] = useState<string[]>(site.services);
+
+  // Settings
   const [bannerMessage, setBannerMessage] = useState(site.banner_message);
   const [hoursStart, setHoursStart] = useState(site.hours_start);
   const [hoursEnd, setHoursEnd] = useState(site.hours_end);
@@ -25,6 +37,32 @@ export default function AdminSiteEditor({ site }: Props) {
   const [badgeEmergency, setBadgeEmergency] = useState(site.badge_emergency);
   const [badgeFamilyOwned, setBadgeFamilyOwned] = useState(site.badge_family_owned);
 
+  const availableServices = trade
+    ? TRADE_SERVICES[trade as Trade] || []
+    : [];
+
+  const handleTradeChange = (newTrade: string) => {
+    setTrade(newTrade);
+    setServices([]);
+  };
+
+  const handleServiceToggle = (service: string) => {
+    setServices((prev) =>
+      prev.includes(service)
+        ? prev.filter((s) => s !== service)
+        : [...prev, service]
+    );
+  };
+
+  const formatPhoneDisplay = (p: string) => {
+    if (p.length === 10) return `(${p.slice(0, 3)}) ${p.slice(3, 6)}-${p.slice(6)}`;
+    return p;
+  };
+
+  const handlePhoneChange = (value: string) => {
+    setPhone(value.replace(/\D/g, "").slice(0, 10));
+  };
+
   const handleSave = async () => {
     setSaving(true);
     setMessage("");
@@ -33,6 +71,14 @@ export default function AdminSiteEditor({ site }: Props) {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          business_name: businessName,
+          owner_name: ownerName,
+          phone,
+          email: email || null,
+          city,
+          state,
+          trade,
+          services,
           banner_message: bannerMessage,
           hours_start: hoursStart,
           hours_end: hoursEnd,
@@ -69,6 +115,10 @@ export default function AdminSiteEditor({ site }: Props) {
     }
   };
 
+  const inputClass =
+    "w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-gray-400 focus:outline-none";
+  const labelClass = "mb-1 block text-xs font-medium text-gray-500";
+
   return (
     <div>
       {/* Header */}
@@ -84,8 +134,12 @@ export default function AdminSiteEditor({ site }: Props) {
             <span className="text-sm text-gray-300">/</span>
           </div>
           <h1 className="mt-1 text-xl font-semibold text-gray-900">
-            {site.business_name}
+            {businessName || site.business_name}
           </h1>
+          <p className="mt-0.5 text-xs text-gray-400">
+            Slug: /{site.slug} &middot; Created{" "}
+            {new Date(site.created_at).toLocaleDateString()}
+          </p>
         </div>
         <a
           href={`/${site.slug}`}
@@ -99,87 +153,141 @@ export default function AdminSiteEditor({ site }: Props) {
       </div>
 
       <div className="grid gap-8 lg:grid-cols-2">
-        {/* Read-only info */}
+        {/* Contractor info */}
         <div className="rounded-xl border border-gray-200 bg-white p-5">
           <h2 className="mb-4 text-sm font-semibold text-gray-900">
             Contractor info
           </h2>
-          <dl className="space-y-3 text-sm">
-            <div className="flex justify-between">
-              <dt className="text-gray-500">Owner</dt>
-              <dd className="text-gray-900">{site.owner_name}</dd>
+          <div className="space-y-4">
+            <div>
+              <label className={labelClass}>Business name</label>
+              <input
+                type="text"
+                value={businessName}
+                onChange={(e) => setBusinessName(e.target.value)}
+                className={inputClass}
+              />
             </div>
-            <div className="flex justify-between">
-              <dt className="text-gray-500">Phone</dt>
-              <dd className="text-gray-900">
-                ({site.phone.slice(0, 3)}) {site.phone.slice(3, 6)}-
-                {site.phone.slice(6)}
-              </dd>
+            <div>
+              <label className={labelClass}>Owner name</label>
+              <input
+                type="text"
+                value={ownerName}
+                onChange={(e) => setOwnerName(e.target.value)}
+                className={inputClass}
+              />
             </div>
-            {site.email && (
-              <div className="flex justify-between">
-                <dt className="text-gray-500">Email</dt>
-                <dd className="text-gray-900">{site.email}</dd>
+            <div>
+              <label className={labelClass}>Phone</label>
+              <input
+                type="tel"
+                value={formatPhoneDisplay(phone)}
+                onChange={(e) => handlePhoneChange(e.target.value)}
+                className={inputClass}
+              />
+            </div>
+            <div>
+              <label className={labelClass}>Email</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Optional"
+                className={inputClass}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={labelClass}>City</label>
+                <input
+                  type="text"
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className={labelClass}>State</label>
+                <select
+                  value={state}
+                  onChange={(e) => setState(e.target.value)}
+                  className={inputClass}
+                >
+                  {US_STATES.map((s) => (
+                    <option key={s.value} value={s.value}>
+                      {s.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className={labelClass}>Trade</label>
+              <select
+                value={trade}
+                onChange={(e) => handleTradeChange(e.target.value)}
+                className={inputClass}
+              >
+                {TRADES.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Services */}
+            {availableServices.length > 0 && (
+              <div>
+                <label className={labelClass}>Services</label>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {availableServices.map((service) => (
+                    <label
+                      key={service}
+                      className={`flex cursor-pointer items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs transition-colors ${
+                        services.includes(service)
+                          ? "border-gray-900 bg-gray-900 text-white"
+                          : "border-gray-200 text-gray-700 hover:border-gray-300"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={services.includes(service)}
+                        onChange={() => handleServiceToggle(service)}
+                        className="sr-only"
+                      />
+                      {service}
+                    </label>
+                  ))}
+                </div>
               </div>
             )}
-            <div className="flex justify-between">
-              <dt className="text-gray-500">Location</dt>
-              <dd className="text-gray-900">
-                {site.city}, {site.state}
-              </dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-gray-500">Trade</dt>
-              <dd className="text-gray-900">{site.trade}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-gray-500">Slug</dt>
-              <dd className="font-mono text-xs text-gray-900">/{site.slug}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-gray-500">Services</dt>
-              <dd className="text-right text-gray-900">
-                {site.services.join(", ")}
-              </dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-gray-500">Created</dt>
-              <dd className="text-gray-900">
-                {new Date(site.created_at).toLocaleString()}
-              </dd>
-            </div>
-          </dl>
+          </div>
         </div>
 
-        {/* Editable fields */}
+        {/* Settings */}
         <div className="rounded-xl border border-gray-200 bg-white p-5">
           <h2 className="mb-4 text-sm font-semibold text-gray-900">
-            Edit settings
+            Settings
           </h2>
           <div className="space-y-4">
-            {/* Banner message */}
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-500">
-                Banner message
-              </label>
+              <label className={labelClass}>Banner message</label>
               <input
                 type="text"
                 value={bannerMessage}
                 onChange={(e) => setBannerMessage(e.target.value)}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-gray-400 focus:outline-none"
+                className={inputClass}
               />
             </div>
 
-            {/* Business hours */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-500">
-                  Hours start (ET)
-                </label>
+                <label className={labelClass}>Hours start (ET)</label>
                 <select
                   value={hoursStart}
                   onChange={(e) => setHoursStart(Number(e.target.value))}
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-gray-400 focus:outline-none"
+                  className={inputClass}
                 >
                   {Array.from({ length: 24 }, (_, i) => (
                     <option key={i} value={i}>
@@ -189,13 +297,11 @@ export default function AdminSiteEditor({ site }: Props) {
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-500">
-                  Hours end (ET)
-                </label>
+                <label className={labelClass}>Hours end (ET)</label>
                 <select
                   value={hoursEnd}
                   onChange={(e) => setHoursEnd(Number(e.target.value))}
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-gray-400 focus:outline-none"
+                  className={inputClass}
                 >
                   {Array.from({ length: 24 }, (_, i) => (
                     <option key={i} value={i}>
@@ -206,24 +312,19 @@ export default function AdminSiteEditor({ site }: Props) {
               </div>
             </div>
 
-            {/* Google reviews */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-500">
-                  Review count
-                </label>
+                <label className={labelClass}>Review count</label>
                 <input
                   type="number"
                   value={reviewCount}
                   onChange={(e) => setReviewCount(e.target.value)}
                   placeholder="e.g. 47"
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-gray-400 focus:outline-none"
+                  className={inputClass}
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-500">
-                  Avg rating
-                </label>
+                <label className={labelClass}>Avg rating</label>
                 <input
                   type="number"
                   step="0.1"
@@ -232,17 +333,14 @@ export default function AdminSiteEditor({ site }: Props) {
                   value={avgRating}
                   onChange={(e) => setAvgRating(e.target.value)}
                   placeholder="e.g. 4.8"
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-gray-400 focus:outline-none"
+                  className={inputClass}
                 />
               </div>
             </div>
 
-            {/* Badges */}
             <div>
-              <label className="mb-2 block text-xs font-medium text-gray-500">
-                Trust badges
-              </label>
-              <div className="space-y-2">
+              <label className={labelClass}>Trust badges</label>
+              <div className="mt-1 space-y-2">
                 {[
                   { label: "Licensed & Insured", value: badgeLicensed, set: setBadgeLicensed },
                   { label: "Free estimates", value: badgeFreeEstimates, set: setBadgeFreeEstimates },
@@ -278,7 +376,7 @@ export default function AdminSiteEditor({ site }: Props) {
               disabled={saving}
               className="w-full rounded-lg bg-gray-900 py-2.5 text-sm font-semibold text-white hover:bg-gray-800 disabled:opacity-50"
             >
-              {saving ? "Saving..." : "Save changes"}
+              {saving ? "Saving..." : "Save all changes"}
             </button>
           </div>
         </div>
