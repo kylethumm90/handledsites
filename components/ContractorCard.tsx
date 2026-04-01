@@ -27,9 +27,17 @@ export default function ContractorCard({ contractor }: Props) {
 
       {/* Avatar */}
       <div className="flex justify-center">
-        <div className="flex h-20 w-20 items-center justify-center rounded-full bg-card-surface">
-          <span className="text-2xl font-bold text-white">{initials}</span>
-        </div>
+        {contractor.logo_url ? (
+          <img
+            src={contractor.logo_url}
+            alt={`${contractor.business_name} logo`}
+            className="h-20 w-20 rounded-full object-cover"
+          />
+        ) : (
+          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-card-surface">
+            <span className="text-2xl font-bold text-white">{initials}</span>
+          </div>
+        )}
       </div>
 
       {/* Business info */}

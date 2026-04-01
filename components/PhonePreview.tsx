@@ -9,6 +9,7 @@ type Props = {
   city: string;
   state: string;
   trade: string;
+  logoUrl?: string | null;
 };
 
 export default function PhonePreview({
@@ -17,6 +18,7 @@ export default function PhonePreview({
   city,
   state,
   trade,
+  logoUrl,
 }: Props) {
   const initials = (businessName || "YB")
     .split(/\s+/)
@@ -44,11 +46,19 @@ export default function PhonePreview({
         {/* Card content */}
         <div className="flex flex-1 flex-col items-center justify-center space-y-4 text-center">
           {/* Avatar */}
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-card-surface">
-            <span className="text-lg font-bold text-white">
-              {initials || "YB"}
-            </span>
-          </div>
+          {logoUrl ? (
+            <img
+              src={logoUrl}
+              alt="Logo"
+              className="mx-auto h-16 w-16 rounded-full object-cover"
+            />
+          ) : (
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-card-surface">
+              <span className="text-lg font-bold text-white">
+                {initials || "YB"}
+              </span>
+            </div>
+          )}
 
           {/* Business name */}
           <div>
@@ -75,15 +85,15 @@ export default function PhonePreview({
           </div>
 
           {/* CTA buttons */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-center gap-2 rounded-lg bg-card-call py-2 text-xs font-semibold text-white">
+          <div className="w-full space-y-2 px-2">
+            <div className="flex w-full items-center justify-center gap-2 rounded-lg bg-card-call py-2.5 text-xs font-semibold text-white">
               <Phone className="h-3 w-3" />
               {formatPhone(phone)}
             </div>
-            <div className="rounded-lg bg-card-text-bg py-2 text-xs font-semibold text-card-text-fg">
+            <div className="w-full rounded-lg bg-card-text-bg py-2.5 text-xs font-semibold text-card-text-fg">
               Text us instead
             </div>
-            <div className="rounded-lg bg-card-save-bg py-2 text-xs font-semibold text-card-save-fg">
+            <div className="w-full rounded-lg bg-card-save-bg py-2.5 text-xs font-semibold text-card-save-fg">
               Save to contacts
             </div>
           </div>

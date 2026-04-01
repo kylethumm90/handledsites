@@ -25,12 +25,14 @@ export type ContractorSite = {
   business_name: string;
   owner_name: string;
   phone: string;
+  email: string | null;
   city: string;
   state: string;
   trade: string;
   services: string[];
   slug: string;
   licensed_insured: boolean;
+  logo_url: string | null;
   banner_message: string;
   hours_start: number;
   hours_end: number;
