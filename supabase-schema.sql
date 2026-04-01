@@ -15,6 +15,7 @@ CREATE TABLE contractor_sites (
   slug TEXT NOT NULL UNIQUE,
   licensed_insured BOOLEAN NOT NULL DEFAULT false,
   logo_url TEXT,
+  cover_image_url TEXT,
   banner_message TEXT NOT NULL DEFAULT 'Now booking spring projects — call today!',
   hours_start INTEGER NOT NULL DEFAULT 7,
   hours_end INTEGER NOT NULL DEFAULT 19,

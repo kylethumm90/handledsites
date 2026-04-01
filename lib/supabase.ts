@@ -33,6 +33,7 @@ export type ContractorSite = {
   slug: string;
   licensed_insured: boolean;
   logo_url: string | null;
+  cover_image_url: string | null;
   banner_message: string;
   hours_start: number;
   hours_end: number;

@@ -1,5 +1,6 @@
 import type { ContractorSite } from "@/lib/supabase";
 import { TRADE_ICONS } from "@/lib/icons";
+import { TRADE_IMAGES } from "@/lib/constants";
 import { MapPin, Shield } from "lucide-react";
 import BannerStrip from "./BannerStrip";
 import AvailabilityDot from "./AvailabilityDot";
@@ -25,16 +26,33 @@ export default function ContractorCard({ contractor }: Props) {
       {/* Banner */}
       <BannerStrip message={contractor.banner_message} />
 
-      {/* Avatar */}
-      <div className="flex justify-center">
+      {/* Cover photo */}
+      <div className="relative h-[160px] w-full overflow-hidden rounded-xl">
+        <img
+          src={contractor.cover_image_url || TRADE_IMAGES[contractor.trade] || ""}
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+        <div
+          className="absolute inset-0"
+          style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.15), rgba(0,0,0,0.55))" }}
+        />
+      </div>
+
+      {/* Avatar — overlapping cover by 50% */}
+      <div className="relative z-10 flex justify-center" style={{ marginTop: "-40px" }}>
         {contractor.logo_url ? (
           <img
             src={contractor.logo_url}
             alt={`${contractor.business_name} logo`}
             className="h-20 w-20 rounded-full object-cover"
+            style={{ border: "3px solid white" }}
           />
         ) : (
-          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-card-surface">
+          <div
+            className="flex h-20 w-20 items-center justify-center rounded-full bg-card-surface"
+            style={{ border: "3px solid white" }}
+          >
             <span className="text-2xl font-bold text-white">{initials}</span>
           </div>
         )}

@@ -2,6 +2,7 @@
 
 import { Phone } from "lucide-react";
 import { TRADE_ICONS } from "@/lib/icons";
+import { TRADE_IMAGES } from "@/lib/constants";
 
 type Props = {
   businessName: string;
@@ -54,26 +55,51 @@ export default function PhonePreview({
           boxShadow: "0 32px 64px rgba(0,0,0,0.18), 0 8px 24px rgba(0,0,0,0.12)",
         }}
       >
-        <div className="flex-1 flex flex-col p-4">
         {/* Notch */}
-        <div className="mx-auto mb-4 h-5 w-24 flex-shrink-0 rounded-full" style={{ backgroundColor: "#1e2433" }} />
+        <div className="mx-auto mt-3 mb-2 h-5 w-24 flex-shrink-0 rounded-full" style={{ backgroundColor: "#1e2433", position: "relative", zIndex: 10 }} />
 
-        {/* Card content */}
-        <div className="flex flex-1 flex-col items-center justify-center space-y-4 text-center">
-          {/* Avatar */}
+        {/* Cover photo */}
+        <div className="relative h-[80px] w-full flex-shrink-0 overflow-hidden">
+          {trade && TRADE_IMAGES[trade] ? (
+            <>
+              <img
+                src={TRADE_IMAGES[trade]}
+                alt=""
+                className="absolute inset-0 h-full w-full object-cover"
+              />
+              <div
+                className="absolute inset-0"
+                style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.15), rgba(0,0,0,0.55))" }}
+              />
+            </>
+          ) : (
+            <div className="h-full w-full" style={{ backgroundColor: "#1e2433" }} />
+          )}
+        </div>
+
+        {/* Avatar — overlapping cover by 50% */}
+        <div className="relative z-10 flex justify-center" style={{ marginTop: "-32px" }}>
           {logoUrl ? (
             <img
               src={logoUrl}
               alt="Logo"
-              className="mx-auto h-16 w-16 rounded-full object-cover"
+              className="h-16 w-16 rounded-full object-cover"
+              style={{ border: "2px solid white" }}
             />
           ) : (
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-card-surface">
+            <div
+              className="flex h-16 w-16 items-center justify-center rounded-full bg-card-surface"
+              style={{ border: "2px solid white" }}
+            >
               <span className="text-lg font-bold text-white">
                 {initials || "YB"}
               </span>
             </div>
           )}
+        </div>
+
+        {/* Card content */}
+        <div className="flex flex-1 flex-col items-center justify-center space-y-4 p-4 text-center">
 
           {/* Business name */}
           <div>
@@ -114,7 +140,6 @@ export default function PhonePreview({
           </div>
         </div>
 
-        </div>
         {/* Home indicator */}
         <div className="mx-auto mb-2 mt-4 h-1 w-16 flex-shrink-0 rounded-full bg-gray-600" />
       </div>
