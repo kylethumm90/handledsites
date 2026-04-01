@@ -18,6 +18,7 @@ const ALLOWED_FIELDS = new Set([
   "badge_free_estimates",
   "badge_emergency",
   "badge_family_owned",
+  "logo_url",
 ]);
 
 export async function PUT(

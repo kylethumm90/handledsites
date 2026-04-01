@@ -6,6 +6,7 @@ import type { ContractorSite } from "@/lib/supabase";
 import { TRADES, TRADE_SERVICES, US_STATES, Trade } from "@/lib/constants";
 import { ExternalLink, Trash2 } from "lucide-react";
 import Link from "next/link";
+import ImageUpload from "./ImageUpload";
 
 type Props = { site: ContractorSite };
 
@@ -15,6 +16,9 @@ export default function AdminSiteEditor({ site }: Props) {
   const [deleting, setDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [message, setMessage] = useState("");
+
+  const [logoUrl, setLogoUrl] = useState(site.logo_url);
+  const [coverImageUrl, setCoverImageUrl] = useState(site.cover_image_url);
 
   // Contractor info (was read-only, now editable)
   const [businessName, setBusinessName] = useState(site.business_name);
@@ -79,6 +83,8 @@ export default function AdminSiteEditor({ site }: Props) {
           state,
           trade,
           services,
+          logo_url: logoUrl,
+          cover_image_url: coverImageUrl,
           banner_message: bannerMessage,
           hours_start: hoursStart,
           hours_end: hoursEnd,
@@ -159,6 +165,24 @@ export default function AdminSiteEditor({ site }: Props) {
             Contractor info
           </h2>
           <div className="space-y-4">
+            <div className="flex gap-4">
+              <ImageUpload
+                currentUrl={logoUrl}
+                storagePath={`logos/${site.slug}`}
+                onUploaded={setLogoUrl}
+                shape="circle"
+                label="Profile picture"
+              />
+              <ImageUpload
+                currentUrl={coverImageUrl}
+                storagePath={`covers/${site.slug}`}
+                onUploaded={setCoverImageUrl}
+                shape="rectangle"
+                height="h-20"
+                width="w-40"
+                label="Cover photo"
+              />
+            </div>
             <div>
               <label className={labelClass}>Business name</label>
               <input

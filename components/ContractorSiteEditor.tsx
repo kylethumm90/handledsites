@@ -4,12 +4,15 @@ import { useState } from "react";
 import type { ContractorSite } from "@/lib/supabase";
 import { TRADES, TRADE_SERVICES, US_STATES, Trade } from "@/lib/constants";
 import { ExternalLink } from "lucide-react";
+import ImageUpload from "./ImageUpload";
 
 type Props = { site: ContractorSite };
 
 export default function ContractorSiteEditor({ site }: Props) {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+
+  const [logoUrl, setLogoUrl] = useState(site.logo_url);
 
   // Contractor info
   const [businessName, setBusinessName] = useState(site.business_name);
@@ -72,6 +75,7 @@ export default function ContractorSiteEditor({ site }: Props) {
           state,
           trade,
           services,
+          logo_url: logoUrl,
           banner_message: bannerMessage,
           hours_start: hoursStart,
           hours_end: hoursEnd,
@@ -124,6 +128,13 @@ export default function ContractorSiteEditor({ site }: Props) {
             Business info
           </h2>
           <div className="space-y-4">
+            <ImageUpload
+              currentUrl={logoUrl}
+              storagePath={`logos/${site.slug}`}
+              onUploaded={setLogoUrl}
+              shape="circle"
+              label="Profile picture"
+            />
             <div>
               <label className={labelClass}>Business name</label>
               <input
