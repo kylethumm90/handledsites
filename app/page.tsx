@@ -22,7 +22,7 @@ export default function Home() {
             </p>
             <h1
               className="mb-4 text-4xl font-bold leading-tight text-gray-900 md:text-5xl lg:text-6xl"
-              style={{ fontFamily: "'Instrument Serif', serif" }}
+              style={{ fontFamily: "'DM Serif Display', serif" }}
             >
               You&apos;re missing jobs
               <br />

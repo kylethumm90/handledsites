@@ -56,7 +56,7 @@ export default function IncludedChecklist() {
           <div>
             <h2
               className="mb-2 text-3xl font-bold text-gray-900"
-              style={{ fontFamily: "var(--font-instrument-serif), serif" }}
+              style={{ fontFamily: "'DM Serif Display', serif" }}
             >
               Everything included. Free.
             </h2>

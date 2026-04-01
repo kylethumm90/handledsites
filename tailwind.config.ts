@@ -23,7 +23,7 @@ const config: Config = {
         },
       },
       fontFamily: {
-        serif: ["'Instrument Serif'", "serif"],
+        serif: ["'DM Serif Display'", "serif"],
         sans: ["'DM Sans'", "sans-serif"],
         inter: ["'Inter'", "sans-serif"],
       },

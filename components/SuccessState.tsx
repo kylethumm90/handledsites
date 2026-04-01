@@ -31,7 +31,7 @@ export default function SuccessState({ slug }: Props) {
       <div>
         <h3
           className="text-2xl font-bold text-gray-900"
-          style={{ fontFamily: "var(--font-instrument-serif), serif" }}
+          style={{ fontFamily: "'DM Serif Display', serif" }}
         >
           Your card is live!
         </h3>
