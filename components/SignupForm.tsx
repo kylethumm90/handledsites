@@ -11,6 +11,7 @@ type FormData = {
   businessName: string;
   ownerName: string;
   phone: string;
+  email: string;
   city: string;
   state: string;
   trade: string;
@@ -22,6 +23,7 @@ const initialForm: FormData = {
   businessName: "",
   ownerName: "",
   phone: "",
+  email: "",
   city: "",
   state: "",
   trade: "",
@@ -38,12 +40,30 @@ function formatPhoneInput(value: string): string {
 
 export default function SignupForm() {
   const [form, setForm] = useState<FormData>(initialForm);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [honeypot, setHoneypot] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [successSlug, setSuccessSlug] = useState<string | null>(null);
 
   const phoneDigits = form.phone.replace(/\D/g, "");
+
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setError("Please upload an image file.");
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setError("Logo must be under 2MB.");
+      return;
+    }
+    setLogoFile(file);
+    setLogoPreview(URL.createObjectURL(file));
+    setError("");
+  };
 
   const availableServices = form.trade
     ? TRADE_SERVICES[form.trade as Trade] || []
@@ -98,19 +118,37 @@ export default function SignupForm() {
 
     try {
       const slug = await generateUniqueSlug(form.businessName);
+      const supabase = getSupabaseClient();
 
-      const { error: insertError } = await getSupabaseClient()
+      // Upload logo if provided
+      let logoUrl: string | null = null;
+      if (logoFile) {
+        const ext = logoFile.name.split(".").pop() || "png";
+        const path = `logos/${slug}.${ext}`;
+        const { error: uploadError } = await supabase.storage
+          .from("contractor-assets")
+          .upload(path, logoFile, { upsert: true });
+        if (uploadError) throw new Error("Logo upload failed: " + uploadError.message);
+        const { data: urlData } = supabase.storage
+          .from("contractor-assets")
+          .getPublicUrl(path);
+        logoUrl = urlData.publicUrl;
+      }
+
+      const { error: insertError } = await supabase
         .from("contractor_sites")
         .insert({
           business_name: form.businessName,
           owner_name: form.ownerName,
           phone: phoneDigits,
+          email: form.email || null,
           city: form.city,
           state: form.state,
           trade: form.trade,
           services: form.services,
           slug,
           licensed_insured: form.licensedInsured,
+          logo_url: logoUrl,
         });
 
       if (insertError) {
@@ -140,6 +178,7 @@ export default function SignupForm() {
             city={form.city}
             state={form.state}
             trade={form.trade}
+            logoUrl={logoPreview}
           />
         </div>
       </div>
@@ -186,6 +225,45 @@ export default function SignupForm() {
             />
           </div>
 
+          {/* Logo Upload */}
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              Company logo
+            </label>
+            <div className="flex items-center gap-3">
+              {logoPreview ? (
+                <img
+                  src={logoPreview}
+                  alt="Logo preview"
+                  className="h-12 w-12 rounded-lg object-cover"
+                />
+              ) : (
+                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gray-100 text-xs text-gray-400">
+                  Logo
+                </div>
+              )}
+              <label className="cursor-pointer rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700 transition-colors hover:border-gray-300">
+                {logoFile ? "Change logo" : "Upload logo"}
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleLogoChange}
+                  className="sr-only"
+                />
+              </label>
+              {logoFile && (
+                <button
+                  type="button"
+                  onClick={() => { setLogoFile(null); setLogoPreview(null); }}
+                  className="text-xs text-gray-400 hover:text-gray-600"
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+            <p className="mt-1 text-xs text-gray-400">Square format, under 2MB</p>
+          </div>
+
           {/* Owner Name */}
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">
@@ -215,6 +293,21 @@ export default function SignupForm() {
               placeholder="(302) 555-0147"
               className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:outline-none"
               required
+            />
+          </div>
+
+          {/* Email */}
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              Email
+            </label>
+            <input
+              type="email"
+              name="email"
+              value={form.email}
+              onChange={handleChange}
+              placeholder="john@bluehenHVAC.com"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:outline-none"
             />
           </div>
 
