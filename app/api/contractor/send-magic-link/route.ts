@@ -23,17 +23,18 @@ export async function POST(request: NextRequest) {
   try {
     // Find contractor by email
     const supabase = getSupabaseAdmin();
-    const { data: site, error: dbError } = await supabase
+    const { data: sites, error: dbError } = await supabase
       .from("contractor_sites")
       .select("id, email, business_name")
       .ilike("email", normalizedEmail)
-      .single();
+      .limit(1);
 
     if (dbError) {
       console.error("[magic-link] DB lookup error:", dbError.message);
       return genericResponse;
     }
 
+    const site = sites?.[0];
     if (!site) {
       console.log("[magic-link] No site found for email:", normalizedEmail);
       return genericResponse;
