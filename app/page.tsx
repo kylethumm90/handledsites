@@ -27,8 +27,8 @@ export default function Home() {
               More calls. Five minutes. Free.
             </h1>
             <p className="mx-auto max-w-xl text-lg text-gray-600 md:mx-0">
-              Set up your free business site in minutes and start getting called
-              today.
+              A mobile business page with tap-to-call, your services, and a QR
+              code you can share anywhere. Built for contractors. Free forever.
             </p>
           </div>
 

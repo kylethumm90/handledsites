@@ -28,8 +28,8 @@ export default function IncludedChecklist() {
           {/* Checklist */}
           <div>
             <h2
-              className="mb-2 text-3xl font-bold text-gray-900"
-              style={{ fontFamily: "'DM Serif Display', serif" }}
+              className="mb-2 text-3xl font-extrabold text-gray-900"
+              style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800 }}
             >
               Everything included. Free.
             </h2>
