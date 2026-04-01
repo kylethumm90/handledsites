@@ -216,7 +216,7 @@ export default function SignupForm() {
       >
         <div className="mb-6 flex items-center justify-between">
           <h2 className="text-xl font-semibold text-gray-900">
-            Create your free card
+            Create your free site
           </h2>
           <span className="text-xs text-gray-400">Step {step} of 2</span>
         </div>
@@ -477,7 +477,7 @@ export default function SignupForm() {
                   disabled={submitting}
                   className="flex-[2] rounded-lg bg-gray-900 py-3 text-sm font-semibold text-white transition-colors hover:bg-gray-800 disabled:opacity-50"
                 >
-                  {submitting ? "Creating your card..." : "Create my free card"}
+                  {submitting ? "Creating your site..." : "Create my free site"}
                 </button>
               </div>
             </>

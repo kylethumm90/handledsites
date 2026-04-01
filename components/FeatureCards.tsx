@@ -1,23 +1,23 @@
-import { Phone, Search, Share2 } from "lucide-react";
+import { Phone, Globe, Share2 } from "lucide-react";
 
 const features = [
   {
     icon: Phone,
-    title: "Converts visitors to calls",
+    title: "Built to drive calls",
     description:
-      "One-tap call and text buttons mean your customers never have to search for your number.",
+      "One-tap call and text buttons front and center. Visitors don't search for your number — they just tap.",
   },
   {
-    icon: Search,
-    title: "Found by AI search",
+    icon: Globe,
+    title: "Your own website, instantly",
     description:
-      "Built-in schema markup helps AI assistants and search engines surface your business.",
+      "A professional site at your own URL. Share it anywhere — texts, emails, social media, truck decals.",
   },
   {
     icon: Share2,
-    title: "Shareable anywhere",
+    title: "Works on every device",
     description:
-      "Text it, email it, put it on your truck. One link that works everywhere, on every device.",
+      "Mobile-first design that looks great on any phone, tablet, or computer. No app to download.",
   },
 ];
 

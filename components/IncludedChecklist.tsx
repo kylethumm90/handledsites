@@ -1,13 +1,13 @@
 import { Check } from "lucide-react";
 
 const items = [
-  "Mobile-optimized business card",
+  "Your own mobile-optimized website",
   "One-tap call & text buttons",
   "Save to contacts (vCard)",
-  "AI search optimization (JSON-LD)",
-  "Shareable QR code",
   "Custom URL for your business",
+  "Shareable QR code",
   "Real-time availability status",
+  "Trust badges that build credibility",
   "Google review integration (coming soon)",
 ];
 
@@ -34,8 +34,8 @@ export default function IncludedChecklist() {
               Everything included. Free.
             </h2>
             <p className="mb-8 text-gray-600">
-              No subscriptions. No hidden fees. Just a professional card that
-              works.
+              No subscriptions. No hidden fees. Just a professional site that
+              drives calls.
             </p>
             <ul className="space-y-3">
               {items.map((item) => (

@@ -33,7 +33,7 @@ export default function SuccessState({ slug }: Props) {
           className="text-2xl font-bold text-gray-900"
           style={{ fontFamily: "'DM Serif Display', serif" }}
         >
-          Your card is live!
+          Your site is live!
         </h3>
         <p className="mt-2 text-gray-600">
           Share this link anywhere — texts, emails, social media, even your

@@ -29,8 +29,8 @@ export default function Home() {
               because nobody answered.
             </h1>
             <p className="mx-auto max-w-xl text-lg text-gray-600 md:mx-0">
-              handled.sites gives you a free mobile business card that makes you
-              easy to find and easy to call. Takes 5 minutes. Free forever.
+              handled.sites builds you a free website designed to turn visitors
+              into phone calls. Set it up in 5 minutes. Free forever.
             </p>
           </div>
 
