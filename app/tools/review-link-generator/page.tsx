@@ -52,7 +52,9 @@ function ReviewLinkGeneratorInner() {
         missing_tokens:
           "Google didn't return the credentials we need. Please try again.",
       };
-      setErrorMsg(messages[error] || "Something went wrong. Please try again.");
+      const debug = searchParams.get("debug");
+      const msg = messages[error] || "Something went wrong. Please try again.";
+      setErrorMsg(debug ? `${msg}\n\nDebug: ${debug}` : msg);
     }
   }, [searchParams]);
 
@@ -135,7 +137,7 @@ function ReviewLinkGeneratorInner() {
 
         /* Error */
         .error-card { background: #1a0a0a; border: 1px solid #3b1111; border-radius: 16px; padding: 24px 28px; margin-bottom: 24px; }
-        .error-card p { font-size: 15px; color: #ef4444; line-height: 1.6; margin-bottom: 16px; }
+        .error-card p { font-size: 15px; color: #ef4444; line-height: 1.6; margin-bottom: 16px; white-space: pre-wrap; word-break: break-word; }
         .error-card p:last-child { margin-bottom: 0; }
 
         /* Result */

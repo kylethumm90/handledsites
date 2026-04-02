@@ -149,7 +149,7 @@ export async function GET(request: NextRequest) {
       const errBody = await accountsRes.text();
       console.error("GBP accounts fetch failed. Status:", accountsRes.status, "Body:", errBody);
       return NextResponse.redirect(
-        `${BASE_URL}${TOOL_PAGE}?error=no_gbp_access`
+        `${BASE_URL}${TOOL_PAGE}?error=no_gbp_access&debug=${encodeURIComponent(accountsRes.status + ": " + errBody.slice(0, 500))}`
       );
     }
 
