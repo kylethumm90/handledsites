@@ -14,6 +14,45 @@ export default function ReviewResponseGenerator() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalState, setModalState] = useState<"form" | "success">("form");
+  const [modalError, setModalError] = useState("");
+  const [wlName, setWlName] = useState("");
+  const [wlEmail, setWlEmail] = useState("");
+  const [wlPhone, setWlPhone] = useState("");
+  const [wlSubmitting, setWlSubmitting] = useState(false);
+
+  function openWaitlistModal() {
+    setWlName("");
+    setWlEmail("");
+    setWlPhone("");
+    setModalError("");
+    setModalState("form");
+    setWlSubmitting(false);
+    setModalOpen(true);
+  }
+
+  async function submitWaitlist() {
+    setWlSubmitting(true);
+    setModalError("");
+    try {
+      const res = await fetch("/api/waitlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: wlName.trim(),
+          email: wlEmail.trim(),
+          phone: wlPhone.trim(),
+          source: "review-response-generator",
+        }),
+      });
+      if (!res.ok) throw new Error();
+      setModalState("success");
+    } catch {
+      setModalError("Something went wrong -- please try again.");
+      setWlSubmitting(false);
+    }
+  }
 
   const canGenerate = review.trim().length > 0 && businessName.trim().length > 0;
 
@@ -136,6 +175,27 @@ export default function ReviewResponseGenerator() {
         .cta-btn:hover { background: #5558e6; transform: translateY(-1px); }
         .cta-small { font-size: 13px; color: #737373; margin-top: 14px; }
         .footer { text-align: center; padding: 40px 0; font-size: 13px; color: #525252; }
+
+        /* Modal */
+        .modal-overlay { display: flex; position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
+        .modal-card { background: #141414; border: 1px solid #262626; border-radius: 16px; padding: 36px 32px; max-width: 440px; width: 100%; position: relative; animation: modalIn 0.25s ease; }
+        @keyframes modalIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+        @media (max-width: 480px) { .modal-card { padding: 28px 20px; } }
+        .modal-close { position: absolute; top: 16px; right: 16px; background: none; border: none; color: #737373; font-size: 24px; cursor: pointer; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 6px; transition: color 0.2s, background 0.2s; }
+        .modal-close:hover { color: #fff; background: #262626; }
+        .modal-card h2 { font-size: 22px; font-weight: 800; letter-spacing: -0.3px; margin-bottom: 8px; }
+        .modal-sub { font-size: 14px; color: #a3a3a3; margin-bottom: 24px; line-height: 1.5; }
+        .modal-input-group { margin-bottom: 16px; }
+        .modal-input-group label { display: block; font-size: 14px; font-weight: 600; color: #e5e5e5; margin-bottom: 6px; }
+        .modal-input-group input { width: 100%; background: #0a0a0a; border: 1px solid #333; border-radius: 10px; padding: 12px 14px; font-size: 15px; font-family: 'Inter', sans-serif; font-weight: 500; color: #fff; outline: none; transition: border-color 0.2s; }
+        .modal-input-group input::placeholder { color: #525252; }
+        .modal-input-group input:focus { border-color: #6366f1; }
+        .modal-submit { width: 100%; background: #6366f1; color: #fff; font-family: 'Inter', sans-serif; font-size: 16px; font-weight: 700; padding: 14px; border-radius: 10px; border: none; cursor: pointer; transition: background 0.2s; margin-top: 8px; }
+        .modal-submit:hover:not(:disabled) { background: #5558e6; }
+        .modal-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+        .modal-fine { font-size: 12px; color: #737373; text-align: center; margin-top: 12px; }
+        .modal-error { font-size: 13px; color: #ef4444; margin-top: 10px; }
+        .modal-success-body { font-size: 15px; color: #a3a3a3; line-height: 1.6; }
       `}</style>
 
       <div className="top-bar" />
@@ -279,9 +339,9 @@ export default function ReviewResponseGenerator() {
         <div className="cta-card">
           <h2>handled. can monitor and flag reviews automatically.</h2>
           <p className="subhead">Get notified the moment a review drops so you never miss a chance to respond.</p>
-          <a href="https://handledsites.com/#signup?utm_source=review-responder&utm_medium=tool" className="cta-btn">
+          <button className="cta-btn" onClick={openWaitlistModal} type="button" style={{ border: "none", cursor: "pointer" }}>
             Get Free Access
-          </a>
+          </button>
           <p className="cta-small">Free forever. No credit card required.</p>
         </div>
 
@@ -290,6 +350,48 @@ export default function ReviewResponseGenerator() {
           &copy; 2026 handled. | Free tools for contractors who run lean.
         </footer>
       </div>
+
+      {/* Waitlist Modal */}
+      {modalOpen && (
+        <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setModalOpen(false); }}>
+          <div className="modal-card">
+            <button className="modal-close" onClick={() => setModalOpen(false)} type="button">&times;</button>
+            {modalState === "form" ? (
+              <>
+                <h2>Join the Waitlist</h2>
+                <p className="modal-sub">Founding contractor spots are full. Drop your info and we&apos;ll reach out the moment your spot opens.</p>
+                <div className="modal-input-group">
+                  <label>First name</label>
+                  <input type="text" placeholder="Your first name" value={wlName} onChange={(e) => setWlName(e.target.value)} />
+                </div>
+                <div className="modal-input-group">
+                  <label>Email address</label>
+                  <input type="email" placeholder="you@email.com" value={wlEmail} onChange={(e) => setWlEmail(e.target.value)} />
+                </div>
+                <div className="modal-input-group">
+                  <label>Mobile number -- we&apos;ll text you when you&apos;re in</label>
+                  <input type="tel" placeholder="(555) 123-4567" value={wlPhone} onChange={(e) => setWlPhone(e.target.value)} />
+                </div>
+                <button
+                  className="modal-submit"
+                  disabled={!wlName.trim() || !wlEmail.trim() || !wlPhone.trim() || wlSubmitting}
+                  onClick={submitWaitlist}
+                  type="button"
+                >
+                  {wlSubmitting ? "Saving..." : "Save My Spot"}
+                </button>
+                {modalError && <p className="modal-error">{modalError}</p>}
+                <p className="modal-fine">No spam. One text when your spot opens. That&apos;s it.</p>
+              </>
+            ) : (
+              <>
+                <h2>You&apos;re on the list.</h2>
+                <p className="modal-success-body">We&apos;ll text you the moment a founding contractor spot opens. When it does, you&apos;ll get Founding Contractor pricing -- locked in forever, no matter what handled. costs later.</p>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </>
   );
 }

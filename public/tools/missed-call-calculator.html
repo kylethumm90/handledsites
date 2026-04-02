@@ -350,6 +350,126 @@
       font-size: 13px;
       color: #525252;
     }
+
+    /* Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-card {
+      background: #141414;
+      border: 1px solid #262626;
+      border-radius: 16px;
+      padding: 36px 32px;
+      max-width: 440px;
+      width: 100%;
+      position: relative;
+      animation: modalIn 0.25s ease;
+    }
+    @keyframes modalIn {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @media (max-width: 480px) {
+      .modal-card { padding: 28px 20px; }
+    }
+    .modal-close {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      background: none;
+      border: none;
+      color: #737373;
+      font-size: 24px;
+      cursor: pointer;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      transition: color 0.2s, background 0.2s;
+    }
+    .modal-close:hover { color: #fff; background: #262626; }
+    .modal-card h2 {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.3px;
+      margin-bottom: 8px;
+    }
+    .modal-card .modal-sub {
+      font-size: 14px;
+      color: #a3a3a3;
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+    .modal-card .modal-input-group {
+      margin-bottom: 16px;
+    }
+    .modal-card .modal-input-group label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      color: #e5e5e5;
+      margin-bottom: 6px;
+    }
+    .modal-card .modal-input-group input {
+      width: 100%;
+      background: #0a0a0a;
+      border: 1px solid #333;
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-size: 15px;
+      font-family: 'Inter', sans-serif;
+      font-weight: 500;
+      color: #fff;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .modal-card .modal-input-group input::placeholder { color: #525252; }
+    .modal-card .modal-input-group input:focus { border-color: #6366f1; }
+    .modal-submit {
+      width: 100%;
+      background: #6366f1;
+      color: #fff;
+      font-family: 'Inter', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      padding: 14px;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      transition: background 0.2s;
+      margin-top: 8px;
+    }
+    .modal-submit:hover:not(:disabled) { background: #5558e6; }
+    .modal-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+    .modal-fine {
+      font-size: 12px;
+      color: #737373;
+      text-align: center;
+      margin-top: 12px;
+    }
+    .modal-error {
+      font-size: 13px;
+      color: #ef4444;
+      margin-top: 10px;
+      display: none;
+    }
+    .modal-error.visible { display: block; }
+    .modal-success-body {
+      font-size: 15px;
+      color: #a3a3a3;
+      line-height: 1.6;
+    }
   </style>
 </head>
 <body>
@@ -424,7 +544,7 @@
     <div class="cta-card">
       <h2>Ava answers every call. 24/7.<br>Even when you're on the job.</h2>
       <p class="subhead">Get your free handled. account and recover that revenue.</p>
-      <a href="https://handledsites.com/#signup?utm_source=calculator&utm_medium=tool" class="cta-btn">Get Free Access</a>
+      <button class="cta-btn" onclick="openModal()">Get Free Access</button>
       <p class="cta-small">Free forever. No credit card required.</p>
     </div>
 
@@ -434,6 +554,106 @@
     </footer>
 
   </div>
+
+  <!-- Waitlist Modal -->
+  <div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+    <div class="modal-card">
+      <button class="modal-close" onclick="closeModal()" type="button">&times;</button>
+      <!-- Form State -->
+      <div id="modalForm">
+        <h2>Join the Waitlist</h2>
+        <p class="modal-sub">Founding contractor spots are full. Drop your info and we'll reach out the moment your spot opens.</p>
+        <div class="modal-input-group">
+          <label for="wlName">First name</label>
+          <input type="text" id="wlName" placeholder="Your first name">
+        </div>
+        <div class="modal-input-group">
+          <label for="wlEmail">Email address</label>
+          <input type="email" id="wlEmail" placeholder="you@email.com">
+        </div>
+        <div class="modal-input-group">
+          <label for="wlPhone">Mobile number -- we'll text you when you're in</label>
+          <input type="tel" id="wlPhone" placeholder="(555) 123-4567">
+        </div>
+        <button class="modal-submit" id="wlSubmit" type="button" disabled>Save My Spot</button>
+        <div class="modal-error" id="wlError">Something went wrong -- please try again.</div>
+        <p class="modal-fine">No spam. One text when your spot opens. That's it.</p>
+      </div>
+      <!-- Confirmation State -->
+      <div id="modalSuccess" style="display:none">
+        <h2>You're on the list.</h2>
+        <p class="modal-success-body">We'll text you the moment a founding contractor spot opens. When it does, you'll get Founding Contractor pricing -- locked in forever, no matter what handled. costs later.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Waitlist modal
+    (function() {
+      var overlay = document.getElementById('modalOverlay');
+      var form = document.getElementById('modalForm');
+      var success = document.getElementById('modalSuccess');
+      var nameIn = document.getElementById('wlName');
+      var emailIn = document.getElementById('wlEmail');
+      var phoneIn = document.getElementById('wlPhone');
+      var submitBtn = document.getElementById('wlSubmit');
+      var errorEl = document.getElementById('wlError');
+
+      function updateSubmit() {
+        submitBtn.disabled = !(nameIn.value.trim() && emailIn.value.trim() && phoneIn.value.trim());
+      }
+      nameIn.addEventListener('input', updateSubmit);
+      emailIn.addEventListener('input', updateSubmit);
+      phoneIn.addEventListener('input', updateSubmit);
+
+      window.openModal = function() {
+        form.style.display = '';
+        success.style.display = 'none';
+        errorEl.classList.remove('visible');
+        nameIn.value = '';
+        emailIn.value = '';
+        phoneIn.value = '';
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Save My Spot';
+        overlay.classList.add('open');
+      };
+
+      window.closeModal = function() {
+        overlay.classList.remove('open');
+      };
+
+      submitBtn.addEventListener('click', function() {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Saving...';
+        errorEl.classList.remove('visible');
+
+        fetch('/api/waitlist', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: nameIn.value.trim(),
+            email: emailIn.value.trim(),
+            phone: phoneIn.value.trim(),
+            source: 'missed-call-calculator'
+          })
+        })
+        .then(function(res) {
+          if (!res.ok) throw new Error();
+          form.style.display = 'none';
+          success.style.display = '';
+        })
+        .catch(function() {
+          errorEl.classList.add('visible');
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Save My Spot';
+        });
+      });
+
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeModal();
+      });
+    })();
+  </script>
 
   <script>
     (function() {
