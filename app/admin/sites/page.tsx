@@ -5,6 +5,7 @@ import { TRADES } from "@/lib/constants";
 import AdminShell from "@/components/AdminShell";
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
+import AdminCreateSiteButton from "@/components/AdminCreateSiteButton";
 
 export const dynamic = "force-dynamic";
 
@@ -53,6 +54,7 @@ export default async function AdminSitesPage({ searchParams }: Props) {
           All sites{" "}
           <span className="text-sm font-normal text-gray-400">({total})</span>
         </h1>
+        <AdminCreateSiteButton />
       </div>
 
       {/* Filters */}
