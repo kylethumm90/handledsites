@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Google Review Link Generator | handled.</title>
+  <meta name="description" content="Generate your free Google Review link in seconds. Send it to customers and start getting more 5-star reviews.">
+  <meta property="og:title" content="Get More Google Reviews. Instantly. | handled.">
+  <meta property="og:description" content="Generate your free Google Review link and start sending it to customers today.">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #0a0a0a;
+      color: #ffffff;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Decorative top bar */
+    .top-bar {
+      height: 3px;
+      background: linear-gradient(90deg, #6366f1, #818cf8, #6366f1);
+    }
+
+    /* Layout */
+    .container {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+
+    /* Header */
+    .header {
+      padding: 32px 0 0;
+      text-align: center;
+    }
+
+    .logo {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: #fff;
+    }
+
+    .logo span {
+      color: #6366f1;
+    }
+
+    .header-tagline {
+      font-size: 13px;
+      color: #737373;
+      margin-top: 4px;
+      font-weight: 500;
+      letter-spacing: 0.3px;
+    }
+
+    /* Hero */
+    .hero {
+      text-align: center;
+      padding: 56px 0 40px;
+    }
+
+    .hero h1 {
+      font-size: clamp(28px, 5vw, 44px);
+      font-weight: 800;
+      line-height: 1.15;
+      letter-spacing: -1px;
+      margin-bottom: 16px;
+    }
+
+    .hero p {
+      font-size: 17px;
+      color: #a3a3a3;
+      font-weight: 400;
+      max-width: 520px;
+      margin: 0 auto;
+    }
+
+    /* Cards */
+    .card {
+      background: #141414;
+      border: 1px solid #262626;
+      border-radius: 16px;
+      padding: 36px 32px;
+      margin-bottom: 24px;
+    }
+
+    @media (max-width: 480px) {
+      .card { padding: 28px 20px; }
+    }
+
+    .card-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #a3a3a3;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .card-title .step-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #6366f1;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    /* Inputs */
+    .input-group {
+      margin-bottom: 20px;
+    }
+
+    .input-group:last-child {
+      margin-bottom: 0;
+    }
+
+    .input-group label {
+      display: block;
+      font-size: 15px;
+      font-weight: 600;
+      color: #e5e5e5;
+      margin-bottom: 10px;
+    }
+
+    .input-group input[type="text"] {
+      width: 100%;
+      background: #0a0a0a;
+      border: 1px solid #333;
+      border-radius: 10px;
+      padding: 14px 16px;
+      font-size: 16px;
+      font-family: 'Inter', sans-serif;
+      font-weight: 500;
+      color: #fff;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .input-group input[type="text"]::placeholder {
+      color: #525252;
+    }
+
+    .input-group input[type="text"]:focus {
+      border-color: #6366f1;
+    }
+
+    /* Buttons */
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: #6366f1;
+      color: #fff;
+      font-family: 'Inter', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      padding: 14px 28px;
+      border-radius: 10px;
+      text-decoration: none;
+      transition: background 0.2s, transform 0.15s;
+      border: none;
+      cursor: pointer;
+      width: 100%;
+      margin-top: 8px;
+    }
+
+    .btn-primary:hover {
+      background: #5558e6;
+      transform: translateY(-1px);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-primary svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    /* Step 2 - hidden initially */
+    .step-2 {
+      opacity: 0;
+      transform: translateY(16px);
+      transition: opacity 0.5s ease, transform 0.5s ease;
+      pointer-events: none;
+      max-height: 0;
+      overflow: hidden;
+    }
+
+    .step-2.visible {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+      max-height: 600px;
+    }
+
+    .step-2-hint {
+      font-size: 14px;
+      color: #737373;
+      margin-bottom: 20px;
+      line-height: 1.6;
+    }
+
+    /* Output box */
+    .output-box {
+      background: #0a0a0a;
+      border: 1px solid #333;
+      border-radius: 10px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 16px;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+
+    .output-box.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .output-link {
+      flex: 1;
+      font-size: 13px;
+      font-family: 'Inter', monospace;
+      color: #6366f1;
+      word-break: break-all;
+      font-weight: 500;
+    }
+
+    .btn-copy {
+      flex-shrink: 0;
+      background: #262626;
+      color: #e5e5e5;
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 8px 16px;
+      border-radius: 8px;
+      border: 1px solid #333;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+      white-space: nowrap;
+    }
+
+    .btn-copy:hover {
+      background: #333;
+      border-color: #444;
+    }
+
+    .btn-copy.copied {
+      background: #166534;
+      border-color: #22c55e;
+      color: #22c55e;
+    }
+
+    /* Tips section */
+    .tips-section {
+      margin-bottom: 24px;
+    }
+
+    .tips-section h2 {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.3px;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .tips-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+    }
+
+    @media (max-width: 580px) {
+      .tips-grid { grid-template-columns: 1fr; }
+    }
+
+    .tip-card {
+      background: #141414;
+      border: 1px solid #262626;
+      border-radius: 12px;
+      padding: 24px 20px;
+      text-align: center;
+    }
+
+    .tip-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: #1a1a2e;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 14px;
+    }
+
+    .tip-icon svg {
+      width: 20px;
+      height: 20px;
+      color: #6366f1;
+    }
+
+    .tip-card p {
+      font-size: 14px;
+      font-weight: 600;
+      color: #e5e5e5;
+      line-height: 1.4;
+    }
+
+    /* CTA */
+    .cta-card {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16162a 100%);
+      border: 1px solid #2d2d5e;
+      border-radius: 16px;
+      padding: 48px 32px;
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    @media (max-width: 480px) {
+      .cta-card { padding: 36px 20px; }
+    }
+
+    .cta-card h2 {
+      font-size: clamp(22px, 4vw, 28px);
+      font-weight: 800;
+      line-height: 1.25;
+      letter-spacing: -0.5px;
+      margin-bottom: 12px;
+    }
+
+    .cta-card .subhead {
+      font-size: 16px;
+      color: #a3a3a3;
+      margin-bottom: 32px;
+    }
+
+    .cta-btn {
+      display: inline-block;
+      background: #6366f1;
+      color: #fff;
+      font-family: 'Inter', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      padding: 16px 40px;
+      border-radius: 10px;
+      text-decoration: none;
+      transition: background 0.2s, transform 0.15s;
+      border: none;
+      cursor: pointer;
+    }
+
+    .cta-btn:hover {
+      background: #5558e6;
+      transform: translateY(-1px);
+    }
+
+    .cta-small {
+      font-size: 13px;
+      color: #737373;
+      margin-top: 14px;
+    }
+
+    /* Footer */
+    .footer {
+      text-align: center;
+      padding: 40px 0;
+      font-size: 13px;
+      color: #525252;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="top-bar"></div>
+
+  <div class="container">
+
+    <!-- Header -->
+    <header class="header">
+      <div class="logo">handled<span>.</span></div>
+      <p class="header-tagline">Free Tools for Independent Contractors</p>
+    </header>
+
+    <!-- Hero -->
+    <section class="hero">
+      <h1>Get More Google Reviews. Instantly.</h1>
+      <p>Enter your business name, grab your review link, and start sending it to customers today.</p>
+    </section>
+
+    <!-- Step 1: Find Your Business -->
+    <div class="card">
+      <div class="card-title">
+        <span class="step-num">1</span>
+        Find Your Business
+      </div>
+      <div class="input-group">
+        <label for="businessName">Business name</label>
+        <input type="text" id="businessName" placeholder="e.g. Mike's HVAC Service">
+      </div>
+      <div class="input-group">
+        <label for="cityState">City and state</label>
+        <input type="text" id="cityState" placeholder="e.g. Austin, TX">
+      </div>
+      <button class="btn-primary" id="findBtn" disabled>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        Find My Business
+      </button>
+    </div>
+
+    <!-- Step 2: Build Your Link -->
+    <div class="card step-2" id="step2">
+      <div class="card-title">
+        <span class="step-num">2</span>
+        Build Your Review Link
+      </div>
+      <p class="step-2-hint">
+        Find your business on the Google Maps tab that just opened. Click your business listing, then copy the URL from your browser's address bar and paste it below.
+      </p>
+      <div class="input-group">
+        <label for="mapsUrl">Paste your Google Maps URL here</label>
+        <input type="text" id="mapsUrl" placeholder="https://www.google.com/maps/place/...">
+      </div>
+      <div class="output-box" id="outputBox">
+        <span class="output-link" id="outputLink"></span>
+        <button class="btn-copy" id="copyBtn">Copy Link</button>
+      </div>
+    </div>
+
+    <!-- Tips section -->
+    <div class="tips-section">
+      <h2>3 Proven Ways to Use This Link</h2>
+      <div class="tips-grid">
+        <div class="tip-card">
+          <div class="tip-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          </div>
+          <p>Send it in your job completion text message</p>
+        </div>
+        <div class="tip-card">
+          <div class="tip-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+          </div>
+          <p>Add it to your email signature</p>
+        </div>
+        <div class="tip-card">
+          <div class="tip-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+          </div>
+          <p>Put it in your post-job voicemail</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- CTA -->
+    <div class="cta-card">
+      <h2>handled. sends your review link automatically after every job.</h2>
+      <p class="subhead">No manual texting. Ava follows up so you don't have to.</p>
+      <a href="https://handledsites.com/#signup?utm_source=review-generator&utm_medium=tool" class="cta-btn">Get Free Access</a>
+      <p class="cta-small">Free forever. No credit card required.</p>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+      &copy; 2026 handled. | Free tools for contractors who run lean.
+    </footer>
+
+  </div>
+
+  <script>
+    (function() {
+      const businessNameInput = document.getElementById('businessName');
+      const cityStateInput = document.getElementById('cityState');
+      const findBtn = document.getElementById('findBtn');
+      const step2 = document.getElementById('step2');
+      const mapsUrlInput = document.getElementById('mapsUrl');
+      const outputBox = document.getElementById('outputBox');
+      const outputLink = document.getElementById('outputLink');
+      const copyBtn = document.getElementById('copyBtn');
+
+      // Enable/disable Find button based on inputs
+      function checkFindBtn() {
+        findBtn.disabled = !businessNameInput.value.trim() || !cityStateInput.value.trim();
+      }
+
+      businessNameInput.addEventListener('input', checkFindBtn);
+      cityStateInput.addEventListener('input', checkFindBtn);
+
+      // Step 1: Find business on Google Maps
+      findBtn.addEventListener('click', function() {
+        const query = encodeURIComponent(
+          businessNameInput.value.trim() + ' ' + cityStateInput.value.trim()
+        );
+        window.open('https://www.google.com/maps/search/?api=1&query=' + query, '_blank');
+        step2.classList.add('visible');
+        // Scroll to step 2 smoothly
+        setTimeout(function() {
+          step2.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 100);
+      });
+
+      // Allow Enter key to trigger Find
+      function handleEnter(e) {
+        if (e.key === 'Enter' && !findBtn.disabled) findBtn.click();
+      }
+      businessNameInput.addEventListener('keydown', handleEnter);
+      cityStateInput.addEventListener('keydown', handleEnter);
+
+      // Step 2: Parse pasted Google Maps URL
+      mapsUrlInput.addEventListener('input', function() {
+        var url = mapsUrlInput.value.trim();
+        if (!url) {
+          outputBox.classList.remove('visible');
+          return;
+        }
+
+        var reviewLink = '';
+
+        // Try to extract Place ID from various Google Maps URL formats
+        // Format: ChIJ... style Place IDs (typically 27 chars starting with ChIJ or 0x hex)
+        var placeIdMatch = url.match(/place_id[=:]([A-Za-z0-9_-]+)/i) ||
+                           url.match(/placeid[=:]([A-Za-z0-9_-]+)/i);
+
+        if (placeIdMatch) {
+          reviewLink = 'https://search.google.com/local/writereview?placeid=' + placeIdMatch[1];
+        }
+
+        // Try data= parameter which contains Place ID after !1s
+        if (!reviewLink) {
+          var dataMatch = url.match(/!1s(0x[0-9a-f]+:[0-9a-fx]+)/i) ||
+                          url.match(/!1s(ChIJ[A-Za-z0-9_-]+)/);
+          if (dataMatch) {
+            reviewLink = 'https://search.google.com/local/writereview?placeid=' + dataMatch[1];
+          }
+        }
+
+        // Try ftid= parameter
+        if (!reviewLink) {
+          var ftidMatch = url.match(/ftid=(0x[0-9a-f]+:[0-9a-fx]+)/i);
+          if (ftidMatch) {
+            reviewLink = 'https://search.google.com/local/writereview?placeid=' + ftidMatch[1];
+          }
+        }
+
+        // If we have a Google Maps URL but couldn't extract Place ID,
+        // provide the direct maps URL as a fallback review prompt
+        if (!reviewLink && url.includes('google.com/maps')) {
+          // Extract the place name portion to build a search-based review URL
+          var placeName = url.match(/\/place\/([^\/\?]+)/);
+          if (placeName) {
+            var decoded = decodeURIComponent(placeName[1].replace(/\+/g, ' '));
+            reviewLink = 'https://www.google.com/maps/search/?api=1&query=' +
+                         encodeURIComponent(decoded) + '&query_place_id=';
+          }
+        }
+
+        // If still nothing, show what they pasted (likely not a Maps URL)
+        if (!reviewLink) {
+          if (url.startsWith('http')) {
+            reviewLink = url;
+          } else {
+            outputBox.classList.remove('visible');
+            return;
+          }
+        }
+
+        outputLink.textContent = reviewLink;
+        outputBox.classList.add('visible');
+      });
+
+      // Copy to clipboard
+      copyBtn.addEventListener('click', function() {
+        var text = outputLink.textContent;
+        if (!text) return;
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(showCopied);
+        } else {
+          // Fallback for older browsers / mobile
+          var ta = document.createElement('textarea');
+          ta.value = text;
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+          showCopied();
+        }
+      });
+
+      function showCopied() {
+        copyBtn.textContent = 'Copied!';
+        copyBtn.classList.add('copied');
+        setTimeout(function() {
+          copyBtn.textContent = 'Copy Link';
+          copyBtn.classList.remove('copied');
+        }, 2000);
+      }
+    })();
+  </script>
+</body>
+</html>
