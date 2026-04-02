@@ -1,18 +1,23 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
-import { Suspense } from "react";
+import { useState, useRef } from "react";
 
-function ReviewLinkGeneratorInner() {
-  const searchParams = useSearchParams();
+type PlaceResult = {
+  placeId: string;
+  name: string;
+  address: string;
+};
 
-  const [reviewLink, setReviewLink] = useState("");
-  const [businessName, setBusinessName] = useState("");
-  const [errorMsg, setErrorMsg] = useState("");
+export default function ReviewLinkGenerator() {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<PlaceResult[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [selected, setSelected] = useState<PlaceResult | null>(null);
   const [copied, setCopied] = useState(false);
+  const [error, setError] = useState("");
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Waitlist modal state
+  // Waitlist modal
   const [modalOpen, setModalOpen] = useState(false);
   const [modalState, setModalState] = useState<"form" | "success">("form");
   const [modalError, setModalError] = useState("");
@@ -21,42 +26,47 @@ function ReviewLinkGeneratorInner() {
   const [wlPhone, setWlPhone] = useState("");
   const [wlSubmitting, setWlSubmitting] = useState(false);
 
-  useEffect(() => {
-    const link = searchParams.get("link");
-    const business = searchParams.get("business");
-    const error = searchParams.get("error");
+  const reviewLink = selected
+    ? `https://search.google.com/local/writereview?placeid=${selected.placeId}`
+    : "";
 
-    if (link) {
-      setReviewLink(link);
-      setBusinessName(business || "");
+  function handleInput(value: string) {
+    setQuery(value);
+    setSelected(null);
+    setError("");
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    if (value.trim().length < 3) {
+      setResults([]);
+      return;
     }
 
-    if (error) {
-      const messages: Record<string, string> = {
-        access_denied:
-          "You declined the Google sign-in. No worries. Click the button below to try again whenever you're ready.",
-        invalid_state:
-          "The sign-in session expired. Please try again.",
-        no_gbp_access:
-          "We couldn't access your Google Business Profile. Make sure the Google account you sign in with is the one that manages your business listing.",
-        no_gbp_accounts:
-          "No Google Business Profile found for this account. You need a verified GBP listing before we can generate your review link.",
-        no_locations:
-          "We found your GBP account but no locations with a Place ID. Make sure your business listing is verified on Google.",
-        token_exchange:
-          "Something went wrong connecting to Google. Please try again.",
-        server_error:
-          "Something went wrong on our end. Please try again.",
-        profile_fetch:
-          "We couldn't read your Google profile. Please try again.",
-        missing_tokens:
-          "Google didn't return the credentials we need. Please try again.",
-      };
-      const debug = searchParams.get("debug");
-      const msg = messages[error] || "Something went wrong. Please try again.";
-      setErrorMsg(debug ? `${msg}\n\nDebug: ${debug}` : msg);
+    debounceRef.current = setTimeout(() => {
+      searchPlaces(value.trim());
+    }, 400);
+  }
+
+  async function searchPlaces(q: string) {
+    setSearching(true);
+    try {
+      const res = await fetch(`/api/places/search?q=${encodeURIComponent(q)}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Search failed");
+      setResults(data.results || []);
+    } catch {
+      setError("Search failed. Please try again.");
+      setResults([]);
+    } finally {
+      setSearching(false);
     }
-  }, [searchParams]);
+  }
+
+  function selectPlace(place: PlaceResult) {
+    setSelected(place);
+    setQuery(place.name);
+    setResults([]);
+  }
 
   function copyToClipboard() {
     if (!reviewLink) return;
@@ -126,27 +136,32 @@ function ReviewLinkGeneratorInner() {
         .hero h1 { font-size: clamp(28px, 5vw, 44px); font-weight: 800; line-height: 1.15; letter-spacing: -1px; margin-bottom: 16px; }
         .hero p { font-size: 17px; color: #a3a3a3; font-weight: 400; max-width: 540px; margin: 0 auto; }
 
-        .card { background: #141414; border: 1px solid #262626; border-radius: 16px; padding: 36px 32px; margin-bottom: 24px; text-align: center; }
+        .card { background: #141414; border: 1px solid #262626; border-radius: 16px; padding: 36px 32px; margin-bottom: 24px; }
         @media (max-width: 480px) { .card { padding: 28px 20px; } }
 
-        /* OAuth button */
-        .btn-google { display: inline-flex; align-items: center; justify-content: center; gap: 12px; background: #6366f1; color: #fff; font-family: 'Inter', sans-serif; font-size: 16px; font-weight: 700; padding: 16px 40px; border-radius: 10px; border: none; cursor: pointer; transition: background 0.2s, transform 0.15s; text-decoration: none; width: 100%; max-width: 400px; }
-        .btn-google:hover { background: #5558e6; transform: translateY(-1px); }
-        .btn-google svg { width: 20px; height: 20px; flex-shrink: 0; }
-        .fine-print { font-size: 13px; color: #737373; margin-top: 14px; }
+        .input-group { margin-bottom: 12px; }
+        .input-group label { display: block; font-size: 15px; font-weight: 600; color: #e5e5e5; margin-bottom: 10px; }
+        .search-input { width: 100%; background: #0a0a0a; border: 1px solid #333; border-radius: 10px; padding: 16px; font-size: 16px; font-family: 'Inter', sans-serif; font-weight: 500; color: #fff; outline: none; transition: border-color 0.2s; }
+        .search-input::placeholder { color: #525252; }
+        .search-input:focus { border-color: #6366f1; }
+        .helper-text { font-size: 13px; color: #737373; margin-top: 8px; line-height: 1.5; }
 
-        /* Error */
-        .error-card { background: #1a0a0a; border: 1px solid #3b1111; border-radius: 16px; padding: 24px 28px; margin-bottom: 24px; }
-        .error-card p { font-size: 15px; color: #ef4444; line-height: 1.6; margin-bottom: 16px; white-space: pre-wrap; word-break: break-word; }
-        .error-card p:last-child { margin-bottom: 0; }
+        /* Dropdown */
+        .results-dropdown { background: #1a1a1a; border: 1px solid #333; border-radius: 10px; margin-top: 4px; overflow: hidden; }
+        .result-item { padding: 14px 16px; cursor: pointer; transition: background 0.15s; border-bottom: 1px solid #262626; }
+        .result-item:last-child { border-bottom: none; }
+        .result-item:hover { background: #262626; }
+        .result-name { font-size: 15px; font-weight: 600; color: #e5e5e5; }
+        .result-address { font-size: 13px; color: #737373; margin-top: 2px; }
+        .searching-text { padding: 14px 16px; font-size: 14px; color: #737373; }
 
         /* Result */
-        .result-card { background: #141414; border: 1px solid #262626; border-radius: 16px; padding: 36px 32px; margin-bottom: 24px; }
-        @media (max-width: 480px) { .result-card { padding: 28px 20px; } }
-        .result-label { font-size: 13px; font-weight: 700; color: #22c55e; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; display: flex; align-items: center; justify-content: center; gap: 6px; }
+        .result-section { margin-top: 28px; opacity: 0; transform: translateY(12px); transition: opacity 0.4s ease, transform 0.4s ease; pointer-events: none; max-height: 0; overflow: hidden; }
+        .result-section.visible { opacity: 1; transform: translateY(0); pointer-events: auto; max-height: 400px; overflow: visible; }
+        .result-label { font-size: 13px; font-weight: 700; color: #22c55e; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
         .result-label svg { width: 16px; height: 16px; }
-        .result-business { font-size: 18px; font-weight: 700; color: #e5e5e5; margin-bottom: 16px; text-align: center; }
-        .result-box { background: #0a0a0a; border: 1px solid #333; border-radius: 10px; padding: 14px 16px; margin-bottom: 16px; }
+        .result-business { font-size: 16px; font-weight: 700; color: #e5e5e5; margin-bottom: 12px; }
+        .result-box { background: #0a0a0a; border: 1px solid #333; border-radius: 10px; padding: 14px 16px; margin-bottom: 12px; }
         .result-link { font-size: 13px; font-family: 'Inter', monospace; color: #6366f1; word-break: break-all; font-weight: 500; }
         .result-actions { display: flex; gap: 8px; }
         .btn-copy { flex: 1; background: #6366f1; color: #fff; font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600; padding: 12px 20px; border-radius: 8px; border: none; cursor: pointer; transition: background 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px; }
@@ -156,7 +171,8 @@ function ReviewLinkGeneratorInner() {
         .btn-test { flex: 1; background: transparent; color: #a3a3a3; font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600; padding: 12px 20px; border-radius: 8px; border: 1px solid #333; cursor: pointer; transition: all 0.2s; text-decoration: none; text-align: center; display: flex; align-items: center; justify-content: center; gap: 6px; }
         .btn-test:hover { border-color: #6366f1; color: #e5e5e5; }
         .btn-test svg { width: 16px; height: 16px; }
-        .connected-note { margin-top: 24px; padding-top: 20px; border-top: 1px solid #262626; font-size: 14px; color: #a3a3a3; line-height: 1.6; text-align: center; }
+
+        .error-msg { font-size: 13px; color: #ef4444; margin-top: 8px; }
 
         /* Tips */
         .tips-section { margin-bottom: 24px; }
@@ -211,26 +227,52 @@ function ReviewLinkGeneratorInner() {
 
         <section className="hero">
           <h1>Get Your Google Review Link. Instantly.</h1>
-          <p>Connect your Google Business Profile and we&apos;ll build your working review link in seconds. No setup. No guessing.</p>
+          <p>Search your business name, grab your direct review link, and start sending it to customers today.</p>
         </section>
 
-        {/* Error state */}
-        {errorMsg && !reviewLink && (
-          <div className="error-card">
-            <p>{errorMsg}</p>
+        <div className="card">
+          <div className="input-group">
+            <label>Search for your business</label>
+            <input
+              type="text"
+              className="search-input"
+              placeholder={"e.g. \"Mike's HVAC Austin TX\""}
+              value={query}
+              onChange={(e) => handleInput(e.target.value)}
+              autoComplete="off"
+            />
+            <p className="helper-text">Type your business name and city. Select your listing from the results below.</p>
           </div>
-        )}
 
-        {/* Result state */}
-        {reviewLink ? (
-          <div className="result-card">
+          {/* Search results dropdown */}
+          {(results.length > 0 || searching) && !selected && (
+            <div className="results-dropdown">
+              {searching ? (
+                <div className="searching-text">Searching...</div>
+              ) : (
+                results.map((r) => (
+                  <div
+                    key={r.placeId}
+                    className="result-item"
+                    onClick={() => selectPlace(r)}
+                  >
+                    <div className="result-name">{r.name}</div>
+                    <div className="result-address">{r.address}</div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+
+          {error && <div className="error-msg">{error}</div>}
+
+          {/* Result section */}
+          <div className={`result-section${selected ? " visible" : ""}`}>
             <div className="result-label">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
               Your review link is ready.
             </div>
-            {businessName && (
-              <div className="result-business">{businessName}</div>
-            )}
+            <div className="result-business">{selected?.name}</div>
             <div className="result-box">
               <span className="result-link">{reviewLink}</span>
             </div>
@@ -262,20 +304,8 @@ function ReviewLinkGeneratorInner() {
                 Test It
               </a>
             </div>
-            <div className="connected-note">
-              You&apos;re now connected to handled. Stella will automatically respond to your Google reviews.
-            </div>
           </div>
-        ) : (
-          /* Initial state -- OAuth button */
-          <div className="card">
-            <a href="/api/auth/google" className="btn-google">
-              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#fff" fillOpacity=".9"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#fff" fillOpacity=".7"/><path d="M5.84 14.09A6.97 6.97 0 0 1 5.48 12c0-.72.12-1.43.36-2.09V7.07H2.18A10.98 10.98 0 0 0 1 12c0 1.77.42 3.45 1.18 4.93l3.66-2.84z" fill="#fff" fillOpacity=".5"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 1.99 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#fff" fillOpacity=".8"/></svg>
-              Get My Review Link
-            </a>
-            <p className="fine-print">Free. Takes 30 seconds. No spam.</p>
-          </div>
-        )}
+        </div>
 
         {/* Tips */}
         <div className="tips-section">
@@ -360,13 +390,5 @@ function ReviewLinkGeneratorInner() {
         </div>
       )}
     </>
-  );
-}
-
-export default function ReviewLinkGenerator() {
-  return (
-    <Suspense>
-      <ReviewLinkGeneratorInner />
-    </Suspense>
   );
 }
