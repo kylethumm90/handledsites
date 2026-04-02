@@ -139,8 +139,20 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 5. Fetch GBP accounts and locations
-    const accountsRes = await fetch(
+    // 5. Fetch GBP accounts and locations (with retry for rate limits)
+    async function fetchWithRetry(url: string, opts: RequestInit, retries = 3): Promise<Response> {
+      for (let i = 0; i < retries; i++) {
+        const res = await fetch(url, opts);
+        if (res.status === 429 && i < retries - 1) {
+          await new Promise((r) => setTimeout(r, (i + 1) * 2000));
+          continue;
+        }
+        return res;
+      }
+      return fetch(url, opts);
+    }
+
+    const accountsRes = await fetchWithRetry(
       "https://mybusinessaccountmanagement.googleapis.com/v1/accounts",
       { headers: { Authorization: `Bearer ${access_token}` } }
     );
@@ -169,7 +181,7 @@ export async function GET(request: NextRequest) {
 
     for (const account of accounts) {
       const accountName = account.name; // e.g. "accounts/123456"
-      const locationsRes = await fetch(
+      const locationsRes = await fetchWithRetry(
         `https://mybusinessbusinessinformation.googleapis.com/v1/${accountName}/locations?readMask=name,title,metadata`,
         { headers: { Authorization: `Bearer ${access_token}` } }
       );
