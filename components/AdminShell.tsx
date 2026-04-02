@@ -11,7 +11,7 @@ const LANDING_PAGES = [
   },
   {
     name: "Review Link Generator",
-    path: "/tools/review-link-generator.html",
+    path: "/tools/review-link-generator",
   },
   {
     name: "Review Response Generator",
