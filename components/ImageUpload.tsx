@@ -12,6 +12,7 @@ type Props = {
   height?: string;
   width?: string;
   label: string;
+  useServerUpload?: boolean;
 };
 
 export default function ImageUpload({
@@ -22,8 +23,10 @@ export default function ImageUpload({
   height = "h-20",
   width = "w-20",
   label,
+  useServerUpload = false,
 }: Props) {
   const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(currentUrl);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -31,30 +34,54 @@ export default function ImageUpload({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!file.type.startsWith("image/")) return;
-    if (file.size > 2 * 1024 * 1024) return;
+    if (!file.type.startsWith("image/")) {
+      setError("File must be an image");
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setError("File must be under 2MB");
+      return;
+    }
 
     setUploading(true);
+    setError(null);
     try {
-      const ext = file.name.split(".").pop() || "png";
-      const path = `${storagePath}.${ext}`;
-      const supabase = getSupabaseClient();
+      let url: string;
 
-      const { error } = await supabase.storage
-        .from("contractor-assets")
-        .upload(path, file, { upsert: true });
+      if (useServerUpload) {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("storagePath", storagePath);
 
-      if (error) throw error;
+        const res = await fetch("/api/admin/upload", { method: "POST", body: formData });
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || "Upload failed");
+        }
+        const data = await res.json();
+        url = data.url;
+      } else {
+        const ext = file.name.split(".").pop() || "png";
+        const path = `${storagePath}.${ext}`;
+        const supabase = getSupabaseClient();
 
-      const { data: urlData } = supabase.storage
-        .from("contractor-assets")
-        .getPublicUrl(path);
+        const { error: uploadError } = await supabase.storage
+          .from("contractor-assets")
+          .upload(path, file, { upsert: true });
 
-      const url = `${urlData.publicUrl}?t=${Date.now()}`;
+        if (uploadError) throw uploadError;
+
+        const { data: urlData } = supabase.storage
+          .from("contractor-assets")
+          .getPublicUrl(path);
+
+        url = `${urlData.publicUrl}?t=${Date.now()}`;
+      }
+
       setPreview(url);
       onUploaded(url);
-    } catch {
-      // Silent fail — user can retry
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Upload failed");
     } finally {
       setUploading(false);
     }
@@ -97,6 +124,7 @@ export default function ImageUpload({
           className="sr-only"
         />
       </div>
+      {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
       <p className="mt-1 text-xs text-gray-400">Click to change · Under 2MB</p>
     </div>
   );

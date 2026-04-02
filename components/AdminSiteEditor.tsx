@@ -175,6 +175,7 @@ export default function AdminSiteEditor({ site }: Props) {
                 onUploaded={setLogoUrl}
                 shape="circle"
                 label="Profile picture"
+                useServerUpload
               />
               <ImageUpload
                 currentUrl={coverImageUrl}
@@ -184,6 +185,7 @@ export default function AdminSiteEditor({ site }: Props) {
                 height="h-20"
                 width="w-40"
                 label="Cover photo"
+                useServerUpload
               />
             </div>
             <div>
