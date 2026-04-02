@@ -23,20 +23,17 @@
       -webkit-font-smoothing: antialiased;
     }
 
-    /* Decorative top bar */
     .top-bar {
       height: 3px;
       background: linear-gradient(90deg, #6366f1, #818cf8, #6366f1);
     }
 
-    /* Layout */
     .container {
       max-width: 720px;
       margin: 0 auto;
       padding: 0 20px;
     }
 
-    /* Header */
     .header {
       padding: 32px 0 0;
       text-align: center;
@@ -61,7 +58,6 @@
       letter-spacing: 0.3px;
     }
 
-    /* Hero */
     .hero {
       text-align: center;
       padding: 56px 0 40px;
@@ -96,39 +92,8 @@
       .card { padding: 28px 20px; }
     }
 
-    .card-title {
-      font-size: 14px;
-      font-weight: 700;
-      color: #a3a3a3;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      margin-bottom: 24px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .card-title .step-num {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 24px;
-      height: 24px;
-      border-radius: 50%;
-      background: #6366f1;
-      color: #fff;
-      font-size: 12px;
-      font-weight: 700;
-    }
-
-    /* Inputs */
-    .input-group {
-      margin-bottom: 20px;
-    }
-
-    .input-group:last-child {
-      margin-bottom: 0;
-    }
+    /* Input */
+    .input-group { margin-bottom: 12px; }
 
     .input-group label {
       display: block;
@@ -143,7 +108,7 @@
       background: #0a0a0a;
       border: 1px solid #333;
       border-radius: 10px;
-      padding: 14px 16px;
+      padding: 16px;
       font-size: 16px;
       font-family: 'Inter', sans-serif;
       font-weight: 500;
@@ -152,76 +117,123 @@
       transition: border-color 0.2s;
     }
 
-    .input-group input[type="text"]::placeholder {
-      color: #525252;
+    .input-group input[type="text"]::placeholder { color: #525252; }
+    .input-group input[type="text"]:focus { border-color: #6366f1; }
+
+    .helper-text {
+      font-size: 13px;
+      color: #737373;
+      margin-top: 8px;
+      line-height: 1.5;
     }
 
-    .input-group input[type="text"]:focus {
-      border-color: #6366f1;
+    /* Accordion */
+    .accordion {
+      margin-top: 16px;
     }
 
-    /* Buttons */
-    .btn-primary {
-      display: inline-flex;
+    .accordion-toggle {
+      background: none;
+      border: none;
+      color: #6366f1;
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0;
+      transition: color 0.2s;
+    }
+
+    .accordion-toggle:hover { color: #818cf8; }
+
+    .accordion-arrow {
+      display: inline-block;
+      transition: transform 0.2s;
+      font-size: 12px;
+    }
+
+    .accordion-arrow.open { transform: rotate(180deg); }
+
+    .accordion-content {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease, margin 0.3s ease;
+    }
+
+    .accordion-content.open {
+      max-height: 300px;
+      margin-top: 12px;
+    }
+
+    .accordion-content ol {
+      list-style: none;
+      counter-reset: steps;
+      padding: 0;
+    }
+
+    .accordion-content li {
+      counter-increment: steps;
+      font-size: 14px;
+      color: #a3a3a3;
+      padding: 6px 0 6px 32px;
+      position: relative;
+    }
+
+    .accordion-content li::before {
+      content: counter(steps);
+      position: absolute;
+      left: 0;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #1a1a2e;
+      color: #6366f1;
+      font-size: 12px;
+      font-weight: 700;
+      display: flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
-      background: #6366f1;
-      color: #fff;
-      font-family: 'Inter', sans-serif;
-      font-size: 15px;
-      font-weight: 700;
-      padding: 14px 28px;
-      border-radius: 10px;
-      text-decoration: none;
-      transition: background 0.2s, transform 0.15s;
-      border: none;
-      cursor: pointer;
-      width: 100%;
-      margin-top: 8px;
     }
 
-    .btn-primary:hover {
-      background: #5558e6;
-      transform: translateY(-1px);
-    }
-
-    .btn-primary:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-      transform: none;
-    }
-
-    .btn-primary svg {
-      width: 16px;
-      height: 16px;
-    }
-
-    /* Step 2 - hidden initially */
-    .step-2 {
+    /* Output */
+    .output-section {
+      margin-top: 28px;
       opacity: 0;
-      transform: translateY(16px);
-      transition: opacity 0.5s ease, transform 0.5s ease;
+      transform: translateY(12px);
+      transition: opacity 0.4s ease, transform 0.4s ease;
       pointer-events: none;
       max-height: 0;
       overflow: hidden;
     }
 
-    .step-2.visible {
+    .output-section.visible {
       opacity: 1;
       transform: translateY(0);
       pointer-events: auto;
-      max-height: 600px;
+      max-height: 400px;
+      overflow: visible;
     }
 
-    .step-2-hint {
-      font-size: 14px;
-      color: #737373;
-      margin-bottom: 20px;
-      line-height: 1.6;
+    .output-label {
+      font-size: 13px;
+      font-weight: 700;
+      color: #22c55e;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
 
-    /* Output box */
+    .output-label svg {
+      width: 16px;
+      height: 16px;
+    }
+
     .output-box {
       background: #0a0a0a;
       border: 1px solid #333;
@@ -230,15 +242,6 @@
       display: flex;
       align-items: center;
       gap: 12px;
-      margin-top: 16px;
-      opacity: 0;
-      transform: translateY(8px);
-      transition: opacity 0.3s ease, transform 0.3s ease;
-    }
-
-    .output-box.visible {
-      opacity: 1;
-      transform: translateY(0);
     }
 
     .output-link {
@@ -248,32 +251,85 @@
       color: #6366f1;
       word-break: break-all;
       font-weight: 500;
+      min-width: 0;
+    }
+
+    .output-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
     }
 
     .btn-copy {
-      flex-shrink: 0;
-      background: #262626;
-      color: #e5e5e5;
+      flex: 1;
+      background: #6366f1;
+      color: #fff;
       font-family: 'Inter', sans-serif;
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 600;
-      padding: 8px 16px;
+      padding: 12px 20px;
       border-radius: 8px;
-      border: 1px solid #333;
+      border: none;
       cursor: pointer;
-      transition: background 0.2s, border-color 0.2s;
-      white-space: nowrap;
+      transition: background 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
     }
 
-    .btn-copy:hover {
-      background: #333;
-      border-color: #444;
-    }
+    .btn-copy:hover { background: #5558e6; }
 
     .btn-copy.copied {
       background: #166534;
-      border-color: #22c55e;
-      color: #22c55e;
+    }
+
+    .btn-copy svg { width: 16px; height: 16px; }
+
+    .btn-test {
+      flex: 1;
+      background: transparent;
+      color: #a3a3a3;
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      padding: 12px 20px;
+      border-radius: 8px;
+      border: 1px solid #333;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .btn-test:hover { border-color: #6366f1; color: #e5e5e5; }
+    .btn-test svg { width: 16px; height: 16px; }
+
+    /* Error */
+    .error-msg {
+      margin-top: 16px;
+      background: #1a0a0a;
+      border: 1px solid #3b1111;
+      border-radius: 10px;
+      padding: 14px 16px;
+      font-size: 14px;
+      color: #ef4444;
+      line-height: 1.5;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity 0.3s ease, transform 0.3s ease;
+      max-height: 0;
+      overflow: hidden;
+    }
+
+    .error-msg.visible {
+      opacity: 1;
+      transform: translateY(0);
+      max-height: 200px;
     }
 
     /* Tips section */
@@ -331,6 +387,15 @@
       line-height: 1.4;
     }
 
+    .tip-card .tip-example {
+      font-size: 12px;
+      color: #737373;
+      margin-top: 8px;
+      font-weight: 400;
+      font-style: italic;
+      line-height: 1.5;
+    }
+
     /* CTA */
     .cta-card {
       background: linear-gradient(135deg, #1a1a2e 0%, #16162a 100%);
@@ -370,8 +435,6 @@
       border-radius: 10px;
       text-decoration: none;
       transition: background 0.2s, transform 0.15s;
-      border: none;
-      cursor: pointer;
     }
 
     .cta-btn:hover {
@@ -385,7 +448,6 @@
       margin-top: 14px;
     }
 
-    /* Footer */
     .footer {
       text-align: center;
       padding: 40px 0;
@@ -409,57 +471,70 @@
     <!-- Hero -->
     <section class="hero">
       <h1>Get More Google Reviews. Instantly.</h1>
-      <p>Enter your business name, grab your review link, and start sending it to customers today.</p>
+      <p>Paste your Google Maps URL, grab your direct review link, and start sending it to customers today.</p>
     </section>
 
-    <!-- Step 1: Find Your Business -->
+    <!-- Tool Card -->
     <div class="card">
-      <div class="card-title">
-        <span class="step-num">1</span>
-        Find Your Business
-      </div>
       <div class="input-group">
-        <label for="businessName">Business name</label>
-        <input type="text" id="businessName" placeholder="e.g. Mike's HVAC Service">
+        <label for="mapsUrl">Paste your Google Maps business URL</label>
+        <input type="text" id="mapsUrl" placeholder="Paste the URL from your Google Maps listing here">
+        <p class="helper-text">Open Google Maps, search your business, click your listing, and copy the URL from your browser.</p>
       </div>
-      <div class="input-group">
-        <label for="cityState">City and state</label>
-        <input type="text" id="cityState" placeholder="e.g. Austin, TX">
+
+      <!-- Accordion -->
+      <div class="accordion">
+        <button class="accordion-toggle" id="accordionToggle" type="button">
+          How to find your URL <span class="accordion-arrow" id="accordionArrow">▼</span>
+        </button>
+        <div class="accordion-content" id="accordionContent">
+          <ol>
+            <li>Go to maps.google.com</li>
+            <li>Search your business name</li>
+            <li>Click your business listing</li>
+            <li>Copy the full URL from your browser address bar</li>
+            <li>Paste it above</li>
+          </ol>
+        </div>
       </div>
-      <button class="btn-primary" id="findBtn" disabled>
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-        Find My Business
-      </button>
+
+      <!-- Output -->
+      <div class="output-section" id="outputSection">
+        <div class="output-label">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+          Your Review Link
+        </div>
+        <div class="output-box">
+          <span class="output-link" id="outputLink"></span>
+        </div>
+        <div class="output-actions">
+          <button class="btn-copy" id="copyBtn" type="button">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+            Copy Link
+          </button>
+          <a class="btn-test" id="testBtn" href="#" target="_blank" rel="noopener noreferrer">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            Test Link
+          </a>
+        </div>
+      </div>
+
+      <!-- Error -->
+      <div class="error-msg" id="errorMsg">
+        We couldn't find a business ID in that URL. Make sure you're pasting directly from your browser's address bar while viewing your Google Maps listing.
+      </div>
     </div>
 
-    <!-- Step 2: Build Your Link -->
-    <div class="card step-2" id="step2">
-      <div class="card-title">
-        <span class="step-num">2</span>
-        Build Your Review Link
-      </div>
-      <p class="step-2-hint">
-        Find your business on the Google Maps tab that just opened. Click your business listing, then copy the URL from your browser's address bar and paste it below.
-      </p>
-      <div class="input-group">
-        <label for="mapsUrl">Paste your Google Maps URL here</label>
-        <input type="text" id="mapsUrl" placeholder="https://www.google.com/maps/place/...">
-      </div>
-      <div class="output-box" id="outputBox">
-        <span class="output-link" id="outputLink"></span>
-        <button class="btn-copy" id="copyBtn">Copy Link</button>
-      </div>
-    </div>
-
-    <!-- Tips section -->
+    <!-- Tips -->
     <div class="tips-section">
-      <h2>3 Proven Ways to Use This Link</h2>
+      <h2>What to Do With Your Review Link</h2>
       <div class="tips-grid">
         <div class="tip-card">
           <div class="tip-icon">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
           </div>
-          <p>Send it in your job completion text message</p>
+          <p>Send it in your job completion text</p>
+          <p class="tip-example">"Thanks for choosing us! If you have a moment, we'd love a review: [link]"</p>
         </div>
         <div class="tip-card">
           <div class="tip-icon">
@@ -469,9 +544,9 @@
         </div>
         <div class="tip-card">
           <div class="tip-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2z"/><path d="M16 3v4"/><path d="M8 3v4"/><path d="M3 11h18"/></svg>
           </div>
-          <p>Put it in your post-job voicemail</p>
+          <p>Save it in your phone contacts as "My Review Link"</p>
         </div>
       </div>
     </div>
@@ -479,7 +554,7 @@
     <!-- CTA -->
     <div class="cta-card">
       <h2>handled. sends your review link automatically after every job.</h2>
-      <p class="subhead">No manual texting. Ava follows up so you don't have to.</p>
+      <p class="subhead">Ava follows up with every customer so you never have to ask manually.</p>
       <a href="https://handledsites.com/#signup?utm_source=review-generator&utm_medium=tool" class="cta-btn">Get Free Access</a>
       <p class="cta-small">Free forever. No credit card required.</p>
     </div>
@@ -493,116 +568,99 @@
 
   <script>
     (function() {
-      const businessNameInput = document.getElementById('businessName');
-      const cityStateInput = document.getElementById('cityState');
-      const findBtn = document.getElementById('findBtn');
-      const step2 = document.getElementById('step2');
-      const mapsUrlInput = document.getElementById('mapsUrl');
-      const outputBox = document.getElementById('outputBox');
-      const outputLink = document.getElementById('outputLink');
-      const copyBtn = document.getElementById('copyBtn');
+      var mapsUrlInput = document.getElementById('mapsUrl');
+      var outputSection = document.getElementById('outputSection');
+      var outputLink = document.getElementById('outputLink');
+      var copyBtn = document.getElementById('copyBtn');
+      var testBtn = document.getElementById('testBtn');
+      var errorMsg = document.getElementById('errorMsg');
+      var accordionToggle = document.getElementById('accordionToggle');
+      var accordionArrow = document.getElementById('accordionArrow');
+      var accordionContent = document.getElementById('accordionContent');
 
-      // Enable/disable Find button based on inputs
-      function checkFindBtn() {
-        findBtn.disabled = !businessNameInput.value.trim() || !cityStateInput.value.trim();
-      }
+      var debounceTimer = null;
+      var currentReviewUrl = '';
 
-      businessNameInput.addEventListener('input', checkFindBtn);
-      cityStateInput.addEventListener('input', checkFindBtn);
-
-      // Step 1: Find business on Google Maps
-      findBtn.addEventListener('click', function() {
-        const query = encodeURIComponent(
-          businessNameInput.value.trim() + ' ' + cityStateInput.value.trim()
-        );
-        window.open('https://www.google.com/maps/search/?api=1&query=' + query, '_blank');
-        step2.classList.add('visible');
-        // Scroll to step 2 smoothly
-        setTimeout(function() {
-          step2.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }, 100);
+      // Auto-select on focus
+      mapsUrlInput.addEventListener('focus', function() {
+        this.select();
       });
 
-      // Allow Enter key to trigger Find
-      function handleEnter(e) {
-        if (e.key === 'Enter' && !findBtn.disabled) findBtn.click();
-      }
-      businessNameInput.addEventListener('keydown', handleEnter);
-      cityStateInput.addEventListener('keydown', handleEnter);
+      // Accordion
+      accordionToggle.addEventListener('click', function() {
+        accordionContent.classList.toggle('open');
+        accordionArrow.classList.toggle('open');
+      });
 
-      // Step 2: Parse pasted Google Maps URL
+      // Parse on input with debounce
       mapsUrlInput.addEventListener('input', function() {
+        clearTimeout(debounceTimer);
         var url = mapsUrlInput.value.trim();
+
+        // Hide everything while typing
         if (!url) {
-          outputBox.classList.remove('visible');
+          outputSection.classList.remove('visible');
+          errorMsg.classList.remove('visible');
+          currentReviewUrl = '';
           return;
         }
 
-        var reviewLink = '';
-
-        // Try to extract Place ID from various Google Maps URL formats
-        // Format: ChIJ... style Place IDs (typically 27 chars starting with ChIJ or 0x hex)
-        var placeIdMatch = url.match(/place_id[=:]([A-Za-z0-9_-]+)/i) ||
-                           url.match(/placeid[=:]([A-Za-z0-9_-]+)/i);
-
-        if (placeIdMatch) {
-          reviewLink = 'https://search.google.com/local/writereview?placeid=' + placeIdMatch[1];
-        }
-
-        // Try data= parameter which contains Place ID after !1s
-        if (!reviewLink) {
-          var dataMatch = url.match(/!1s(0x[0-9a-f]+:[0-9a-fx]+)/i) ||
-                          url.match(/!1s(ChIJ[A-Za-z0-9_-]+)/);
-          if (dataMatch) {
-            reviewLink = 'https://search.google.com/local/writereview?placeid=' + dataMatch[1];
-          }
-        }
-
-        // Try ftid= parameter
-        if (!reviewLink) {
-          var ftidMatch = url.match(/ftid=(0x[0-9a-f]+:[0-9a-fx]+)/i);
-          if (ftidMatch) {
-            reviewLink = 'https://search.google.com/local/writereview?placeid=' + ftidMatch[1];
-          }
-        }
-
-        // If we have a Google Maps URL but couldn't extract Place ID,
-        // provide the direct maps URL as a fallback review prompt
-        if (!reviewLink && url.includes('google.com/maps')) {
-          // Extract the place name portion to build a search-based review URL
-          var placeName = url.match(/\/place\/([^\/\?]+)/);
-          if (placeName) {
-            var decoded = decodeURIComponent(placeName[1].replace(/\+/g, ' '));
-            reviewLink = 'https://www.google.com/maps/search/?api=1&query=' +
-                         encodeURIComponent(decoded) + '&query_place_id=';
-          }
-        }
-
-        // If still nothing, show what they pasted (likely not a Maps URL)
-        if (!reviewLink) {
-          if (url.startsWith('http')) {
-            reviewLink = url;
-          } else {
-            outputBox.classList.remove('visible');
-            return;
-          }
-        }
-
-        outputLink.textContent = reviewLink;
-        outputBox.classList.add('visible');
+        debounceTimer = setTimeout(function() {
+          parseUrl(url);
+        }, 500);
       });
+
+      // Instant parse on paste
+      mapsUrlInput.addEventListener('paste', function() {
+        setTimeout(function() {
+          clearTimeout(debounceTimer);
+          var url = mapsUrlInput.value.trim();
+          if (url) parseUrl(url);
+        }, 10);
+      });
+
+      function parseUrl(url) {
+        outputSection.classList.remove('visible');
+        errorMsg.classList.remove('visible');
+        currentReviewUrl = '';
+
+        // Try to extract CID: pattern !1s0x...:0x...
+        var cidMatch = url.match(/!1s(0x[0-9a-fA-F]+):(0x[0-9a-fA-F]+)/);
+
+        if (cidMatch) {
+          try {
+            var hexPart = cidMatch[2];
+            var decimalCID = BigInt(hexPart).toString();
+            var reviewUrl = 'https://www.google.com/maps?cid=' + decimalCID + '&action=write-review';
+
+            currentReviewUrl = reviewUrl;
+            outputLink.textContent = reviewUrl;
+            testBtn.href = reviewUrl;
+            outputSection.classList.add('visible');
+            return;
+          } catch (e) {
+            // BigInt conversion failed, fall through to error
+          }
+        }
+
+        // If we got here, no valid CID found
+        if (url.includes('google.com/maps') || url.includes('goo.gl/maps') || url.includes('maps.app.goo.gl')) {
+          errorMsg.classList.add('visible');
+        } else if (url.startsWith('http')) {
+          errorMsg.classList.add('visible');
+        }
+        // Don't show error for partial text that isn't a URL yet
+      }
 
       // Copy to clipboard
       copyBtn.addEventListener('click', function() {
-        var text = outputLink.textContent;
-        if (!text) return;
+        if (!currentReviewUrl) return;
 
         if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(text).then(showCopied);
+          navigator.clipboard.writeText(currentReviewUrl).then(showCopied);
         } else {
-          // Fallback for older browsers / mobile
           var ta = document.createElement('textarea');
-          ta.value = text;
+          ta.value = currentReviewUrl;
           ta.style.position = 'fixed';
           ta.style.opacity = '0';
           document.body.appendChild(ta);
@@ -614,10 +672,10 @@
       });
 
       function showCopied() {
-        copyBtn.textContent = 'Copied!';
+        copyBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> Copied!';
         copyBtn.classList.add('copied');
         setTimeout(function() {
-          copyBtn.textContent = 'Copy Link';
+          copyBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg> Copy Link';
           copyBtn.classList.remove('copied');
         }, 2000);
       }
