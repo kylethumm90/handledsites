@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Missed Call Cost Calculator | handled.</title>
+  <meta name="description" content="Find out how much revenue you're losing from missed calls. Free calculator for home service contractors.">
+  <meta property="og:title" content="How Much Are Missed Calls Costing You? | handled.">
+  <meta property="og:description" content="Fill in three numbers. Find out in 10 seconds. Free calculator for independent contractors.">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #0a0a0a;
+      color: #ffffff;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Decorative top bar */
+    .top-bar {
+      height: 3px;
+      background: linear-gradient(90deg, #6366f1, #818cf8, #6366f1);
+    }
+
+    /* Layout */
+    .container {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+
+    /* Header */
+    .header {
+      padding: 32px 0 0;
+      text-align: center;
+    }
+
+    .logo {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: #fff;
+    }
+
+    .logo span {
+      color: #6366f1;
+    }
+
+    .header-tagline {
+      font-size: 13px;
+      color: #737373;
+      margin-top: 4px;
+      font-weight: 500;
+      letter-spacing: 0.3px;
+    }
+
+    /* Hero */
+    .hero {
+      text-align: center;
+      padding: 56px 0 40px;
+    }
+
+    .hero h1 {
+      font-size: clamp(28px, 5vw, 44px);
+      font-weight: 800;
+      line-height: 1.15;
+      letter-spacing: -1px;
+      margin-bottom: 16px;
+    }
+
+    .hero p {
+      font-size: 17px;
+      color: #a3a3a3;
+      font-weight: 400;
+    }
+
+    /* Calculator card */
+    .calc-card {
+      background: #141414;
+      border: 1px solid #262626;
+      border-radius: 16px;
+      padding: 36px 32px;
+      margin-bottom: 24px;
+    }
+
+    @media (max-width: 480px) {
+      .calc-card { padding: 28px 20px; }
+    }
+
+    .input-group {
+      margin-bottom: 32px;
+    }
+
+    .input-group:last-child {
+      margin-bottom: 0;
+    }
+
+    .input-group label {
+      display: block;
+      font-size: 15px;
+      font-weight: 600;
+      color: #e5e5e5;
+      margin-bottom: 10px;
+    }
+
+    .input-group input[type="number"] {
+      width: 100%;
+      background: #0a0a0a;
+      border: 1px solid #333;
+      border-radius: 10px;
+      padding: 14px 16px;
+      font-size: 18px;
+      font-family: 'Inter', sans-serif;
+      font-weight: 600;
+      color: #fff;
+      outline: none;
+      transition: border-color 0.2s;
+      -moz-appearance: textfield;
+    }
+
+    .input-group input[type="number"]::-webkit-outer-spin-button,
+    .input-group input[type="number"]::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+
+    .input-group input[type="number"]:focus {
+      border-color: #6366f1;
+    }
+
+    .dollar-input-wrap {
+      position: relative;
+    }
+
+    .dollar-input-wrap::before {
+      content: '$';
+      position: absolute;
+      left: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 18px;
+      font-weight: 600;
+      color: #737373;
+      pointer-events: none;
+    }
+
+    .dollar-input-wrap input {
+      padding-left: 32px !important;
+    }
+
+    /* Slider */
+    .slider-wrap {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .slider-wrap input[type="range"] {
+      flex: 1;
+      -webkit-appearance: none;
+      appearance: none;
+      height: 8px;
+      background: #262626;
+      border-radius: 4px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .slider-wrap input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #6366f1;
+      cursor: pointer;
+      border: 3px solid #0a0a0a;
+      box-shadow: 0 0 0 2px #6366f1;
+      transition: transform 0.15s;
+    }
+
+    .slider-wrap input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.15);
+    }
+
+    .slider-wrap input[type="range"]::-moz-range-thumb {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #6366f1;
+      cursor: pointer;
+      border: 3px solid #0a0a0a;
+      box-shadow: 0 0 0 2px #6366f1;
+    }
+
+    .slider-value {
+      font-size: 20px;
+      font-weight: 700;
+      color: #6366f1;
+      min-width: 52px;
+      text-align: right;
+    }
+
+    /* Results */
+    .results-card {
+      background: #141414;
+      border: 1px solid #262626;
+      border-radius: 16px;
+      padding: 36px 32px;
+      margin-bottom: 24px;
+      opacity: 0;
+      transform: translateY(16px);
+      transition: opacity 0.5s ease, transform 0.5s ease;
+      pointer-events: none;
+    }
+
+    .results-card.visible {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+
+    @media (max-width: 480px) {
+      .results-card { padding: 28px 20px; }
+    }
+
+    .results-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+
+    @media (max-width: 480px) {
+      .results-grid { grid-template-columns: 1fr; gap: 20px; }
+    }
+
+    .result-item {
+      text-align: center;
+    }
+
+    .result-item.full-width {
+      grid-column: 1 / -1;
+    }
+
+    .result-label {
+      font-size: 13px;
+      font-weight: 500;
+      color: #737373;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 6px;
+    }
+
+    .result-value {
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+
+    .result-value.monthly-calls {
+      font-size: 36px;
+      color: #e5e5e5;
+    }
+
+    .result-value.monthly-rev {
+      font-size: 36px;
+      color: #ef4444;
+    }
+
+    .result-value.annual-rev {
+      font-size: 48px;
+      color: #ef4444;
+    }
+
+    .result-value.jobs {
+      font-size: 36px;
+      color: #fbbf24;
+    }
+
+    .results-divider {
+      border: none;
+      border-top: 1px solid #262626;
+      margin: 28px 0;
+    }
+
+    /* CTA */
+    .cta-card {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16162a 100%);
+      border: 1px solid #2d2d5e;
+      border-radius: 16px;
+      padding: 48px 32px;
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    @media (max-width: 480px) {
+      .cta-card { padding: 36px 20px; }
+    }
+
+    .cta-card h2 {
+      font-size: clamp(22px, 4vw, 28px);
+      font-weight: 800;
+      line-height: 1.25;
+      letter-spacing: -0.5px;
+      margin-bottom: 12px;
+    }
+
+    .cta-card .subhead {
+      font-size: 16px;
+      color: #a3a3a3;
+      margin-bottom: 32px;
+    }
+
+    .cta-btn {
+      display: inline-block;
+      background: #6366f1;
+      color: #fff;
+      font-family: 'Inter', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      padding: 16px 40px;
+      border-radius: 10px;
+      text-decoration: none;
+      transition: background 0.2s, transform 0.15s;
+      border: none;
+      cursor: pointer;
+    }
+
+    .cta-btn:hover {
+      background: #5558e6;
+      transform: translateY(-1px);
+    }
+
+    .cta-small {
+      font-size: 13px;
+      color: #737373;
+      margin-top: 14px;
+    }
+
+    /* Footer */
+    .footer {
+      text-align: center;
+      padding: 40px 0;
+      font-size: 13px;
+      color: #525252;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="top-bar"></div>
+
+  <div class="container">
+
+    <!-- Header -->
+    <header class="header">
+      <div class="logo">handled<span>.</span></div>
+      <p class="header-tagline">Free Tools for Independent Contractors</p>
+    </header>
+
+    <!-- Hero -->
+    <section class="hero">
+      <h1>How Much Are Missed Calls Costing&nbsp;You?</h1>
+      <p>Fill in three numbers. Find out in 10 seconds.</p>
+    </section>
+
+    <!-- Calculator -->
+    <div class="calc-card">
+      <div class="input-group">
+        <label for="missedCalls">How many calls do you miss per week?</label>
+        <input type="number" id="missedCalls" value="5" min="0" max="200" inputmode="numeric">
+      </div>
+
+      <div class="input-group">
+        <label for="avgJobValue">What's your average job value?</label>
+        <div class="dollar-input-wrap">
+          <input type="number" id="avgJobValue" value="850" min="0" max="100000" inputmode="numeric">
+        </div>
+      </div>
+
+      <div class="input-group">
+        <label for="closeRate">What's your close rate on calls you DO answer?</label>
+        <div class="slider-wrap">
+          <input type="range" id="closeRate" min="10" max="90" value="40" step="5">
+          <span class="slider-value" id="closeRateDisplay">40%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div class="results-card" id="resultsCard">
+      <div class="results-grid">
+        <div class="result-item">
+          <div class="result-label">Monthly Calls Missed</div>
+          <div class="result-value monthly-calls" id="monthlyCalls">0</div>
+        </div>
+        <div class="result-item">
+          <div class="result-label">Jobs Left on the Table / Year</div>
+          <div class="result-value jobs" id="jobsLost">0</div>
+        </div>
+      </div>
+
+      <hr class="results-divider">
+
+      <div class="results-grid">
+        <div class="result-item">
+          <div class="result-label">Monthly Revenue Lost</div>
+          <div class="result-value monthly-rev" id="monthlyRevenue">$0</div>
+        </div>
+        <div class="result-item">
+          <div class="result-label">Annual Revenue Lost</div>
+          <div class="result-value annual-rev" id="annualRevenue">$0</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CTA -->
+    <div class="cta-card">
+      <h2>Ava answers every call. 24/7.<br>Even when you're on the job.</h2>
+      <p class="subhead">Get your free handled. account and recover that revenue.</p>
+      <a href="https://handledsites.com/#signup?utm_source=calculator&utm_medium=tool" class="cta-btn">Get Free Access</a>
+      <p class="cta-small">Free forever. No credit card required.</p>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+      &copy; 2026 handled. | Free tools for contractors who run lean.
+    </footer>
+
+  </div>
+
+  <script>
+    (function() {
+      const missedCallsInput = document.getElementById('missedCalls');
+      const avgJobValueInput = document.getElementById('avgJobValue');
+      const closeRateInput = document.getElementById('closeRate');
+      const closeRateDisplay = document.getElementById('closeRateDisplay');
+      const resultsCard = document.getElementById('resultsCard');
+
+      const monthlyCallsEl = document.getElementById('monthlyCalls');
+      const monthlyRevenueEl = document.getElementById('monthlyRevenue');
+      const annualRevenueEl = document.getElementById('annualRevenue');
+      const jobsLostEl = document.getElementById('jobsLost');
+
+      let hasInteracted = false;
+      let animationFrames = {};
+
+      function formatCurrency(n) {
+        return '$' + Math.round(n).toLocaleString('en-US');
+      }
+
+      function animateValue(el, start, end, format, key) {
+        if (animationFrames[key]) cancelAnimationFrame(animationFrames[key]);
+
+        const duration = 400;
+        const startTime = performance.now();
+
+        function tick(now) {
+          const elapsed = now - startTime;
+          const progress = Math.min(elapsed / duration, 1);
+          // ease-out cubic
+          const ease = 1 - Math.pow(1 - progress, 3);
+          const current = start + (end - start) * ease;
+
+          el.textContent = format(current);
+
+          if (progress < 1) {
+            animationFrames[key] = requestAnimationFrame(tick);
+          }
+        }
+
+        animationFrames[key] = requestAnimationFrame(tick);
+      }
+
+      // Store previous values for animation
+      let prev = { monthlyCalls: 0, monthlyRev: 0, annualRev: 0, jobs: 0 };
+
+      function calculate() {
+        const weekly = parseFloat(missedCallsInput.value) || 0;
+        const jobValue = parseFloat(avgJobValueInput.value) || 0;
+        const rate = parseFloat(closeRateInput.value) / 100;
+
+        const monthlyCalls = Math.round(weekly * 4.33);
+        const monthlyRev = monthlyCalls * jobValue * rate;
+        const annualRev = monthlyRev * 12;
+        const jobs = jobValue > 0 ? Math.round(annualRev / jobValue) : 0;
+
+        if (!hasInteracted) {
+          hasInteracted = true;
+          resultsCard.classList.add('visible');
+        }
+
+        animateValue(monthlyCallsEl, prev.monthlyCalls, monthlyCalls, n => Math.round(n).toLocaleString('en-US'), 'mc');
+        animateValue(monthlyRevenueEl, prev.monthlyRev, monthlyRev, formatCurrency, 'mr');
+        animateValue(annualRevenueEl, prev.annualRev, annualRev, formatCurrency, 'ar');
+        animateValue(jobsLostEl, prev.jobs, jobs, n => Math.round(n).toLocaleString('en-US'), 'jl');
+
+        prev = { monthlyCalls, monthlyRev: monthlyRev, annualRev: annualRev, jobs };
+      }
+
+      closeRateInput.addEventListener('input', function() {
+        closeRateDisplay.textContent = this.value + '%';
+        calculate();
+      });
+
+      missedCallsInput.addEventListener('input', calculate);
+      avgJobValueInput.addEventListener('input', calculate);
+    })();
+  </script>
+</body>
+</html>
