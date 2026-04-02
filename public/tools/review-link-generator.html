@@ -92,6 +92,73 @@
       .card { padding: 28px 20px; }
     }
 
+    /* Steps */
+    .step-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .step-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: #1a1a2e;
+      color: #6366f1;
+      font-size: 13px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .step-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #e5e5e5;
+    }
+
+    .step-divider {
+      border: none;
+      border-top: 1px solid #262626;
+      margin: 28px 0;
+    }
+
+    .search-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    @media (max-width: 480px) {
+      .search-row { grid-template-columns: 1fr; }
+    }
+
+    .btn-find {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      background: #6366f1;
+      color: #fff;
+      font-family: 'Inter', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      padding: 14px;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.15s;
+      margin-top: 16px;
+    }
+
+    .btn-find:hover:not(:disabled) { background: #5558e6; transform: translateY(-1px); }
+    .btn-find:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .btn-find svg { width: 16px; height: 16px; }
+
     /* Input */
     .input-group { margin-bottom: 12px; }
 
@@ -476,26 +543,42 @@
 
     <!-- Tool Card -->
     <div class="card">
-      <div class="input-group">
-        <label for="mapsUrl">Paste your Google Maps business URL</label>
-        <input type="text" id="mapsUrl" placeholder="Paste the URL from your Google Maps listing here">
-        <p class="helper-text">Open Google Maps, search your business, click your listing, and copy the URL from your browser.</p>
+
+      <!-- Step 1: Find Your Business -->
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div class="step-title">Find Your Business on Google Maps</div>
       </div>
 
-      <!-- Accordion -->
-      <div class="accordion">
-        <button class="accordion-toggle" id="accordionToggle" type="button">
-          How to find your URL <span class="accordion-arrow" id="accordionArrow">▼</span>
-        </button>
-        <div class="accordion-content" id="accordionContent">
-          <ol>
-            <li>Go to maps.google.com</li>
-            <li>Search your business name</li>
-            <li>Click your business listing</li>
-            <li>Copy the full URL from your browser address bar</li>
-            <li>Paste it above</li>
-          </ol>
+      <div class="search-row">
+        <div class="input-group">
+          <label for="bizName">Business name</label>
+          <input type="text" id="bizName" placeholder="e.g. Mike's HVAC Service">
         </div>
+        <div class="input-group">
+          <label for="bizLocation">City, State</label>
+          <input type="text" id="bizLocation" placeholder="e.g. Austin, TX">
+        </div>
+      </div>
+
+      <button class="btn-find" id="findBtn" type="button" disabled>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Find My Business
+      </button>
+      <p class="helper-text">We'll open Google Maps in a new tab so you can find your listing and copy the URL.</p>
+
+      <hr class="step-divider">
+
+      <!-- Step 2: Paste Your URL -->
+      <div class="step-header">
+        <div class="step-num">2</div>
+        <div class="step-title">Paste Your URL</div>
+      </div>
+
+      <div class="input-group">
+        <label for="mapsUrl">Google Maps URL</label>
+        <input type="text" id="mapsUrl" placeholder="Paste the URL from your browser address bar here">
+        <p class="helper-text">After finding your listing above, copy the full URL from your browser and paste it here.</p>
       </div>
 
       <!-- Output -->
@@ -568,28 +651,36 @@
 
   <script>
     (function() {
+      var bizNameInput = document.getElementById('bizName');
+      var bizLocationInput = document.getElementById('bizLocation');
+      var findBtn = document.getElementById('findBtn');
       var mapsUrlInput = document.getElementById('mapsUrl');
       var outputSection = document.getElementById('outputSection');
       var outputLink = document.getElementById('outputLink');
       var copyBtn = document.getElementById('copyBtn');
       var testBtn = document.getElementById('testBtn');
       var errorMsg = document.getElementById('errorMsg');
-      var accordionToggle = document.getElementById('accordionToggle');
-      var accordionArrow = document.getElementById('accordionArrow');
-      var accordionContent = document.getElementById('accordionContent');
 
       var debounceTimer = null;
       var currentReviewUrl = '';
 
-      // Auto-select on focus
-      mapsUrlInput.addEventListener('focus', function() {
-        this.select();
+      // Step 1: Enable/disable Find button
+      function updateFindBtn() {
+        findBtn.disabled = !(bizNameInput.value.trim() && bizLocationInput.value.trim());
+      }
+      bizNameInput.addEventListener('input', updateFindBtn);
+      bizLocationInput.addEventListener('input', updateFindBtn);
+
+      // Step 1: Open Google Maps search
+      findBtn.addEventListener('click', function() {
+        var query = bizNameInput.value.trim() + ' ' + bizLocationInput.value.trim();
+        var url = 'https://www.google.com/maps/search/' + encodeURIComponent(query);
+        window.open(url, '_blank', 'noopener,noreferrer');
       });
 
-      // Accordion
-      accordionToggle.addEventListener('click', function() {
-        accordionContent.classList.toggle('open');
-        accordionArrow.classList.toggle('open');
+      // Auto-select on focus for URL input
+      mapsUrlInput.addEventListener('focus', function() {
+        this.select();
       });
 
       // Parse on input with debounce
