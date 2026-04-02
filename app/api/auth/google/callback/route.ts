@@ -146,7 +146,8 @@ export async function GET(request: NextRequest) {
     );
 
     if (!accountsRes.ok) {
-      console.error("GBP accounts fetch failed:", await accountsRes.text());
+      const errBody = await accountsRes.text();
+      console.error("GBP accounts fetch failed. Status:", accountsRes.status, "Body:", errBody);
       // Still redirect with partial success -- user created but no GBP
       return NextResponse.redirect(
         `${BASE_URL}${TOOL_PAGE}?error=no_gbp_access`
