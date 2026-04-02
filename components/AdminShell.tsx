@@ -13,6 +13,10 @@ const LANDING_PAGES = [
     name: "Review Link Generator",
     path: "/tools/review-link-generator.html",
   },
+  {
+    name: "Review Response Generator",
+    path: "/tools/review-response-generator",
+  },
 ];
 
 export default function AdminShell({
