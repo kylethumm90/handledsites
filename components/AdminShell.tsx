@@ -9,6 +9,10 @@ const LANDING_PAGES = [
     name: "Missed Call Calculator",
     path: "/tools/missed-call-calculator.html",
   },
+  {
+    name: "Review Link Generator",
+    path: "/tools/review-link-generator.html",
+  },
 ];
 
 export default function AdminShell({
