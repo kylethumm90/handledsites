@@ -233,12 +233,23 @@ export default function QuizClient({
         .qf-wrap {
           min-height: 100dvh;
           display: flex;
+          flex-direction: column;
           align-items: center;
           justify-content: center;
           font-family: 'Inter', -apple-system, sans-serif;
           -webkit-font-smoothing: antialiased;
           padding: 24px 20px;
           background: var(--bg);
+        }
+
+        /* --- Logo --- */
+        .qf-logo {
+          margin-bottom: 32px;
+        }
+        .qf-logo img {
+          height: 48px;
+          width: auto;
+          object-fit: contain;
         }
 
         /* --- Progress bar (fixed top) --- */
@@ -568,6 +579,11 @@ export default function QuizClient({
       </div>
 
       <div className="qf-wrap">
+        {funnel.logoUrl && (
+          <div className="qf-logo">
+            <img src={funnel.logoUrl} alt={funnel.businessName} />
+          </div>
+        )}
         {submitted ? (
           /* ===== Thank You ===== */
           <div className="qf-card qf-animate" key="thankyou">
