@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
+import Script from "next/script";
 
 type QuizQuestion = {
   id: string;
@@ -22,6 +23,17 @@ type FunnelData = {
   accentColor: string;
 };
 
+// Placeholder — swap in your real URL
+const ZAPIER_WEBHOOK_URL =
+  "https://hooks.zapier.com/hooks/catch/PLACEHOLDER/PLACEHOLDER/";
+
+declare global {
+  interface Window {
+    dataLayer: Record<string, unknown>[];
+    fbq: (...args: unknown[]) => void;
+  }
+}
+
 export default function QuizClient({
   funnel,
   questions,
@@ -29,12 +41,15 @@ export default function QuizClient({
   funnel: FunnelData;
   questions: QuizQuestion[];
 }) {
-  const totalSteps = questions.length + 1; // questions + contact form
+  const totalSteps = questions.length + 1; // questions + lead form
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [contactName, setContactName] = useState("");
-  const [contactPhone, setContactPhone] = useState("");
-  const [contactEmail, setContactEmail] = useState("");
+  const [disqualified, setDisqualified] = useState(false);
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [zip, setZip] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
@@ -46,241 +61,630 @@ export default function QuizClient({
 
   function selectOption(questionId: string, option: string) {
     setAnswers((prev) => ({ ...prev, [questionId]: option }));
+
+    // Disqualification: "Do you own your home?" → "No"
+    if (questionId === "homeowner" && option === "No") {
+      setDisqualified(true);
+      return;
+    }
+
     // Auto-advance after selection
     setTimeout(() => setStep((s) => s + 1), 250);
   }
 
   function goBack() {
-    if (step > 0) setStep((s) => s - 1);
+    if (step > 0) {
+      setDisqualified(false);
+      setStep((s) => s - 1);
+    }
   }
 
+  // Keyboard handler for option cards
+  const handleOptionKeyDown = useCallback(
+    (e: React.KeyboardEvent, questionId: string, option: string) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        selectOption(questionId, option);
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+
   async function handleSubmit() {
-    if (!contactName.trim() || !contactPhone.trim()) return;
+    if (!firstName.trim() || !lastName.trim() || !phone.trim()) return;
     setSubmitting(true);
     setError("");
 
+    const leadData = {
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      phone: phone.trim(),
+      email: email.trim(),
+      zip: zip.trim(),
+      answers,
+    };
+
+    // 1. POST to internal API
     try {
       const res = await fetch("/api/quiz/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           site_id: funnel.id,
-          name: contactName.trim(),
-          phone: contactPhone.trim(),
-          email: contactEmail.trim(),
-          answers,
+          name: `${leadData.firstName} ${leadData.lastName}`,
+          phone: leadData.phone,
+          email: leadData.email,
+          answers: { ...answers, zip: leadData.zip },
         }),
       });
       if (!res.ok) throw new Error();
-      setSubmitted(true);
     } catch {
-      setError("Something went wrong. Please try again.");
-      setSubmitting(false);
+      // Still show thank-you even if internal API fails
+      console.error("Internal API submission failed");
     }
+
+    // 2. POST to Zapier webhook (fire-and-forget)
+    try {
+      fetch(ZAPIER_WEBHOOK_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(leadData),
+      }).catch((err) => console.error("Zapier webhook error:", err));
+    } catch (err) {
+      console.error("Zapier webhook error:", err);
+    }
+
+    // 3. Fire tracking events
+    try {
+      // Meta Pixel Lead event
+      if (typeof window.fbq === "function") {
+        window.fbq("track", "Lead");
+      }
+      // GTM dataLayer event
+      window.dataLayer = window.dataLayer || [];
+      window.dataLayer.push({
+        event: "quiz_lead_submitted",
+        answers,
+      });
+    } catch (err) {
+      console.error("Tracking error:", err);
+    }
+
+    setSubmitted(true);
+    setSubmitting(false);
   }
+
+  // Build answer summary for thank-you screen
+  const answerSummary = questions
+    .filter((q) => answers[q.id])
+    .map((q) => ({ question: q.question, answer: answers[q.id] }));
 
   return (
     <>
+      {/* --- GTM (placeholder ID) --- */}
+      <Script id="gtm" strategy="afterInteractive">{`
+        (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+        new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+        j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+        'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+        })(window,document,'script','dataLayer','GTM-XXXXXXX');
+      `}</Script>
+
+      {/* --- Meta Pixel (placeholder ID) --- */}
+      <Script id="meta-pixel" strategy="afterInteractive">{`
+        !function(f,b,e,v,n,t,s)
+        {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+        n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+        if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+        n.queue=[];t=b.createElement(e);t.async=!0;
+        t.src=v;s=b.getElementsByTagName(e)[0];
+        s.parentNode.insertBefore(t,s)}(window, document,'script',
+        'https://connect.facebook.net/en_US/fbevents.js');
+        fbq('init', 'XXXXXXXXXXXXXXXXX');
+        fbq('track', 'PageView');
+      `}</Script>
+
       <style>{`
+        /* ===== CSS Variables (reskin here) ===== */
+        :root {
+          --bg: #FAFAF8;
+          --card-bg: #ffffff;
+          --heading: #1A1A1A;
+          --body: #555555;
+          --muted: #999999;
+          --border: #E5E5E5;
+          --accent: ${accent};
+          --accent-light: ${accent}18;
+          --accent-border: ${accent};
+        }
+
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        body { background: #ffffff; color: #111; }
-        .quiz-wrap { min-height: 100dvh; display: flex; flex-direction: column; font-family: 'Inter', -apple-system, sans-serif; -webkit-font-smoothing: antialiased; }
+        body { background: var(--bg); color: var(--heading); }
 
-        /* Header */
-        .quiz-header { padding: 20px 24px; text-align: center; border-bottom: 1px solid #e5e5e5; }
-        .quiz-logo { font-size: 16px; font-weight: 700; color: #525252; display: flex; align-items: center; justify-content: center; gap: 10px; }
-        .quiz-logo img { width: 32px; height: 32px; border-radius: 6px; object-fit: cover; }
+        .qf-wrap {
+          min-height: 100dvh;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-family: 'Inter', -apple-system, sans-serif;
+          -webkit-font-smoothing: antialiased;
+          padding: 24px 20px;
+          background: var(--bg);
+        }
 
-        /* Progress */
-        .progress-bar { height: 3px; background: #e5e5e5; }
-        .progress-fill { height: 100%; transition: width 0.4s ease; border-radius: 0 2px 2px 0; }
+        /* --- Progress bar (fixed top) --- */
+        .qf-progress {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 4px;
+          background: var(--border);
+          z-index: 100;
+        }
+        .qf-progress-fill {
+          height: 100%;
+          background: var(--accent);
+          transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+          border-radius: 0 2px 2px 0;
+        }
 
-        /* Content */
-        .quiz-content { flex: 1; display: flex; align-items: center; justify-content: center; padding: 32px 20px; }
-        .quiz-card { max-width: 540px; width: 100%; }
+        /* --- Card container --- */
+        .qf-card {
+          max-width: 520px;
+          width: 100%;
+        }
 
-        /* Step indicator */
-        .step-indicator { font-size: 13px; font-weight: 600; color: #a3a3a3; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+        /* --- Step indicator --- */
+        .qf-step {
+          font-size: 13px;
+          font-weight: 600;
+          color: var(--muted);
+          margin-bottom: 14px;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
 
-        /* Question */
-        .question-text { font-size: clamp(22px, 4vw, 28px); font-weight: 800; letter-spacing: -0.5px; line-height: 1.25; margin-bottom: 28px; }
+        /* --- Question heading --- */
+        .qf-question {
+          font-size: clamp(24px, 5vw, 32px);
+          font-weight: 800;
+          color: var(--heading);
+          letter-spacing: -0.5px;
+          line-height: 1.2;
+          margin-bottom: 32px;
+        }
 
-        /* Options */
-        .options-list { display: flex; flex-direction: column; gap: 10px; }
-        .option-btn { width: 100%; text-align: left; padding: 16px 20px; background: #fafafa; border: 1px solid #e5e5e5; border-radius: 12px; color: #1a1a1a; font-family: 'Inter', sans-serif; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 14px; }
-        .option-btn:hover { border-color: ${accent}; background: #f0f0f0; }
-        .option-btn.selected { border-color: ${accent}; background: ${accent}18; }
-        .option-letter { width: 28px; height: 28px; border-radius: 7px; background: #e5e5e5; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #737373; flex-shrink: 0; transition: all 0.15s; }
-        .option-btn:hover .option-letter { background: ${accent}; color: #fff; }
-        .option-btn.selected .option-letter { background: ${accent}; color: #fff; }
+        /* --- Option cards --- */
+        .qf-options {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+        .qf-option {
+          width: 100%;
+          text-align: left;
+          padding: 18px 22px;
+          background: var(--card-bg);
+          border: 1.5px solid var(--border);
+          border-radius: 12px;
+          color: var(--heading);
+          font-family: 'Inter', sans-serif;
+          font-size: 16px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.15s ease;
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          outline: none;
+        }
+        .qf-option:hover {
+          border-color: var(--accent-border);
+          box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        .qf-option:focus-visible {
+          border-color: var(--accent-border);
+          box-shadow: 0 0 0 3px ${accent}30;
+        }
+        .qf-option.selected {
+          border-color: var(--accent-border);
+          background: var(--accent-light);
+        }
 
-        /* Contact form */
-        .contact-heading { font-size: clamp(22px, 4vw, 28px); font-weight: 800; letter-spacing: -0.5px; line-height: 1.25; margin-bottom: 8px; }
-        .contact-sub { font-size: 15px; color: #737373; margin-bottom: 28px; line-height: 1.5; }
-        .form-group { margin-bottom: 16px; }
-        .form-group label { display: block; font-size: 14px; font-weight: 600; color: #525252; margin-bottom: 6px; }
-        .form-group input { width: 100%; background: #fafafa; border: 1px solid #e5e5e5; border-radius: 10px; padding: 14px 16px; font-size: 16px; font-family: 'Inter', sans-serif; font-weight: 500; color: #111; outline: none; transition: border-color 0.2s; }
-        .form-group input::placeholder { color: #a3a3a3; }
-        .form-group input:focus { border-color: ${accent}; }
-        .submit-btn { width: 100%; padding: 16px; border-radius: 10px; border: none; font-family: 'Inter', sans-serif; font-size: 16px; font-weight: 700; color: #fff; cursor: pointer; transition: opacity 0.2s, transform 0.15s; margin-top: 8px; }
-        .submit-btn:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
-        .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-        .form-fine { font-size: 12px; color: #a3a3a3; text-align: center; margin-top: 12px; }
-        .form-error { font-size: 13px; color: #ef4444; margin-top: 10px; }
+        /* Letter badge */
+        .qf-letter {
+          width: 30px;
+          height: 30px;
+          border-radius: 8px;
+          background: #F0F0EE;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 13px;
+          font-weight: 700;
+          color: var(--body);
+          flex-shrink: 0;
+          transition: all 0.15s;
+        }
+        .qf-option:hover .qf-letter,
+        .qf-option.selected .qf-letter {
+          background: var(--accent);
+          color: #fff;
+        }
 
-        /* Back button */
-        .back-btn { background: none; border: none; color: #a3a3a3; font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; padding: 8px 0; margin-top: 20px; transition: color 0.2s; display: flex; align-items: center; gap: 4px; }
-        .back-btn:hover { color: #525252; }
+        /* --- Back button --- */
+        .qf-back {
+          background: none;
+          border: none;
+          color: var(--muted);
+          font-family: 'Inter', sans-serif;
+          font-size: 14px;
+          font-weight: 600;
+          cursor: pointer;
+          padding: 8px 0;
+          margin-top: 24px;
+          transition: color 0.2s;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+        }
+        .qf-back:hover { color: var(--body); }
 
-        /* Thank you */
-        .thankyou-wrap { text-align: center; }
-        .thankyou-check { width: 64px; height: 64px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 20px; }
-        .thankyou-check svg { width: 32px; height: 32px; }
-        .thankyou-heading { font-size: clamp(24px, 5vw, 32px); font-weight: 800; letter-spacing: -0.5px; margin-bottom: 12px; }
-        .thankyou-body { font-size: 16px; color: #525252; line-height: 1.6; margin-bottom: 28px; }
-        .thankyou-phone { display: inline-flex; align-items: center; gap: 10px; background: #fafafa; border: 1px solid #e5e5e5; border-radius: 12px; padding: 16px 28px; font-size: 18px; font-weight: 700; color: #111; text-decoration: none; transition: border-color 0.2s; }
-        .thankyou-phone:hover { border-color: ${accent}; }
-        .thankyou-phone svg { width: 20px; height: 20px; }
+        /* --- Disqualification --- */
+        .qf-dq {
+          text-align: center;
+          padding: 40px 0;
+        }
+        .qf-dq-icon {
+          width: 56px;
+          height: 56px;
+          border-radius: 50%;
+          background: #FEF3C7;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          margin-bottom: 20px;
+          font-size: 28px;
+        }
+        .qf-dq h2 {
+          font-size: clamp(20px, 4vw, 26px);
+          font-weight: 800;
+          color: var(--heading);
+          margin-bottom: 12px;
+          line-height: 1.3;
+        }
+        .qf-dq p {
+          font-size: 16px;
+          color: var(--body);
+          line-height: 1.6;
+        }
 
-        /* Footer */
-        .quiz-footer { padding: 20px; text-align: center; font-size: 12px; color: #a3a3a3; }
-        .quiz-footer a { color: #737373; text-decoration: none; font-weight: 600; }
-        .quiz-footer a:hover { color: #525252; }
+        /* --- Contact form --- */
+        .qf-form-heading {
+          font-size: clamp(24px, 5vw, 32px);
+          font-weight: 800;
+          color: var(--heading);
+          letter-spacing: -0.5px;
+          line-height: 1.2;
+          margin-bottom: 8px;
+        }
+        .qf-form-sub {
+          font-size: 16px;
+          color: var(--body);
+          margin-bottom: 32px;
+          line-height: 1.5;
+        }
+        .qf-field {
+          margin-bottom: 16px;
+        }
+        .qf-field label {
+          display: block;
+          font-size: 14px;
+          font-weight: 600;
+          color: var(--body);
+          margin-bottom: 6px;
+        }
+        .qf-field input {
+          width: 100%;
+          background: var(--card-bg);
+          border: 1.5px solid var(--border);
+          border-radius: 10px;
+          padding: 14px 16px;
+          font-size: 16px;
+          font-family: 'Inter', sans-serif;
+          font-weight: 500;
+          color: var(--heading);
+          outline: none;
+          transition: border-color 0.2s;
+        }
+        .qf-field input::placeholder { color: #BBBBBB; }
+        .qf-field input:focus { border-color: var(--accent); }
+        .qf-row {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 12px;
+        }
+        @media (max-width: 480px) {
+          .qf-row { grid-template-columns: 1fr; }
+        }
 
-        /* Animation */
-        @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
-        .animate-in { animation: fadeUp 0.35s ease; }
+        /* --- Submit button --- */
+        .qf-submit {
+          width: 100%;
+          padding: 16px;
+          border-radius: 8px;
+          border: none;
+          font-family: 'Inter', sans-serif;
+          font-size: 17px;
+          font-weight: 700;
+          color: var(--heading);
+          background: var(--accent);
+          cursor: pointer;
+          transition: opacity 0.2s, transform 0.15s;
+          margin-top: 8px;
+        }
+        .qf-submit:hover:not(:disabled) {
+          opacity: 0.9;
+          transform: translateY(-1px);
+        }
+        .qf-submit:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+          transform: none;
+        }
+        .qf-fine {
+          font-size: 13px;
+          color: var(--muted);
+          text-align: center;
+          margin-top: 14px;
+          line-height: 1.5;
+        }
+        .qf-error {
+          font-size: 13px;
+          color: #ef4444;
+          margin-top: 10px;
+        }
+
+        /* --- Thank you --- */
+        .qf-ty { text-align: center; }
+        .qf-ty-icon {
+          width: 64px;
+          height: 64px;
+          border-radius: 50%;
+          background: ${accent}20;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          margin-bottom: 24px;
+        }
+        .qf-ty-icon svg { width: 32px; height: 32px; }
+        .qf-ty h1 {
+          font-size: clamp(26px, 5vw, 36px);
+          font-weight: 800;
+          color: var(--heading);
+          letter-spacing: -0.5px;
+          margin-bottom: 12px;
+        }
+        .qf-ty p {
+          font-size: 17px;
+          color: var(--body);
+          line-height: 1.6;
+          margin-bottom: 32px;
+        }
+
+        /* Answer summary card */
+        .qf-summary {
+          background: var(--card-bg);
+          border: 1px solid var(--border);
+          border-radius: 12px;
+          padding: 24px;
+          text-align: left;
+          max-width: 420px;
+          margin: 0 auto;
+        }
+        .qf-summary-title {
+          font-size: 13px;
+          font-weight: 700;
+          color: var(--muted);
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          margin-bottom: 16px;
+        }
+        .qf-summary-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: baseline;
+          padding: 10px 0;
+          border-bottom: 1px solid #F5F5F3;
+          gap: 16px;
+        }
+        .qf-summary-row:last-child { border-bottom: none; }
+        .qf-summary-q {
+          font-size: 14px;
+          color: var(--body);
+          flex: 1;
+        }
+        .qf-summary-a {
+          font-size: 14px;
+          font-weight: 700;
+          color: var(--heading);
+          text-align: right;
+          flex-shrink: 0;
+        }
+
+        /* --- Animation --- */
+        @keyframes fadeUp {
+          from { opacity: 0; transform: translateY(16px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .qf-animate { animation: fadeUp 0.35s ease; }
       `}</style>
 
-      <div className="quiz-wrap">
-        {/* Header */}
-        <div className="quiz-header">
-          <div className="quiz-logo">
-            {funnel.logoUrl && (
-              <img src={funnel.logoUrl} alt="" />
-            )}
-            {funnel.businessName}
-          </div>
-        </div>
+      {/* GTM noscript fallback */}
+      <noscript>
+        <iframe
+          src="https://www.googletagmanager.com/ns.html?id=GTM-XXXXXXX"
+          height="0"
+          width="0"
+          style={{ display: "none", visibility: "hidden" }}
+        />
+      </noscript>
 
-        {/* Progress bar */}
-        <div className="progress-bar">
-          <div
-            className="progress-fill"
-            style={{ width: `${progress}%`, background: accent }}
-          />
-        </div>
+      {/* Progress bar */}
+      <div className="qf-progress">
+        <div className="qf-progress-fill" style={{ width: `${progress}%` }} />
+      </div>
 
-        {/* Content */}
-        <div className="quiz-content">
-          {submitted ? (
-            /* Thank you screen */
-            <div className="quiz-card animate-in">
-              <div className="thankyou-wrap">
-                <div className="thankyou-check" style={{ background: `${accent}20` }}>
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
-                </div>
-                <h1 className="thankyou-heading">Thanks, {contactName.split(" ")[0]}!</h1>
-                <p className="thankyou-body">
-                  We got your info. Someone from {funnel.businessName} will reach out shortly to get you taken care of.
-                </p>
-                {funnel.phone && (
-                  <a href={`tel:${funnel.phone}`} className="thankyou-phone">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-                    Call {funnel.phone.replace(/(\d{3})(\d{3})(\d{4})/, "($1) $2-$3")}
-                  </a>
-                )}
+      <div className="qf-wrap">
+        {submitted ? (
+          /* ===== Thank You ===== */
+          <div className="qf-card qf-animate" key="thankyou">
+            <div className="qf-ty">
+              <div className="qf-ty-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20 6 9 17l-5-5" />
+                </svg>
               </div>
-            </div>
-          ) : isContactStep ? (
-            /* Contact form */
-            <div className="quiz-card animate-in" key="contact">
-              <div className="step-indicator">Last step</div>
-              <h2 className="contact-heading">Where should we send your quote?</h2>
-              <p className="contact-sub">Drop your info and {funnel.businessName} will follow up with a free estimate.</p>
+              <h1>You&apos;re all set.</h1>
+              <p>A solar advisor will reach out within the hour.</p>
 
-              <div className="form-group">
-                <label>Your name</label>
+              {answerSummary.length > 0 && (
+                <div className="qf-summary">
+                  <div className="qf-summary-title">Your answers</div>
+                  {answerSummary.map((item) => (
+                    <div key={item.question} className="qf-summary-row">
+                      <span className="qf-summary-q">{item.question}</span>
+                      <span className="qf-summary-a">{item.answer}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        ) : disqualified ? (
+          /* ===== Disqualification ===== */
+          <div className="qf-card qf-animate" key="dq">
+            <div className="qf-dq">
+              <div className="qf-dq-icon">&#9728;</div>
+              <h2>Solar works best for homeowners.</h2>
+              <p>Check back when you&apos;re ready &mdash; we&apos;d love to help you go solar.</p>
+              <button className="qf-back" onClick={goBack} type="button">
+                &larr; Go back
+              </button>
+            </div>
+          </div>
+        ) : isContactStep ? (
+          /* ===== Lead Capture Form ===== */
+          <div className="qf-card qf-animate" key="contact">
+            <h2 className="qf-form-heading">
+              You qualify. Let&apos;s build your free savings estimate.
+            </h2>
+            <p className="qf-form-sub">
+              Fill in a few details and we&apos;ll get back to you fast.
+            </p>
+
+            <div className="qf-row">
+              <div className="qf-field">
+                <label>First name</label>
                 <input
                   type="text"
-                  placeholder="First and last name"
-                  value={contactName}
-                  onChange={(e) => setContactName(e.target.value)}
+                  placeholder="Jane"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
                   autoFocus
                 />
               </div>
-              <div className="form-group">
-                <label>Phone number</label>
+              <div className="qf-field">
+                <label>Last name</label>
                 <input
-                  type="tel"
-                  placeholder="(555) 123-4567"
-                  value={contactPhone}
-                  onChange={(e) => setContactPhone(e.target.value)}
+                  type="text"
+                  placeholder="Smith"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
                 />
               </div>
-              <div className="form-group">
-                <label>Email (optional)</label>
-                <input
-                  type="email"
-                  placeholder="you@email.com"
-                  value={contactEmail}
-                  onChange={(e) => setContactEmail(e.target.value)}
-                />
-              </div>
-
-              <button
-                className="submit-btn"
-                style={{ background: accent }}
-                disabled={!contactName.trim() || !contactPhone.trim() || submitting}
-                onClick={handleSubmit}
-                type="button"
-              >
-                {submitting ? "Sending..." : funnel.ctaText}
-              </button>
-
-              {error && <p className="form-error">{error}</p>}
-              <p className="form-fine">Your info goes directly to {funnel.businessName}. No spam.</p>
-
-              <button className="back-btn" onClick={goBack} type="button">
-                ← Back
-              </button>
             </div>
-          ) : currentQuestion ? (
-            /* Quiz question */
-            <div className="quiz-card animate-in" key={currentQuestion.id}>
-              <div className="step-indicator">
-                Question {step + 1} of {questions.length}
-              </div>
-              <h2 className="question-text">{currentQuestion.question}</h2>
-              <div className="options-list">
-                {currentQuestion.options.map((opt, i) => (
-                  <button
-                    key={opt}
-                    className={`option-btn${answers[currentQuestion.id] === opt ? " selected" : ""}`}
-                    onClick={() => selectOption(currentQuestion.id, opt)}
-                    type="button"
-                  >
-                    <span className="option-letter">
-                      {String.fromCharCode(65 + i)}
-                    </span>
-                    {opt}
-                  </button>
-                ))}
-              </div>
+            <div className="qf-field">
+              <label>Phone</label>
+              <input
+                type="tel"
+                placeholder="(555) 123-4567"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+              />
+            </div>
+            <div className="qf-field">
+              <label>Email</label>
+              <input
+                type="email"
+                placeholder="jane@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+            <div className="qf-field">
+              <label>Zip code</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                placeholder="78701"
+                value={zip}
+                onChange={(e) => setZip(e.target.value)}
+              />
+            </div>
 
-              {step > 0 && (
-                <button className="back-btn" onClick={goBack} type="button">
-                  ← Back
+            <button
+              className="qf-submit"
+              disabled={!firstName.trim() || !lastName.trim() || !phone.trim() || submitting}
+              onClick={handleSubmit}
+              type="button"
+            >
+              {submitting ? "Sending..." : "See My Savings \u2192"}
+            </button>
+
+            {error && <p className="qf-error">{error}</p>}
+            <p className="qf-fine">No pressure. No obligation. Takes 2 minutes.</p>
+
+            <button className="qf-back" onClick={goBack} type="button">
+              &larr; Back
+            </button>
+          </div>
+        ) : currentQuestion ? (
+          /* ===== Quiz Question ===== */
+          <div className="qf-card qf-animate" key={currentQuestion.id}>
+            <div className="qf-step">
+              Question {step + 1} of {questions.length}
+            </div>
+            <h2 className="qf-question">{currentQuestion.question}</h2>
+            <div className="qf-options">
+              {currentQuestion.options.map((opt, i) => (
+                <button
+                  key={opt}
+                  className={`qf-option${answers[currentQuestion.id] === opt ? " selected" : ""}`}
+                  onClick={() => selectOption(currentQuestion.id, opt)}
+                  onKeyDown={(e) => handleOptionKeyDown(e, currentQuestion.id, opt)}
+                  type="button"
+                  role="radio"
+                  aria-checked={answers[currentQuestion.id] === opt}
+                  tabIndex={0}
+                >
+                  <span className="qf-letter">
+                    {String.fromCharCode(65 + i)}
+                  </span>
+                  {opt}
                 </button>
-              )}
+              ))}
             </div>
-          ) : null}
-        </div>
 
-        {/* Footer */}
-        <div className="quiz-footer">
-          Powered by <a href="https://handledsites.com" target="_blank" rel="noopener noreferrer">handled.</a>
-        </div>
+            {step > 0 && (
+              <button className="qf-back" onClick={goBack} type="button">
+                &larr; Back
+              </button>
+            )}
+          </div>
+        ) : null}
       </div>
     </>
   );
