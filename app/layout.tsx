@@ -6,6 +6,9 @@ export const metadata: Metadata = {
   title: "handled.sites — Free Business Cards for Home Service Contractors",
   description:
     "Create a free mobile business card website for your home service business. Get found by AI search, convert visitors to calls, and share anywhere.",
+  icons: {
+    icon: "/handled-favicon.png",
+  },
   openGraph: {
     title: "handled.sites — Free Business Cards for Home Service Contractors",
     description:
