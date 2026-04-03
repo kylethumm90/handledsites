@@ -13,6 +13,7 @@ type QuizQuestion = {
 
 // Per-trade default copy — override via site fields if needed
 const TRADE_COPY: Record<string, {
+  quizHeadline: string;
   formHeadline: string;
   formSubtext: string;
   submitButtonText: string;
@@ -24,6 +25,7 @@ const TRADE_COPY: Record<string, {
   buttonTextColor: string;
 }> = {
   Solar: {
+    quizHeadline: "Find Out If Your Home Qualifies for $0-Down Solar (Takes 60 Seconds)",
     formHeadline: "You qualify. Let\u2019s build your free savings estimate.",
     formSubtext: "Fill in a few details and we\u2019ll get back to you fast.",
     submitButtonText: "See My Savings \u2192",
@@ -35,6 +37,7 @@ const TRADE_COPY: Record<string, {
     buttonTextColor: "#1A1A1A",
   },
   Landscaping: {
+    quizHeadline: "What Would Your Yard Look Like With a Pro Behind It? Let\u2019s Find Out.",
     formHeadline: "Great news \u2014 we service your area. Let\u2019s get you a free quote.",
     formSubtext: "Fill in a few details and we\u2019ll reach out within 24 hours.",
     submitButtonText: "Get My Free Quote \u2192",
@@ -45,9 +48,82 @@ const TRADE_COPY: Record<string, {
     dqBody: "Feel free to reach out directly if you have questions.",
     buttonTextColor: "#ffffff",
   },
+  Roofing: {
+    quizHeadline: "How Much Is Your Roof Actually Worth? Find Out in 60 Seconds.",
+    formHeadline: "You qualify. Let\u2019s get you a free roof estimate.",
+    formSubtext: "Fill in a few details and we\u2019ll get back to you fast.",
+    submitButtonText: "Get My Free Quote \u2192",
+    finePrint: "No commitment. No spam.",
+    thankYouHeadline: "You\u2019re on the list.",
+    thankYouBody: "A roofing specialist will be in touch shortly.",
+    dqHeadline: "We work best with homeowners.",
+    dqBody: "Feel free to reach out directly if you have questions.",
+    buttonTextColor: "#ffffff",
+  },
+  Electrical: {
+    quizHeadline: "Is Your Home\u2019s Electrical Up to Code? Answer 5 Quick Questions to Find Out.",
+    formHeadline: "Let\u2019s get you a free electrical assessment.",
+    formSubtext: "Fill in a few details and we\u2019ll reach out fast.",
+    submitButtonText: "Get My Free Quote \u2192",
+    finePrint: "No commitment. No spam.",
+    thankYouHeadline: "You\u2019re on the list.",
+    thankYouBody: "A licensed electrician will be in touch shortly.",
+    dqHeadline: "We work best with homeowners.",
+    dqBody: "Feel free to reach out directly if you have questions.",
+    buttonTextColor: "#ffffff",
+  },
+  HVAC: {
+    quizHeadline: "Is Your HVAC System Costing You More Than It Should? Take the 60-Second Check.",
+    formHeadline: "Let\u2019s get you a free HVAC assessment.",
+    formSubtext: "Fill in a few details and we\u2019ll reach out fast.",
+    submitButtonText: "Get My Free Quote \u2192",
+    finePrint: "No commitment. No spam.",
+    thankYouHeadline: "You\u2019re on the list.",
+    thankYouBody: "An HVAC specialist will be in touch shortly.",
+    dqHeadline: "We work best with homeowners.",
+    dqBody: "Feel free to reach out directly if you have questions.",
+    buttonTextColor: "#ffffff",
+  },
+  Plumbing: {
+    quizHeadline: "Got a Plumbing Problem? Answer 4 Questions and We\u2019ll Tell You What It\u2019ll Take to Fix It.",
+    formHeadline: "Let\u2019s get you a free plumbing estimate.",
+    formSubtext: "Fill in a few details and we\u2019ll reach out fast.",
+    submitButtonText: "Get My Free Quote \u2192",
+    finePrint: "No commitment. No spam.",
+    thankYouHeadline: "You\u2019re on the list.",
+    thankYouBody: "A plumber will be in touch shortly.",
+    dqHeadline: "We work best with homeowners.",
+    dqBody: "Feel free to reach out directly if you have questions.",
+    buttonTextColor: "#ffffff",
+  },
+  Painting: {
+    quizHeadline: "How Much Should Your Paint Job Actually Cost? Get a Real Estimate in 60 Seconds.",
+    formHeadline: "Let\u2019s get you a free painting estimate.",
+    formSubtext: "Fill in a few details and we\u2019ll reach out fast.",
+    submitButtonText: "Get My Free Quote \u2192",
+    finePrint: "No commitment. No spam.",
+    thankYouHeadline: "You\u2019re on the list.",
+    thankYouBody: "A painting pro will be in touch shortly.",
+    dqHeadline: "We work best with homeowners.",
+    dqBody: "Feel free to reach out directly if you have questions.",
+    buttonTextColor: "#ffffff",
+  },
+  "General Contractor": {
+    quizHeadline: "What\u2019s Your Project Worth? Answer a Few Questions and Get a Real Ballpark.",
+    formHeadline: "Let\u2019s get you a free project estimate.",
+    formSubtext: "Fill in a few details and we\u2019ll reach out fast.",
+    submitButtonText: "Get My Free Quote \u2192",
+    finePrint: "No commitment. No spam.",
+    thankYouHeadline: "You\u2019re on the list.",
+    thankYouBody: "A contractor will be in touch shortly.",
+    dqHeadline: "We work best with homeowners.",
+    dqBody: "Feel free to reach out directly if you have questions.",
+    buttonTextColor: "#ffffff",
+  },
 };
 
 const DEFAULT_COPY = {
+  quizHeadline: "",
   formHeadline: "You qualify. Let\u2019s get you a free quote.",
   formSubtext: "Fill in a few details and we\u2019ll get back to you fast.",
   submitButtonText: "Get My Free Quote \u2192",
@@ -101,6 +177,7 @@ export default async function QuizFunnelPage({
         gtmId: site.gtm_id || null,
         metaPixelId: site.meta_pixel_id || null,
         zapierWebhookUrl: site.zapier_webhook_url || null,
+        quizHeadline: copy.quizHeadline,
         formHeadline: copy.formHeadline,
         formSubtext: copy.formSubtext,
         submitButtonText: copy.submitButtonText,

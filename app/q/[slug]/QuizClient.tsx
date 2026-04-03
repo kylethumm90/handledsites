@@ -25,6 +25,7 @@ type FunnelData = {
   metaPixelId: string | null;
   zapierWebhookUrl: string | null;
   // Configurable copy (with sensible defaults)
+  quizHeadline?: string;
   dqHeadline?: string;
   dqBody?: string;
   formHeadline?: string;
@@ -242,14 +243,27 @@ export default function QuizClient({
           background: var(--bg);
         }
 
-        /* --- Logo --- */
+        /* --- Logo + headline --- */
+        .qf-header {
+          text-align: center;
+          margin-bottom: 36px;
+        }
         .qf-logo {
-          margin-bottom: 32px;
+          margin-bottom: 20px;
         }
         .qf-logo img {
-          height: 48px;
+          height: 72px;
           width: auto;
+          max-width: 240px;
           object-fit: contain;
+        }
+        .qf-headline {
+          font-size: clamp(18px, 3.5vw, 22px);
+          font-weight: 700;
+          color: var(--heading);
+          line-height: 1.35;
+          max-width: 480px;
+          margin: 0 auto;
         }
 
         /* --- Progress bar (fixed top) --- */
@@ -579,9 +593,16 @@ export default function QuizClient({
       </div>
 
       <div className="qf-wrap">
-        {funnel.logoUrl && (
-          <div className="qf-logo">
-            <img src={funnel.logoUrl} alt={funnel.businessName} />
+        {(funnel.logoUrl || funnel.quizHeadline) && !submitted && (
+          <div className="qf-header">
+            {funnel.logoUrl && (
+              <div className="qf-logo">
+                <img src={funnel.logoUrl} alt={funnel.businessName} />
+              </div>
+            )}
+            {funnel.quizHeadline && (
+              <p className="qf-headline">{funnel.quizHeadline}</p>
+            )}
           </div>
         )}
         {submitted ? (
