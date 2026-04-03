@@ -83,16 +83,16 @@ export default function QuizClient({
     <>
       <style>{`
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        body { background: #0a0a0a; color: #fff; }
+        body { background: #ffffff; color: #111; }
         .quiz-wrap { min-height: 100dvh; display: flex; flex-direction: column; font-family: 'Inter', -apple-system, sans-serif; -webkit-font-smoothing: antialiased; }
 
         /* Header */
-        .quiz-header { padding: 20px 24px; text-align: center; border-bottom: 1px solid #1a1a1a; }
-        .quiz-logo { font-size: 16px; font-weight: 700; color: #a3a3a3; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .quiz-header { padding: 20px 24px; text-align: center; border-bottom: 1px solid #e5e5e5; }
+        .quiz-logo { font-size: 16px; font-weight: 700; color: #525252; display: flex; align-items: center; justify-content: center; gap: 10px; }
         .quiz-logo img { width: 32px; height: 32px; border-radius: 6px; object-fit: cover; }
 
         /* Progress */
-        .progress-bar { height: 3px; background: #1a1a1a; }
+        .progress-bar { height: 3px; background: #e5e5e5; }
         .progress-fill { height: 100%; transition: width 0.4s ease; border-radius: 0 2px 2px 0; }
 
         /* Content */
@@ -100,52 +100,52 @@ export default function QuizClient({
         .quiz-card { max-width: 540px; width: 100%; }
 
         /* Step indicator */
-        .step-indicator { font-size: 13px; font-weight: 600; color: #525252; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .step-indicator { font-size: 13px; font-weight: 600; color: #a3a3a3; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
 
         /* Question */
         .question-text { font-size: clamp(22px, 4vw, 28px); font-weight: 800; letter-spacing: -0.5px; line-height: 1.25; margin-bottom: 28px; }
 
         /* Options */
         .options-list { display: flex; flex-direction: column; gap: 10px; }
-        .option-btn { width: 100%; text-align: left; padding: 16px 20px; background: #141414; border: 1px solid #262626; border-radius: 12px; color: #e5e5e5; font-family: 'Inter', sans-serif; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 14px; }
-        .option-btn:hover { border-color: ${accent}; background: #1a1a1a; }
+        .option-btn { width: 100%; text-align: left; padding: 16px 20px; background: #fafafa; border: 1px solid #e5e5e5; border-radius: 12px; color: #1a1a1a; font-family: 'Inter', sans-serif; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 14px; }
+        .option-btn:hover { border-color: ${accent}; background: #f0f0f0; }
         .option-btn.selected { border-color: ${accent}; background: ${accent}18; }
-        .option-letter { width: 28px; height: 28px; border-radius: 7px; background: #262626; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #737373; flex-shrink: 0; transition: all 0.15s; }
+        .option-letter { width: 28px; height: 28px; border-radius: 7px; background: #e5e5e5; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #737373; flex-shrink: 0; transition: all 0.15s; }
         .option-btn:hover .option-letter { background: ${accent}; color: #fff; }
         .option-btn.selected .option-letter { background: ${accent}; color: #fff; }
 
         /* Contact form */
         .contact-heading { font-size: clamp(22px, 4vw, 28px); font-weight: 800; letter-spacing: -0.5px; line-height: 1.25; margin-bottom: 8px; }
-        .contact-sub { font-size: 15px; color: #a3a3a3; margin-bottom: 28px; line-height: 1.5; }
+        .contact-sub { font-size: 15px; color: #737373; margin-bottom: 28px; line-height: 1.5; }
         .form-group { margin-bottom: 16px; }
-        .form-group label { display: block; font-size: 14px; font-weight: 600; color: #a3a3a3; margin-bottom: 6px; }
-        .form-group input { width: 100%; background: #141414; border: 1px solid #262626; border-radius: 10px; padding: 14px 16px; font-size: 16px; font-family: 'Inter', sans-serif; font-weight: 500; color: #fff; outline: none; transition: border-color 0.2s; }
-        .form-group input::placeholder { color: #525252; }
+        .form-group label { display: block; font-size: 14px; font-weight: 600; color: #525252; margin-bottom: 6px; }
+        .form-group input { width: 100%; background: #fafafa; border: 1px solid #e5e5e5; border-radius: 10px; padding: 14px 16px; font-size: 16px; font-family: 'Inter', sans-serif; font-weight: 500; color: #111; outline: none; transition: border-color 0.2s; }
+        .form-group input::placeholder { color: #a3a3a3; }
         .form-group input:focus { border-color: ${accent}; }
         .submit-btn { width: 100%; padding: 16px; border-radius: 10px; border: none; font-family: 'Inter', sans-serif; font-size: 16px; font-weight: 700; color: #fff; cursor: pointer; transition: opacity 0.2s, transform 0.15s; margin-top: 8px; }
         .submit-btn:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
         .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-        .form-fine { font-size: 12px; color: #525252; text-align: center; margin-top: 12px; }
+        .form-fine { font-size: 12px; color: #a3a3a3; text-align: center; margin-top: 12px; }
         .form-error { font-size: 13px; color: #ef4444; margin-top: 10px; }
 
         /* Back button */
-        .back-btn { background: none; border: none; color: #525252; font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; padding: 8px 0; margin-top: 20px; transition: color 0.2s; display: flex; align-items: center; gap: 4px; }
-        .back-btn:hover { color: #a3a3a3; }
+        .back-btn { background: none; border: none; color: #a3a3a3; font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; padding: 8px 0; margin-top: 20px; transition: color 0.2s; display: flex; align-items: center; gap: 4px; }
+        .back-btn:hover { color: #525252; }
 
         /* Thank you */
         .thankyou-wrap { text-align: center; }
         .thankyou-check { width: 64px; height: 64px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 20px; }
         .thankyou-check svg { width: 32px; height: 32px; }
         .thankyou-heading { font-size: clamp(24px, 5vw, 32px); font-weight: 800; letter-spacing: -0.5px; margin-bottom: 12px; }
-        .thankyou-body { font-size: 16px; color: #a3a3a3; line-height: 1.6; margin-bottom: 28px; }
-        .thankyou-phone { display: inline-flex; align-items: center; gap: 10px; background: #141414; border: 1px solid #262626; border-radius: 12px; padding: 16px 28px; font-size: 18px; font-weight: 700; color: #fff; text-decoration: none; transition: border-color 0.2s; }
+        .thankyou-body { font-size: 16px; color: #525252; line-height: 1.6; margin-bottom: 28px; }
+        .thankyou-phone { display: inline-flex; align-items: center; gap: 10px; background: #fafafa; border: 1px solid #e5e5e5; border-radius: 12px; padding: 16px 28px; font-size: 18px; font-weight: 700; color: #111; text-decoration: none; transition: border-color 0.2s; }
         .thankyou-phone:hover { border-color: ${accent}; }
         .thankyou-phone svg { width: 20px; height: 20px; }
 
         /* Footer */
-        .quiz-footer { padding: 20px; text-align: center; font-size: 12px; color: #333; }
-        .quiz-footer a { color: #525252; text-decoration: none; font-weight: 600; }
-        .quiz-footer a:hover { color: #737373; }
+        .quiz-footer { padding: 20px; text-align: center; font-size: 12px; color: #a3a3a3; }
+        .quiz-footer a { color: #737373; text-decoration: none; font-weight: 600; }
+        .quiz-footer a:hover { color: #525252; }
 
         /* Animation */
         @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
