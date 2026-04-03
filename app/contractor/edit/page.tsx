@@ -42,6 +42,9 @@ export default async function ContractorEditPage() {
     review_count: data.review_count,
     avg_rating: data.avg_rating,
     created_at: data.created_at,
+    gtm_id: data.gtm_id ?? null,
+    meta_pixel_id: data.meta_pixel_id ?? null,
+    zapier_webhook_url: data.zapier_webhook_url ?? null,
   } as ContractorSite;
 
   return (

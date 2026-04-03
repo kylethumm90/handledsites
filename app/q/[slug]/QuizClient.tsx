@@ -21,11 +21,10 @@ type FunnelData = {
   headline: string | null;
   ctaText: string;
   accentColor: string;
+  gtmId: string | null;
+  metaPixelId: string | null;
+  zapierWebhookUrl: string | null;
 };
-
-// Placeholder — swap in your real URL
-const ZAPIER_WEBHOOK_URL =
-  "https://hooks.zapier.com/hooks/catch/PLACEHOLDER/PLACEHOLDER/";
 
 declare global {
   interface Window {
@@ -125,14 +124,16 @@ export default function QuizClient({
     }
 
     // 2. POST to Zapier webhook (fire-and-forget)
-    try {
-      fetch(ZAPIER_WEBHOOK_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(leadData),
-      }).catch((err) => console.error("Zapier webhook error:", err));
-    } catch (err) {
-      console.error("Zapier webhook error:", err);
+    if (funnel.zapierWebhookUrl) {
+      try {
+        fetch(funnel.zapierWebhookUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(leadData),
+        }).catch((err) => console.error("Zapier webhook error:", err));
+      } catch (err) {
+        console.error("Zapier webhook error:", err);
+      }
     }
 
     // 3. Fire tracking events
@@ -162,28 +163,32 @@ export default function QuizClient({
 
   return (
     <>
-      {/* --- GTM (placeholder ID) --- */}
-      <Script id="gtm" strategy="afterInteractive">{`
-        (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-        new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-        j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-        'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-        })(window,document,'script','dataLayer','GTM-XXXXXXX');
-      `}</Script>
+      {/* --- GTM --- */}
+      {funnel.gtmId && (
+        <Script id="gtm" strategy="afterInteractive">{`
+          (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+          new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+          j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+          'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+          })(window,document,'script','dataLayer','${funnel.gtmId}');
+        `}</Script>
+      )}
 
-      {/* --- Meta Pixel (placeholder ID) --- */}
-      <Script id="meta-pixel" strategy="afterInteractive">{`
-        !function(f,b,e,v,n,t,s)
-        {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-        n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-        if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-        n.queue=[];t=b.createElement(e);t.async=!0;
-        t.src=v;s=b.getElementsByTagName(e)[0];
-        s.parentNode.insertBefore(t,s)}(window, document,'script',
-        'https://connect.facebook.net/en_US/fbevents.js');
-        fbq('init', 'XXXXXXXXXXXXXXXXX');
-        fbq('track', 'PageView');
-      `}</Script>
+      {/* --- Meta Pixel --- */}
+      {funnel.metaPixelId && (
+        <Script id="meta-pixel" strategy="afterInteractive">{`
+          !function(f,b,e,v,n,t,s)
+          {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+          n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+          if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+          n.queue=[];t=b.createElement(e);t.async=!0;
+          t.src=v;s=b.getElementsByTagName(e)[0];
+          s.parentNode.insertBefore(t,s)}(window, document,'script',
+          'https://connect.facebook.net/en_US/fbevents.js');
+          fbq('init', '${funnel.metaPixelId}');
+          fbq('track', 'PageView');
+        `}</Script>
+      )}
 
       <style>{`
         /* ===== CSS Variables (reskin here) ===== */
@@ -523,14 +528,16 @@ export default function QuizClient({
       `}</style>
 
       {/* GTM noscript fallback */}
-      <noscript>
-        <iframe
-          src="https://www.googletagmanager.com/ns.html?id=GTM-XXXXXXX"
-          height="0"
-          width="0"
-          style={{ display: "none", visibility: "hidden" }}
-        />
-      </noscript>
+      {funnel.gtmId && (
+        <noscript>
+          <iframe
+            src={`https://www.googletagmanager.com/ns.html?id=${funnel.gtmId}`}
+            height="0"
+            width="0"
+            style={{ display: "none", visibility: "hidden" }}
+          />
+        </noscript>
+      )}
 
       {/* Progress bar */}
       <div className="qf-progress">

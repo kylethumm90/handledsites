@@ -44,6 +44,10 @@ export type ContractorSite = {
   review_count: number | null;
   avg_rating: number | null;
   created_at: string;
+  // Tracking & integrations (business-level)
+  gtm_id: string | null;
+  meta_pixel_id: string | null;
+  zapier_webhook_url: string | null;
 };
 
 // New unified types

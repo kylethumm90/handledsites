@@ -9,6 +9,7 @@ function isAuthed(request: NextRequest): boolean {
 
 const BUSINESS_FIELDS = new Set([
   "name", "owner_name", "phone", "email", "city", "state", "trade", "services", "logo_url",
+  "gtm_id", "meta_pixel_id", "zapier_webhook_url",
 ]);
 
 const SITE_FIELDS = new Set([

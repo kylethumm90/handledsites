@@ -49,6 +49,9 @@ export default async function QuizFunnelPage({
         headline: site.headline,
         ctaText: site.cta_text || "Get My Free Quote",
         accentColor: site.accent_color || "#6366f1",
+        gtmId: site.gtm_id || null,
+        metaPixelId: site.meta_pixel_id || null,
+        zapierWebhookUrl: site.zapier_webhook_url || null,
       }}
       questions={questions}
     />

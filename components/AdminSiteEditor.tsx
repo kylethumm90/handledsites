@@ -43,6 +43,11 @@ export default function AdminSiteEditor({ site }: Props) {
   const [badgeEmergency, setBadgeEmergency] = useState(site.badge_emergency);
   const [badgeFamilyOwned, setBadgeFamilyOwned] = useState(site.badge_family_owned);
 
+  // Integrations
+  const [gtmId, setGtmId] = useState(site.gtm_id ?? "");
+  const [metaPixelId, setMetaPixelId] = useState(site.meta_pixel_id ?? "");
+  const [zapierWebhookUrl, setZapierWebhookUrl] = useState(site.zapier_webhook_url ?? "");
+
   const availableServices = trade
     ? TRADE_SERVICES[trade as Trade] || []
     : [];
@@ -97,6 +102,9 @@ export default function AdminSiteEditor({ site }: Props) {
           badge_emergency: badgeEmergency,
           badge_family_owned: badgeFamilyOwned,
           qr_redirect_url: qrRedirectUrl || null,
+          gtm_id: gtmId || null,
+          meta_pixel_id: metaPixelId || null,
+          zapier_webhook_url: zapierWebhookUrl || null,
         }),
       });
       if (!res.ok) throw new Error("Save failed");
@@ -407,6 +415,48 @@ export default function AdminSiteEditor({ site }: Props) {
             >
               {saving ? "Saving..." : "Save all changes"}
             </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Integrations */}
+      <div className="mt-8 rounded-xl border border-gray-200 bg-white p-5">
+        <h2 className="mb-4 text-sm font-semibold text-gray-900">
+          Integrations &amp; tracking
+        </h2>
+        <div className="space-y-4">
+          <div>
+            <label className={labelClass}>Google Tag Manager ID</label>
+            <input
+              type="text"
+              value={gtmId}
+              onChange={(e) => setGtmId(e.target.value)}
+              placeholder="GTM-XXXXXXX"
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label className={labelClass}>Meta Pixel ID</label>
+            <input
+              type="text"
+              value={metaPixelId}
+              onChange={(e) => setMetaPixelId(e.target.value)}
+              placeholder="123456789012345"
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label className={labelClass}>Zapier webhook URL</label>
+            <input
+              type="url"
+              value={zapierWebhookUrl}
+              onChange={(e) => setZapierWebhookUrl(e.target.value)}
+              placeholder="https://hooks.zapier.com/hooks/catch/..."
+              className={inputClass}
+            />
+            <p className="mt-1 text-xs text-gray-400">
+              Quiz lead data will be POSTed here on each submission
+            </p>
           </div>
         </div>
       </div>
