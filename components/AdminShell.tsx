@@ -24,7 +24,7 @@ const TEMPLATES: { trade: string; items: { name: string; path: string | null }[]
     trade: "Solar",
     items: [
       { name: "Business Card", path: "/rooftop-power" },
-      { name: "Quiz Funnel", path: "/q/rooftop-power-quiz" },
+      { name: "Quiz Funnel", path: "/q/rooftop-power" },
     ],
   },
   {
@@ -38,7 +38,7 @@ const TEMPLATES: { trade: string; items: { name: string; path: string | null }[]
     trade: "Landscaping",
     items: [
       { name: "Business Card", path: "/bros-lawncare" },
-      { name: "Quiz Funnel", path: null },
+      { name: "Quiz Funnel", path: "/q/bros-lawncare" },
     ],
   },
   {

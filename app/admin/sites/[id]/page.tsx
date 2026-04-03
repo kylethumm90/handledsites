@@ -15,6 +15,7 @@ async function getSite(id: string): Promise<ContractorSite | null> {
   if (error || !data) return null;
   return {
     id: data.id,
+    type: data.type,
     business_name: data.business_name,
     owner_name: data.owner_name,
     phone: data.business_phone,

@@ -20,6 +20,7 @@ export default async function ContractorEditPage() {
 
   const site = {
     id: data.id,
+    type: data.type,
     business_name: data.business_name,
     owner_name: data.owner_name,
     phone: data.business_phone,

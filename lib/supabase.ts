@@ -22,6 +22,7 @@ export function getSupabaseAdmin(): SupabaseClient {
 
 export type ContractorSite = {
   id: string;
+  type: "business_card" | "quiz_funnel";
   business_name: string;
   owner_name: string;
   phone: string;

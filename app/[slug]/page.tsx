@@ -22,6 +22,7 @@ async function getContractor(slug: string): Promise<ContractorSite | null> {
   // Map sites_full view to ContractorSite shape for backward compatibility
   return {
     id: data.id,
+    type: "business_card" as const,
     business_name: data.business_name,
     owner_name: data.owner_name,
     phone: data.business_phone,

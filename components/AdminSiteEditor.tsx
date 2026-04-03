@@ -186,12 +186,12 @@ export default function AdminSiteEditor({ site }: Props) {
             {impersonating ? "Opening..." : "View as user"}
           </button>
           <a
-            href={`/${site.slug}`}
+            href={site.type === "quiz_funnel" ? `/q/${site.slug}` : `/${site.slug}`}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
           >
-            View card
+            View site
             <ExternalLink className="h-3 w-3" />
           </a>
         </div>

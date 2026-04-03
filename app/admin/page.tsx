@@ -170,7 +170,7 @@ export default async function AdminDashboard() {
                     </td>
                     <td className="py-2.5">
                       <a
-                        href={`/${site.slug}`}
+                        href={site.type === "quiz_funnel" ? `/q/${site.slug}` : `/${site.slug}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-gray-400 hover:text-gray-600"
