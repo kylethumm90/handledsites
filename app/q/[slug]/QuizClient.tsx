@@ -68,7 +68,7 @@ export default function QuizClient({
   const btnColor = funnel.buttonTextColor || "#ffffff";
   const isContactStep = step === questions.length;
   const currentQuestion = step < questions.length ? questions[step] : null;
-  const progress = ((step + (submitted ? 1 : 0)) / totalSteps) * 100;
+  const progress = 15 + ((step + (submitted ? 1 : 0)) / totalSteps) * 85;
 
   // Configurable copy with defaults
   const dqHeadline = funnel.dqHeadline || "We work best with homeowners.";
@@ -240,41 +240,44 @@ export default function QuizClient({
           font-family: 'Inter', -apple-system, sans-serif;
           -webkit-font-smoothing: antialiased;
           padding: 24px 20px;
+          padding-top: 90px;
           background: var(--bg);
         }
 
-        /* --- Logo + headline --- */
-        .qf-header {
-          text-align: center;
-          margin-bottom: 36px;
-        }
-        .qf-logo {
-          margin-bottom: 20px;
-        }
-        .qf-logo img {
-          height: 72px;
-          width: auto;
-          max-width: 240px;
-          object-fit: contain;
-        }
+        /* --- Headline (below progress bar, above quiz) --- */
         .qf-headline {
           font-size: clamp(18px, 3.5vw, 22px);
           font-weight: 700;
           color: var(--heading);
           line-height: 1.35;
           max-width: 480px;
-          margin: 0 auto;
+          margin: 0 auto 32px;
+          text-align: center;
         }
 
-        /* --- Progress bar (fixed top) --- */
-        .qf-progress {
+        /* --- Fixed top bar (logo + progress) --- */
+        .qf-topbar {
           position: fixed;
           top: 0;
           left: 0;
           right: 0;
+          z-index: 100;
+          background: var(--bg);
+        }
+        .qf-topbar-logo {
+          display: flex;
+          justify-content: center;
+          padding: 16px 20px 12px;
+        }
+        .qf-topbar-logo img {
+          height: 40px;
+          width: auto;
+          max-width: 200px;
+          object-fit: contain;
+        }
+        .qf-progress {
           height: 4px;
           background: var(--border);
-          z-index: 100;
         }
         .qf-progress-fill {
           height: 100%;
@@ -587,23 +590,21 @@ export default function QuizClient({
         </noscript>
       )}
 
-      {/* Progress bar */}
-      <div className="qf-progress">
-        <div className="qf-progress-fill" style={{ width: `${progress}%` }} />
+      {/* Fixed top bar: logo + progress */}
+      <div className="qf-topbar">
+        {funnel.logoUrl && (
+          <div className="qf-topbar-logo">
+            <img src={funnel.logoUrl} alt={funnel.businessName} />
+          </div>
+        )}
+        <div className="qf-progress">
+          <div className="qf-progress-fill" style={{ width: `${progress}%` }} />
+        </div>
       </div>
 
       <div className="qf-wrap">
-        {(funnel.logoUrl || funnel.quizHeadline) && !submitted && (
-          <div className="qf-header">
-            {funnel.logoUrl && (
-              <div className="qf-logo">
-                <img src={funnel.logoUrl} alt={funnel.businessName} />
-              </div>
-            )}
-            {funnel.quizHeadline && step === 0 && !disqualified && (
-              <p className="qf-headline">{funnel.quizHeadline}</p>
-            )}
-          </div>
+        {funnel.quizHeadline && step === 0 && !disqualified && !submitted && (
+          <p className="qf-headline">{funnel.quizHeadline}</p>
         )}
         {submitted ? (
           /* ===== Thank You ===== */
