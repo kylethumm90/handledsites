@@ -600,7 +600,7 @@ export default function QuizClient({
                 <img src={funnel.logoUrl} alt={funnel.businessName} />
               </div>
             )}
-            {funnel.quizHeadline && (
+            {funnel.quizHeadline && step === 0 && !disqualified && (
               <p className="qf-headline">{funnel.quizHeadline}</p>
             )}
           </div>
