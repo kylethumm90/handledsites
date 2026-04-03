@@ -23,11 +23,10 @@ export async function POST(request: NextRequest) {
   try {
     // Find contractor by email
     const supabase = getSupabaseAdmin();
-    // Look up business card site via the unified view
+    // Look up any site for this email
     const { data: sites, error: dbError } = await supabase
       .from("sites_full")
       .select("id, business_email, business_name")
-      .eq("type", "business_card")
       .ilike("business_email", normalizedEmail)
       .limit(1);
 
