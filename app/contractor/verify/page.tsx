@@ -32,7 +32,7 @@ function VerifyContent() {
         }
 
         setStatus("success");
-        window.location.href = "/contractor/edit";
+        window.location.href = "/contractor/dashboard";
       } catch (err) {
         setStatus("error");
         setErrorMsg(

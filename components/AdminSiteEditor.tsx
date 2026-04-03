@@ -142,7 +142,7 @@ export default function AdminSiteEditor({ site }: Props) {
         body: JSON.stringify({ siteId: site.id }),
       });
       if (!res.ok) throw new Error("Failed to impersonate");
-      window.open("/contractor/edit", "_blank");
+      window.open("/contractor/dashboard", "_blank");
     } catch {
       setMessage("Error switching to contractor view");
     } finally {
