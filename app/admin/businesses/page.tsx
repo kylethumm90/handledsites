@@ -1,11 +1,9 @@
 import { redirect } from "next/navigation";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
-import { getSupabaseAdmin, SiteFull } from "@/lib/supabase";
+import { getSupabaseAdmin, Business } from "@/lib/supabase";
 import { TRADES } from "@/lib/constants";
 import AdminShell from "@/components/AdminShell";
 import Link from "next/link";
-import { ExternalLink } from "lucide-react";
-import AdminCreateSiteButton from "@/components/AdminCreateSiteButton";
 
 export const dynamic = "force-dynamic";
 
@@ -15,50 +13,69 @@ type Props = {
 
 const PAGE_SIZE = 20;
 
-async function getSites(searchParams: Props["searchParams"]) {
+async function getBusinesses(searchParams: Props["searchParams"]) {
   const supabase = getSupabaseAdmin();
   const page = parseInt(searchParams.page || "1", 10);
   const offset = (page - 1) * PAGE_SIZE;
 
   let query = supabase
-    .from("sites_full")
+    .from("businesses")
     .select("*", { count: "exact" })
     .order("created_at", { ascending: false })
     .range(offset, offset + PAGE_SIZE - 1);
 
   if (searchParams.q) {
-    query = query.ilike("business_name", `%${searchParams.q}%`);
+    query = query.ilike("name", `%${searchParams.q}%`);
   }
   if (searchParams.trade) {
     query = query.eq("trade", searchParams.trade);
   }
 
   const { data, count } = await query;
+  const businesses = (data || []) as Business[];
+
+  // Get site counts for each business
+  const siteCountMap: Record<string, number> = {};
+  if (businesses.length > 0) {
+    const bizIds = businesses.map((b) => b.id);
+    const { data: sites } = await supabase
+      .from("sites")
+      .select("business_id")
+      .in("business_id", bizIds);
+
+    if (sites) {
+      for (const site of sites) {
+        siteCountMap[site.business_id] = (siteCountMap[site.business_id] || 0) + 1;
+      }
+    }
+  }
+
   return {
-    sites: (data || []) as SiteFull[],
+    businesses,
+    siteCountMap,
     total: count || 0,
     page,
     totalPages: Math.ceil((count || 0) / PAGE_SIZE),
   };
 }
 
-export default async function AdminSitesPage({ searchParams }: Props) {
+export default async function AdminBusinessesPage({ searchParams }: Props) {
   if (!isAdminAuthenticated()) redirect("/admin/login");
 
-  const { sites, total, page, totalPages } = await getSites(searchParams);
+  const { businesses, siteCountMap, total, page, totalPages } =
+    await getBusinesses(searchParams);
 
   return (
-    <AdminShell active="sites">
+    <AdminShell active="businesses">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-xl font-semibold text-gray-900">
-          All sites{" "}
+          All businesses{" "}
           <span className="text-sm font-normal text-gray-400">({total})</span>
         </h1>
-        <AdminCreateSiteButton />
       </div>
 
       {/* Filters */}
-      <form className="mb-6 flex gap-3" method="GET" action="/admin/sites">
+      <form className="mb-6 flex gap-3" method="GET" action="/admin/businesses">
         <input
           type="text"
           name="q"
@@ -92,68 +109,53 @@ export default async function AdminSitesPage({ searchParams }: Props) {
           <thead>
             <tr className="border-b border-gray-100 text-xs text-gray-500">
               <th className="px-4 py-3 font-medium">Business</th>
-              <th className="px-4 py-3 font-medium">Type</th>
               <th className="px-4 py-3 font-medium">Owner</th>
+              <th className="px-4 py-3 font-medium">Email</th>
               <th className="px-4 py-3 font-medium">Trade</th>
               <th className="px-4 py-3 font-medium">Location</th>
+              <th className="px-4 py-3 font-medium">Sites</th>
               <th className="px-4 py-3 font-medium">Created</th>
-              <th className="px-4 py-3 font-medium">View</th>
             </tr>
           </thead>
           <tbody>
-            {sites.length === 0 ? (
+            {businesses.length === 0 ? (
               <tr>
                 <td
                   colSpan={7}
                   className="px-4 py-8 text-center text-sm text-gray-400"
                 >
-                  No sites found
+                  No businesses found
                 </td>
               </tr>
             ) : (
-              sites.map((site) => (
+              businesses.map((biz) => (
                 <tr
-                  key={site.id}
+                  key={biz.id}
                   className="border-b border-gray-50 last:border-0 hover:bg-gray-50"
                 >
                   <td className="px-4 py-3">
                     <Link
-                      href={`/admin/sites/${site.id}`}
+                      href={`/admin/sites?q=${encodeURIComponent(biz.name)}`}
                       className="font-medium text-gray-900 hover:text-blue-600"
                     >
-                      {site.business_name}
+                      {biz.name}
                     </Link>
                   </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                        site.type === "business_card"
-                          ? "bg-gray-100 text-gray-600"
-                          : "bg-amber-50 text-amber-700"
-                      }`}
-                    >
-                      {site.type === "business_card" ? "Business Card" : "Quiz Funnel"}
-                    </span>
+                  <td className="px-4 py-3 text-gray-600">{biz.owner_name}</td>
+                  <td className="px-4 py-3 text-gray-600">
+                    {biz.email || (
+                      <span className="text-gray-300">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-gray-600">{biz.trade}</td>
+                  <td className="px-4 py-3 text-gray-600">
+                    {biz.city}, {biz.state}
                   </td>
                   <td className="px-4 py-3 text-gray-600">
-                    {site.owner_name}
-                  </td>
-                  <td className="px-4 py-3 text-gray-600">{site.trade}</td>
-                  <td className="px-4 py-3 text-gray-600">
-                    {site.city}, {site.state}
+                    {siteCountMap[biz.id] || 0}
                   </td>
                   <td className="px-4 py-3 text-gray-400">
-                    {new Date(site.created_at).toLocaleDateString()}
-                  </td>
-                  <td className="px-4 py-3">
-                    <a
-                      href={site.type === "quiz_funnel" ? `/q/${site.slug}` : `/${site.slug}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-gray-400 hover:text-gray-600"
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" />
-                    </a>
+                    {new Date(biz.created_at).toLocaleDateString()}
                   </td>
                 </tr>
               ))
@@ -171,7 +173,7 @@ export default async function AdminSitesPage({ searchParams }: Props) {
           <div className="flex gap-2">
             {page > 1 && (
               <Link
-                href={`/admin/sites?page=${page - 1}${searchParams.q ? `&q=${searchParams.q}` : ""}${searchParams.trade ? `&trade=${searchParams.trade}` : ""}`}
+                href={`/admin/businesses?page=${page - 1}${searchParams.q ? `&q=${searchParams.q}` : ""}${searchParams.trade ? `&trade=${searchParams.trade}` : ""}`}
                 className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
               >
                 Previous
@@ -179,7 +181,7 @@ export default async function AdminSitesPage({ searchParams }: Props) {
             )}
             {page < totalPages && (
               <Link
-                href={`/admin/sites?page=${page + 1}${searchParams.q ? `&q=${searchParams.q}` : ""}${searchParams.trade ? `&trade=${searchParams.trade}` : ""}`}
+                href={`/admin/businesses?page=${page + 1}${searchParams.q ? `&q=${searchParams.q}` : ""}${searchParams.trade ? `&trade=${searchParams.trade}` : ""}`}
                 className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
               >
                 Next

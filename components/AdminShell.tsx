@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { LayoutDashboard, List, FileText, Layers, ChevronDown, ExternalLink } from "lucide-react";
+import { LayoutDashboard, List, Users, FileText, Layers, ChevronDown, ExternalLink } from "lucide-react";
 
 const LANDING_PAGES = [
   {
@@ -83,7 +83,7 @@ export default function AdminShell({
   active,
 }: {
   children: React.ReactNode;
-  active: "dashboard" | "sites" | "templates" | "landing-pages";
+  active: "dashboard" | "sites" | "businesses" | "templates" | "landing-pages";
 }) {
   const [lpOpen, setLpOpen] = useState(false);
   const [tplOpen, setTplOpen] = useState(false);
@@ -127,6 +127,10 @@ export default function AdminShell({
               <Link href="/admin/sites" className={navLinkClass("sites")}>
                 <List className="h-3.5 w-3.5" />
                 Sites
+              </Link>
+              <Link href="/admin/businesses" className={navLinkClass("businesses")}>
+                <Users className="h-3.5 w-3.5" />
+                Businesses
               </Link>
 
               {/* Templates dropdown */}
