@@ -7,8 +7,14 @@ export default function Home() {
     <main className="min-h-screen bg-white">
       {/* Nav */}
       <nav className="px-6 pt-6">
-        <div className="mx-auto max-w-5xl">
+        <div className="mx-auto flex max-w-5xl items-center justify-between">
           <img src="/logo-dark.png" alt="handled." className="h-7 w-auto" />
+          <a
+            href="/contractor/login"
+            className="text-sm font-medium text-gray-500 hover:text-gray-900"
+          >
+            Sign in
+          </a>
         </div>
       </nav>
 

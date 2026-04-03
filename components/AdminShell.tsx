@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { LayoutDashboard, List, FileText, ChevronDown, ExternalLink } from "lucide-react";
+import { LayoutDashboard, List, FileText, Layers, ChevronDown, ExternalLink } from "lucide-react";
 
 const LANDING_PAGES = [
   {
@@ -19,20 +19,84 @@ const LANDING_PAGES = [
   },
 ];
 
+const TEMPLATES: { trade: string; items: { name: string; path: string | null }[] }[] = [
+  {
+    trade: "Solar",
+    items: [
+      { name: "Business Card", path: "/rooftop-power" },
+      { name: "Quiz Funnel", path: "/q/rooftop-power-quiz" },
+    ],
+  },
+  {
+    trade: "Electrical",
+    items: [
+      { name: "Business Card", path: "/thumm-electric" },
+      { name: "Quiz Funnel", path: null },
+    ],
+  },
+  {
+    trade: "Landscaping",
+    items: [
+      { name: "Business Card", path: "/bros-lawncare" },
+      { name: "Quiz Funnel", path: null },
+    ],
+  },
+  {
+    trade: "HVAC",
+    items: [
+      { name: "Business Card", path: null },
+      { name: "Quiz Funnel", path: null },
+    ],
+  },
+  {
+    trade: "Roofing",
+    items: [
+      { name: "Business Card", path: null },
+      { name: "Quiz Funnel", path: null },
+    ],
+  },
+  {
+    trade: "Plumbing",
+    items: [
+      { name: "Business Card", path: null },
+      { name: "Quiz Funnel", path: null },
+    ],
+  },
+  {
+    trade: "Painting",
+    items: [
+      { name: "Business Card", path: null },
+      { name: "Quiz Funnel", path: null },
+    ],
+  },
+  {
+    trade: "General Contractor",
+    items: [
+      { name: "Business Card", path: null },
+      { name: "Quiz Funnel", path: null },
+    ],
+  },
+];
+
 export default function AdminShell({
   children,
   active,
 }: {
   children: React.ReactNode;
-  active: "dashboard" | "sites" | "landing-pages";
+  active: "dashboard" | "sites" | "templates" | "landing-pages";
 }) {
   const [lpOpen, setLpOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [tplOpen, setTplOpen] = useState(false);
+  const lpRef = useRef<HTMLDivElement>(null);
+  const tplRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+      if (lpRef.current && !lpRef.current.contains(e.target as Node)) {
         setLpOpen(false);
+      }
+      if (tplRef.current && !tplRef.current.contains(e.target as Node)) {
+        setTplOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClick);
@@ -65,10 +129,55 @@ export default function AdminShell({
                 Sites
               </Link>
 
-              {/* Landing Pages dropdown */}
-              <div className="relative" ref={dropdownRef}>
+              {/* Templates dropdown */}
+              <div className="relative" ref={tplRef}>
                 <button
-                  onClick={() => setLpOpen(!lpOpen)}
+                  onClick={() => { setTplOpen(!tplOpen); setLpOpen(false); }}
+                  className={`${navLinkClass("templates")} cursor-pointer`}
+                >
+                  <Layers className="h-3.5 w-3.5" />
+                  Templates
+                  <ChevronDown className={`h-3 w-3 transition-transform ${tplOpen ? "rotate-180" : ""}`} />
+                </button>
+                {tplOpen && (
+                  <div className="absolute left-0 top-full z-50 mt-1 min-w-[240px] rounded-lg border border-gray-200 bg-white py-1 shadow-lg max-h-[70vh] overflow-y-auto">
+                    {TEMPLATES.map((group) => (
+                      <div key={group.trade}>
+                        <div className="px-3 pb-1 pt-2.5 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                          {group.trade}
+                        </div>
+                        {group.items.map((item) =>
+                          item.path ? (
+                            <a
+                              key={`${group.trade}-${item.name}`}
+                              href={item.path}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center justify-between px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
+                            >
+                              {item.name}
+                              <ExternalLink className="h-3 w-3 text-gray-400" />
+                            </a>
+                          ) : (
+                            <div
+                              key={`${group.trade}-${item.name}`}
+                              className="flex items-center justify-between px-3 py-1.5 text-xs text-gray-400"
+                            >
+                              {item.name}
+                              <span className="text-[10px]">No preview</span>
+                            </div>
+                          )
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Landing Pages dropdown */}
+              <div className="relative" ref={lpRef}>
+                <button
+                  onClick={() => { setLpOpen(!lpOpen); setTplOpen(false); }}
                   className={`${navLinkClass("landing-pages")} cursor-pointer`}
                 >
                   <FileText className="h-3.5 w-3.5" />
