@@ -240,7 +240,7 @@ export default function QuizClient({
           font-family: 'Inter', -apple-system, sans-serif;
           -webkit-font-smoothing: antialiased;
           padding: 24px 20px;
-          padding-top: 90px;
+          padding-top: 130px;
           background: var(--bg);
         }
 
@@ -262,15 +262,15 @@ export default function QuizClient({
           left: 0;
           right: 0;
           z-index: 100;
-          background: var(--bg);
+          background: #ffffff;
         }
         .qf-topbar-logo {
           display: flex;
           justify-content: center;
-          padding: 16px 20px 12px;
+          padding: 20px 20px 16px;
         }
         .qf-topbar-logo img {
-          height: 40px;
+          height: 80px;
           width: auto;
           max-width: 200px;
           object-fit: contain;
