@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ContractorSite } from "@/lib/supabase";
 import { TRADES, TRADE_SERVICES, US_STATES, Trade } from "@/lib/constants";
-import { ExternalLink, Trash2, Copy, Check } from "lucide-react";
+import { ExternalLink, Trash2, Copy, Check, Eye } from "lucide-react";
 import Link from "next/link";
 import { QRCodeSVG } from "qrcode.react";
 import ImageUpload from "./ImageUpload";
@@ -14,6 +14,7 @@ type Props = { site: ContractorSite };
 export default function AdminSiteEditor({ site }: Props) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
+  const [impersonating, setImpersonating] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [message, setMessage] = useState("");
@@ -132,6 +133,23 @@ export default function AdminSiteEditor({ site }: Props) {
     }
   };
 
+  const handleImpersonate = async () => {
+    setImpersonating(true);
+    try {
+      const res = await fetch("/api/admin/impersonate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ siteId: site.id }),
+      });
+      if (!res.ok) throw new Error("Failed to impersonate");
+      window.open("/contractor/edit", "_blank");
+    } catch {
+      setMessage("Error switching to contractor view");
+    } finally {
+      setImpersonating(false);
+    }
+  };
+
   const inputClass =
     "w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-gray-400 focus:outline-none";
   const labelClass = "mb-1 block text-xs font-medium text-gray-500";
@@ -158,15 +176,25 @@ export default function AdminSiteEditor({ site }: Props) {
             {new Date(site.created_at).toLocaleDateString()}
           </p>
         </div>
-        <a
-          href={`/${site.slug}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
-        >
-          View card
-          <ExternalLink className="h-3 w-3" />
-        </a>
+        <div className="flex gap-2">
+          <button
+            onClick={handleImpersonate}
+            disabled={impersonating}
+            className="flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+          >
+            <Eye className="h-3 w-3" />
+            {impersonating ? "Opening..." : "View as user"}
+          </button>
+          <a
+            href={`/${site.slug}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+          >
+            View card
+            <ExternalLink className="h-3 w-3" />
+          </a>
+        </div>
       </div>
 
       <div className="grid gap-8 lg:grid-cols-2">
