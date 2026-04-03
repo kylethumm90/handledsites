@@ -23,10 +23,12 @@ export async function POST(request: NextRequest) {
   try {
     // Find contractor by email
     const supabase = getSupabaseAdmin();
+    // Look up business card site via the unified view
     const { data: sites, error: dbError } = await supabase
-      .from("contractor_sites")
-      .select("id, email, business_name")
-      .ilike("email", normalizedEmail)
+      .from("sites_full")
+      .select("id, business_email, business_name")
+      .eq("type", "business_card")
+      .ilike("business_email", normalizedEmail)
       .limit(1);
 
     if (dbError) {
@@ -50,9 +52,9 @@ export async function POST(request: NextRequest) {
 
     // Create token and send email
     const token = await createMagicLinkToken(site.id, normalizedEmail);
-    console.log("[magic-link] Token created, sending email to:", site.email);
+    console.log("[magic-link] Token created, sending email to:", site.business_email);
 
-    await sendMagicLinkEmail(site.email!, token, site.business_name);
+    await sendMagicLinkEmail(site.business_email!, token, site.business_name);
     console.log("[magic-link] Email sent successfully");
   } catch (err) {
     console.error("[magic-link] Error:", err instanceof Error ? err.message : err);

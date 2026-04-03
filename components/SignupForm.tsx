@@ -164,10 +164,11 @@ export default function SignupForm() {
         logoUrl = urlData.publicUrl;
       }
 
-      const { error: insertError } = await supabase
-        .from("contractor_sites")
+      // Create business record
+      const { data: bizData, error: bizError } = await supabase
+        .from("businesses")
         .insert({
-          business_name: form.businessName,
+          name: form.businessName,
           owner_name: form.ownerName,
           phone: phoneDigits,
           email: form.email || null,
@@ -175,16 +176,30 @@ export default function SignupForm() {
           state: form.state,
           trade: form.trade,
           services: form.services,
+          logo_url: logoUrl,
+        })
+        .select("id")
+        .single();
+
+      if (bizError) {
+        throw new Error(bizError.message);
+      }
+
+      // Create business card site
+      const { error: siteError } = await supabase
+        .from("sites")
+        .insert({
+          business_id: bizData.id,
+          type: "business_card",
           slug,
           badge_licensed: form.badgeLicensed,
           badge_free_estimates: form.badgeFreeEstimates,
           badge_emergency: form.badgeEmergency,
           badge_family_owned: form.badgeFamilyOwned,
-          logo_url: logoUrl,
         });
 
-      if (insertError) {
-        throw new Error(insertError.message);
+      if (siteError) {
+        throw new Error(siteError.message);
       }
 
       setSuccessSlug(slug);

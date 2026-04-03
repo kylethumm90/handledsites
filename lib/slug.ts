@@ -72,7 +72,7 @@ export async function generateUniqueSlug(businessName: string): Promise<string> 
 
   // Check for collision
   const { data } = await getSupabaseClient()
-    .from("contractor_sites")
+    .from("sites")
     .select("slug")
     .like("slug", `${slug}%`);
 
@@ -100,24 +100,24 @@ export async function checkDuplicateContact(
   const supabase = getSupabaseClient();
 
   const { data: phoneMatch } = await supabase
-    .from("contractor_sites")
+    .from("businesses")
     .select("id")
     .eq("phone", phone)
     .limit(1);
 
   if (phoneMatch && phoneMatch.length > 0) {
-    return "A site with this phone number already exists.";
+    return "A business with this phone number already exists.";
   }
 
   if (email) {
     const { data: emailMatch } = await supabase
-      .from("contractor_sites")
+      .from("businesses")
       .select("id")
       .ilike("email", email)
       .limit(1);
 
     if (emailMatch && emailMatch.length > 0) {
-      return "A site with this email address already exists.";
+      return "A business with this email address already exists.";
     }
   }
 

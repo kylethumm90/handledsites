@@ -11,7 +11,7 @@ async function getStats() {
   const supabase = getSupabaseAdmin();
 
   const { data: all, count: totalCount } = await supabase
-    .from("contractor_sites")
+    .from("sites_full")
     .select("*", { count: "exact" });
 
   const sites = all || [];

@@ -18,7 +18,7 @@ async function generateUniqueSlugServer(businessName: string): Promise<string> {
 
   const supabase = getSupabaseAdmin();
   const { data } = await supabase
-    .from("contractor_sites")
+    .from("sites")
     .select("slug")
     .like("slug", `${slug}%`);
 
@@ -51,33 +51,50 @@ export async function POST(request: NextRequest) {
     const slug = await generateUniqueSlugServer(business_name);
     const supabase = getSupabaseAdmin();
 
-    const { data, error } = await supabase
-      .from("contractor_sites")
+    const cleanPhone = phone.replace(/\D/g, "");
+
+    // Create business first
+    const { data: biz, error: bizError } = await supabase
+      .from("businesses")
       .insert({
-        business_name,
+        name: business_name,
         owner_name,
-        phone: phone.replace(/\D/g, ""),
+        phone: cleanPhone,
         email: email || null,
         city,
         state,
         trade,
-        slug,
         services: [],
       })
       .select("id")
       .single();
 
-    if (error) {
-      if (error.message.includes("idx_contractor_sites_phone")) {
-        return NextResponse.json({ error: "A site with this phone number already exists" }, { status: 409 });
+    if (bizError) {
+      if (bizError.message.includes("idx_businesses_phone")) {
+        return NextResponse.json({ error: "A business with this phone number already exists" }, { status: 409 });
       }
-      if (error.message.includes("idx_contractor_sites_email")) {
-        return NextResponse.json({ error: "A site with this email already exists" }, { status: 409 });
+      if (bizError.message.includes("idx_businesses_email")) {
+        return NextResponse.json({ error: "A business with this email already exists" }, { status: 409 });
       }
-      return NextResponse.json({ error: error.message }, { status: 400 });
+      return NextResponse.json({ error: bizError.message }, { status: 400 });
     }
 
-    return NextResponse.json({ id: data.id, slug });
+    // Create business card site
+    const { data: site, error: siteError } = await supabase
+      .from("sites")
+      .insert({
+        business_id: biz.id,
+        type: "business_card",
+        slug,
+      })
+      .select("id")
+      .single();
+
+    if (siteError) {
+      return NextResponse.json({ error: siteError.message }, { status: 400 });
+    }
+
+    return NextResponse.json({ id: site.id, slug });
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Failed to create site" },

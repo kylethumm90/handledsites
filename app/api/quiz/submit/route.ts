@@ -3,7 +3,7 @@ import { getSupabaseAdmin } from "@/lib/supabase";
 
 export async function POST(request: NextRequest) {
   let body: {
-    funnel_id: string;
+    site_id: string;
     name: string;
     phone: string;
     email: string;
@@ -16,9 +16,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 
-  const { funnel_id, name, phone, email, answers } = body;
+  const { site_id, name, phone, email, answers } = body;
 
-  if (!funnel_id || !name || !phone) {
+  if (!site_id || !name || !phone) {
     return NextResponse.json(
       { error: "Name and phone are required" },
       { status: 400 }
@@ -27,8 +27,21 @@ export async function POST(request: NextRequest) {
 
   const supabase = getSupabaseAdmin();
 
-  const { error } = await supabase.from("quiz_leads").insert({
-    funnel_id,
+  // Look up business_id from the site
+  const { data: site } = await supabase
+    .from("sites")
+    .select("business_id")
+    .eq("id", site_id)
+    .single();
+
+  if (!site) {
+    return NextResponse.json({ error: "Site not found" }, { status: 404 });
+  }
+
+  const { error } = await supabase.from("leads").insert({
+    business_id: site.business_id,
+    site_id,
+    source: "quiz_funnel",
     name,
     phone,
     email: email || null,

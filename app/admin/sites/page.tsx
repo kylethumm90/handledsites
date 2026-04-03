@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
-import { getSupabaseAdmin, ContractorSite } from "@/lib/supabase";
+import { getSupabaseAdmin, SiteFull } from "@/lib/supabase";
 import { TRADES } from "@/lib/constants";
 import AdminShell from "@/components/AdminShell";
 import Link from "next/link";
@@ -21,7 +21,7 @@ async function getSites(searchParams: Props["searchParams"]) {
   const offset = (page - 1) * PAGE_SIZE;
 
   let query = supabase
-    .from("contractor_sites")
+    .from("sites_full")
     .select("*", { count: "exact" })
     .order("created_at", { ascending: false })
     .range(offset, offset + PAGE_SIZE - 1);
@@ -35,7 +35,7 @@ async function getSites(searchParams: Props["searchParams"]) {
 
   const { data, count } = await query;
   return {
-    sites: (data || []) as ContractorSite[],
+    sites: (data || []) as SiteFull[],
     total: count || 0,
     page,
     totalPages: Math.ceil((count || 0) / PAGE_SIZE),

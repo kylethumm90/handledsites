@@ -18,19 +18,20 @@ export default async function QuizFunnelPage({
 }) {
   const supabase = getSupabaseAdmin();
 
-  const { data: funnel } = await supabase
-    .from("quiz_funnels")
+  const { data: site } = await supabase
+    .from("sites_full")
     .select("*")
     .eq("slug", params.slug)
+    .eq("type", "quiz_funnel")
     .eq("is_active", true)
     .single();
 
-  if (!funnel) notFound();
+  if (!site) notFound();
 
   const { data: template } = await supabase
     .from("quiz_templates")
     .select("questions")
-    .eq("trade", funnel.trade)
+    .eq("trade", site.trade)
     .single();
 
   const questions: QuizQuestion[] = template?.questions || [];
@@ -38,16 +39,16 @@ export default async function QuizFunnelPage({
   return (
     <QuizClient
       funnel={{
-        id: funnel.id,
-        businessName: funnel.business_name,
-        trade: funnel.trade,
-        phone: funnel.phone,
-        city: funnel.city,
-        state: funnel.state,
-        logoUrl: funnel.logo_url,
-        headline: funnel.headline,
-        ctaText: funnel.cta_text || "Get My Free Quote",
-        accentColor: funnel.accent_color || "#6366f1",
+        id: site.id,
+        businessName: site.business_name,
+        trade: site.trade,
+        phone: site.business_phone,
+        city: site.city,
+        state: site.state,
+        logoUrl: site.logo_url,
+        headline: site.headline,
+        ctaText: site.cta_text || "Get My Free Quote",
+        accentColor: site.accent_color || "#6366f1",
       }}
       questions={questions}
     />

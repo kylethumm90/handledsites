@@ -2,24 +2,23 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import { validateSessionFromRequest } from "@/lib/contractor-auth";
 
-const ALLOWED_FIELDS = new Set([
-  "business_name",
-  "owner_name",
-  "phone",
-  "email",
-  "city",
-  "state",
-  "trade",
-  "services",
-  "banner_message",
-  "hours_start",
-  "hours_end",
-  "badge_licensed",
-  "badge_free_estimates",
-  "badge_emergency",
-  "badge_family_owned",
-  "logo_url",
+const BUSINESS_FIELDS = new Set([
+  "business_name", "owner_name", "phone", "email", "city", "state", "trade", "services", "logo_url",
 ]);
+
+const SITE_FIELDS = new Set([
+  "banner_message", "hours_start", "hours_end",
+  "badge_licensed", "badge_free_estimates", "badge_emergency", "badge_family_owned",
+]);
+
+const ALLOWED_FIELDS = new Set(
+  Array.from(BUSINESS_FIELDS).concat(Array.from(SITE_FIELDS))
+);
+
+// Map old field names to new table/field
+const FIELD_MAP: Record<string, { table: "business" | "site"; field: string }> = {
+  business_name: { table: "business", field: "name" },
+};
 
 export async function PUT(
   request: NextRequest,
@@ -36,27 +35,54 @@ export async function PUT(
   }
 
   const body = await request.json();
+  const supabase = getSupabaseAdmin();
 
-  // Filter to allowed fields only
-  const updates: Record<string, unknown> = {};
+  // Look up business_id
+  const { data: site } = await supabase
+    .from("sites")
+    .select("business_id")
+    .eq("id", params.id)
+    .single();
+
+  if (!site) {
+    return NextResponse.json({ error: "Site not found" }, { status: 404 });
+  }
+
+  const bizUpdates: Record<string, unknown> = {};
+  const siteUpdates: Record<string, unknown> = {};
+
   for (const [key, value] of Object.entries(body)) {
-    if (ALLOWED_FIELDS.has(key)) {
-      updates[key] = value;
+    if (!ALLOWED_FIELDS.has(key)) continue;
+
+    if (FIELD_MAP[key]) {
+      const mapped = FIELD_MAP[key];
+      if (mapped.table === "business") bizUpdates[mapped.field] = value;
+      else siteUpdates[mapped.field] = value;
+    } else if (BUSINESS_FIELDS.has(key)) {
+      bizUpdates[key] = value;
+    } else if (SITE_FIELDS.has(key)) {
+      siteUpdates[key] = value;
     }
   }
 
-  if (Object.keys(updates).length === 0) {
+  if (Object.keys(bizUpdates).length === 0 && Object.keys(siteUpdates).length === 0) {
     return NextResponse.json({ error: "No valid fields" }, { status: 400 });
   }
 
-  const supabase = getSupabaseAdmin();
-  const { error } = await supabase
-    .from("contractor_sites")
-    .update(updates)
-    .eq("id", params.id);
+  if (Object.keys(bizUpdates).length > 0) {
+    const { error } = await supabase
+      .from("businesses")
+      .update(bizUpdates)
+      .eq("id", site.business_id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  }
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
+  if (Object.keys(siteUpdates).length > 0) {
+    const { error } = await supabase
+      .from("sites")
+      .update(siteUpdates)
+      .eq("id", params.id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
   return NextResponse.json({ success: true });

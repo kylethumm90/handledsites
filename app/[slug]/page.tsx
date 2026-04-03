@@ -11,13 +11,40 @@ type Props = {
 
 async function getContractor(slug: string): Promise<ContractorSite | null> {
   const { data, error } = await getSupabaseAdmin()
-    .from("contractor_sites")
+    .from("sites_full")
     .select("*")
     .eq("slug", slug)
+    .eq("type", "business_card")
     .single();
 
   if (error || !data) return null;
-  return data as ContractorSite;
+
+  // Map sites_full view to ContractorSite shape for backward compatibility
+  return {
+    id: data.id,
+    business_name: data.business_name,
+    owner_name: data.owner_name,
+    phone: data.business_phone,
+    email: data.business_email,
+    city: data.city,
+    state: data.state,
+    trade: data.trade,
+    services: data.services,
+    slug: data.slug,
+    badge_licensed: data.badge_licensed ?? false,
+    badge_free_estimates: data.badge_free_estimates ?? false,
+    badge_emergency: data.badge_emergency ?? false,
+    badge_family_owned: data.badge_family_owned ?? false,
+    logo_url: data.logo_url,
+    cover_image_url: data.cover_image_url,
+    qr_redirect_url: data.qr_redirect_url,
+    banner_message: data.banner_message ?? "",
+    hours_start: data.hours_start ?? 7,
+    hours_end: data.hours_end ?? 19,
+    review_count: data.review_count,
+    avg_rating: data.avg_rating,
+    created_at: data.created_at,
+  } as ContractorSite;
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {

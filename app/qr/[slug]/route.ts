@@ -7,7 +7,7 @@ export async function GET(
 ) {
   const supabase = getSupabaseAdmin();
   const { data, error } = await supabase
-    .from("contractor_sites")
+    .from("sites")
     .select("slug, qr_redirect_url")
     .eq("slug", params.slug)
     .single();

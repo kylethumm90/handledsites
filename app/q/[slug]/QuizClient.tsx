@@ -64,7 +64,7 @@ export default function QuizClient({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          funnel_id: funnel.id,
+          site_id: funnel.id,
           name: contactName.trim(),
           phone: contactPhone.trim(),
           email: contactEmail.trim(),
