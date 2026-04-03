@@ -338,6 +338,9 @@ export default function ContractorSiteEditor({ site }: Props) {
         </div>
       </div>
 
+      {/* QR Code */}
+      <QRSection slug={site.slug} />
+
       {/* Integrations */}
       <div className="mt-8 rounded-xl border border-gray-200 bg-white p-5">
         <h2 className="mb-4 text-sm font-semibold text-gray-900">
@@ -379,9 +382,6 @@ export default function ContractorSiteEditor({ site }: Props) {
           </div>
         </div>
       </div>
-
-      {/* QR Code */}
-      <QRSection slug={site.slug} />
     </div>
   );
 }

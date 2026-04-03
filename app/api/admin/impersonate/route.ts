@@ -13,16 +13,24 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Missing siteId" }, { status: 400 });
   }
 
-  const sessionToken = await createSession(siteId);
+  try {
+    const sessionToken = await createSession(siteId);
 
-  const response = NextResponse.json({ success: true });
-  response.cookies.set(CONTRACTOR_COOKIE_NAME, sessionToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: 60 * 60 * 24,
-  });
+    const response = NextResponse.json({ success: true });
+    response.cookies.set(CONTRACTOR_COOKIE_NAME, sessionToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24,
+    });
 
-  return response;
+    return response;
+  } catch (err) {
+    console.error("[impersonate] Error:", err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Failed to create session" },
+      { status: 500 }
+    );
+  }
 }

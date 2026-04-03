@@ -447,6 +447,13 @@ export default function AdminSiteEditor({ site }: Props) {
         </div>
       </div>
 
+      {/* QR Code */}
+      <AdminQRSection
+        slug={site.slug}
+        qrRedirectUrl={qrRedirectUrl}
+        onRedirectChange={setQrRedirectUrl}
+      />
+
       {/* Integrations */}
       <div className="mt-8 rounded-xl border border-gray-200 bg-white p-5">
         <h2 className="mb-4 text-sm font-semibold text-gray-900">
@@ -488,13 +495,6 @@ export default function AdminSiteEditor({ site }: Props) {
           </div>
         </div>
       </div>
-
-      {/* QR Code */}
-      <AdminQRSection
-        slug={site.slug}
-        qrRedirectUrl={qrRedirectUrl}
-        onRedirectChange={setQrRedirectUrl}
-      />
 
       {/* Delete zone */}
       <div className="mt-8 rounded-xl border border-red-100 bg-red-50 p-5">
