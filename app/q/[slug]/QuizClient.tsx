@@ -24,6 +24,16 @@ type FunnelData = {
   gtmId: string | null;
   metaPixelId: string | null;
   zapierWebhookUrl: string | null;
+  // Configurable copy (with sensible defaults)
+  dqHeadline?: string;
+  dqBody?: string;
+  formHeadline?: string;
+  formSubtext?: string;
+  submitButtonText?: string;
+  finePrint?: string;
+  thankYouHeadline?: string;
+  thankYouBody?: string;
+  buttonTextColor?: string;
 };
 
 declare global {
@@ -54,9 +64,20 @@ export default function QuizClient({
   const [error, setError] = useState("");
 
   const accent = funnel.accentColor;
+  const btnColor = funnel.buttonTextColor || "#ffffff";
   const isContactStep = step === questions.length;
   const currentQuestion = step < questions.length ? questions[step] : null;
   const progress = ((step + (submitted ? 1 : 0)) / totalSteps) * 100;
+
+  // Configurable copy with defaults
+  const dqHeadline = funnel.dqHeadline || "We work best with homeowners.";
+  const dqBody = funnel.dqBody || "Feel free to reach out directly if you have questions.";
+  const formHeadline = funnel.formHeadline || funnel.headline || "You qualify. Let\u2019s get you a free quote.";
+  const formSubtext = funnel.formSubtext || "Fill in a few details and we\u2019ll get back to you fast.";
+  const submitText = funnel.submitButtonText || funnel.ctaText;
+  const finePrint = funnel.finePrint || "No commitment. No spam.";
+  const thankYouHeadline = funnel.thankYouHeadline || "You\u2019re on the list.";
+  const thankYouBody = funnel.thankYouBody || `A member of our team will be in touch shortly.`;
 
   function selectOption(questionId: string, option: string) {
     setAnswers((prev) => ({ ...prev, [questionId]: option }));
@@ -96,6 +117,7 @@ export default function QuizClient({
     setError("");
 
     const leadData = {
+      trade: funnel.trade.toLowerCase().replace(/\s+/g, "_"),
       firstName: firstName.trim(),
       lastName: lastName.trim(),
       phone: phone.trim(),
@@ -146,6 +168,7 @@ export default function QuizClient({
       window.dataLayer = window.dataLayer || [];
       window.dataLayer.push({
         event: "quiz_lead_submitted",
+        trade: funnel.trade.toLowerCase().replace(/\s+/g, "_"),
         answers,
       });
     } catch (err) {
@@ -424,7 +447,7 @@ export default function QuizClient({
           font-family: 'Inter', sans-serif;
           font-size: 17px;
           font-weight: 700;
-          color: var(--heading);
+          color: ${btnColor};
           background: var(--accent);
           cursor: pointer;
           transition: opacity 0.2s, transform 0.15s;
@@ -554,8 +577,8 @@ export default function QuizClient({
                   <path d="M20 6 9 17l-5-5" />
                 </svg>
               </div>
-              <h1>You&apos;re all set.</h1>
-              <p>A solar advisor will reach out within the hour.</p>
+              <h1>{thankYouHeadline}</h1>
+              <p>{thankYouBody}</p>
 
               {answerSummary.length > 0 && (
                 <div className="qf-summary">
@@ -574,9 +597,9 @@ export default function QuizClient({
           /* ===== Disqualification ===== */
           <div className="qf-card qf-animate" key="dq">
             <div className="qf-dq">
-              <div className="qf-dq-icon">&#9728;</div>
-              <h2>Solar works best for homeowners.</h2>
-              <p>Check back when you&apos;re ready &mdash; we&apos;d love to help you go solar.</p>
+              <div className="qf-dq-icon">&#128274;</div>
+              <h2>{dqHeadline}</h2>
+              <p>{dqBody}</p>
               <button className="qf-back" onClick={goBack} type="button">
                 &larr; Go back
               </button>
@@ -586,10 +609,10 @@ export default function QuizClient({
           /* ===== Lead Capture Form ===== */
           <div className="qf-card qf-animate" key="contact">
             <h2 className="qf-form-heading">
-              You qualify. Let&apos;s build your free savings estimate.
+              {formHeadline}
             </h2>
             <p className="qf-form-sub">
-              Fill in a few details and we&apos;ll get back to you fast.
+              {formSubtext}
             </p>
 
             <div className="qf-row">
@@ -648,11 +671,11 @@ export default function QuizClient({
               onClick={handleSubmit}
               type="button"
             >
-              {submitting ? "Sending..." : "See My Savings \u2192"}
+              {submitting ? "Sending..." : submitText}
             </button>
 
             {error && <p className="qf-error">{error}</p>}
-            <p className="qf-fine">No pressure. No obligation. Takes 2 minutes.</p>
+            <p className="qf-fine">{finePrint}</p>
 
             <button className="qf-back" onClick={goBack} type="button">
               &larr; Back
