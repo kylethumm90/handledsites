@@ -1,19 +1,23 @@
-import { redirect, notFound } from "next/navigation";
-import { isAdminAuthenticated } from "@/lib/admin-auth";
+import { redirect } from "next/navigation";
+import { validateSessionFromCookie } from "@/lib/contractor-auth";
 import { getSupabaseAdmin, ContractorSite } from "@/lib/supabase";
-import AdminShell from "@/components/AdminShell";
-import AdminSiteEditor from "@/components/AdminSiteEditor";
+import ContractorSiteEditor from "@/components/ContractorSiteEditor";
 
 export const dynamic = "force-dynamic";
 
-async function getSite(id: string): Promise<ContractorSite | null> {
+export default async function ContractorEditPage() {
+  const siteId = await validateSessionFromCookie();
+  if (!siteId) redirect("/contractor/login");
+
   const { data, error } = await getSupabaseAdmin()
     .from("sites_full")
     .select("*")
-    .eq("id", id)
+    .eq("id", siteId)
     .single();
-  if (error || !data) return null;
-  return {
+
+  if (error || !data) redirect("/contractor/login");
+
+  const site = {
     id: data.id,
     business_id: data.business_id,
     type: data.type,
@@ -43,21 +47,6 @@ async function getSite(id: string): Promise<ContractorSite | null> {
     meta_pixel_id: data.meta_pixel_id ?? null,
     zapier_webhook_url: data.zapier_webhook_url ?? null,
   } as ContractorSite;
-}
 
-export default async function AdminSiteDetailPage({
-  params,
-}: {
-  params: { id: string };
-}) {
-  if (!isAdminAuthenticated()) redirect("/admin/login");
-
-  const site = await getSite(params.id);
-  if (!site) notFound();
-
-  return (
-    <AdminShell active="sites">
-      <AdminSiteEditor site={site} />
-    </AdminShell>
-  );
+  return <ContractorSiteEditor site={site} />;
 }

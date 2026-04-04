@@ -2,10 +2,9 @@
 
 import { useState } from "react";
 import type { ContractorSite } from "@/lib/supabase";
-import { TRADES, TRADE_SERVICES, US_STATES, Trade } from "@/lib/constants";
 import { ExternalLink, Copy, Check } from "lucide-react";
+import Link from "next/link";
 import { QRCodeSVG } from "qrcode.react";
-import ImageUpload from "./ImageUpload";
 
 type Props = { site: ContractorSite };
 
@@ -13,19 +12,7 @@ export default function ContractorSiteEditor({ site }: Props) {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
 
-  const [logoUrl, setLogoUrl] = useState(site.logo_url);
-
-  // Contractor info
-  const [businessName, setBusinessName] = useState(site.business_name);
-  const [ownerName, setOwnerName] = useState(site.owner_name);
-  const [phone, setPhone] = useState(site.phone);
-  const [email, setEmail] = useState(site.email ?? "");
-  const [city, setCity] = useState(site.city);
-  const [state, setState] = useState(site.state);
-  const [trade, setTrade] = useState(site.trade);
-  const [services, setServices] = useState<string[]>(site.services);
-
-  // Settings
+  // Site-specific settings
   const [bannerMessage, setBannerMessage] = useState(site.banner_message);
   const [hoursStart, setHoursStart] = useState(site.hours_start);
   const [hoursEnd, setHoursEnd] = useState(site.hours_end);
@@ -34,30 +21,9 @@ export default function ContractorSiteEditor({ site }: Props) {
   const [badgeEmergency, setBadgeEmergency] = useState(site.badge_emergency);
   const [badgeFamilyOwned, setBadgeFamilyOwned] = useState(site.badge_family_owned);
 
-  const availableServices = trade
-    ? TRADE_SERVICES[trade as Trade] || []
-    : [];
-
-  const handleTradeChange = (newTrade: string) => {
-    setTrade(newTrade);
-    setServices([]);
-  };
-
-  const handleServiceToggle = (service: string) => {
-    setServices((prev) =>
-      prev.includes(service)
-        ? prev.filter((s) => s !== service)
-        : [...prev, service]
-    );
-  };
-
   const formatPhoneDisplay = (p: string) => {
     if (p.length === 10) return `(${p.slice(0, 3)}) ${p.slice(3, 6)}-${p.slice(6)}`;
     return p;
-  };
-
-  const handlePhoneChange = (value: string) => {
-    setPhone(value.replace(/\D/g, "").slice(0, 10));
   };
 
   const handleSave = async () => {
@@ -68,15 +34,6 @@ export default function ContractorSiteEditor({ site }: Props) {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          business_name: businessName,
-          owner_name: ownerName,
-          phone,
-          email: email || null,
-          city,
-          state,
-          trade,
-          services,
-          logo_url: logoUrl,
           banner_message: bannerMessage,
           hours_start: hoursStart,
           hours_end: hoursEnd,
@@ -105,133 +62,85 @@ export default function ContractorSiteEditor({ site }: Props) {
       <div className="mb-6 flex items-start justify-between">
         <div>
           <h1 className="text-xl font-semibold text-gray-900">
-            Edit Your Business Card
+            Edit Your Site
           </h1>
           <p className="mt-0.5 text-xs text-gray-400">
             Changes go live immediately after saving.
           </p>
         </div>
         <a
-          href={`/${site.slug}`}
+          href={site.type === "quiz_funnel" ? `/q/${site.slug}` : `/${site.slug}`}
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
         >
-          View card
+          View site
           <ExternalLink className="h-3 w-3" />
         </a>
       </div>
 
       <div className="grid gap-8 lg:grid-cols-2">
-        {/* Contractor info */}
+        {/* Business info — read-only summary */}
         <div className="rounded-xl border border-gray-200 bg-white p-5">
-          <h2 className="mb-4 text-sm font-semibold text-gray-900">
-            Business info
-          </h2>
-          <div className="space-y-4">
-            <ImageUpload
-              currentUrl={logoUrl}
-              storagePath={`logos/${site.slug}`}
-              onUploaded={setLogoUrl}
-              shape="circle"
-              label="Profile picture"
-            />
-            <div>
-              <label className={labelClass}>Business name</label>
-              <input
-                type="text"
-                value={businessName}
-                onChange={(e) => setBusinessName(e.target.value)}
-                className={inputClass}
-              />
-            </div>
-            <div>
-              <label className={labelClass}>Owner name</label>
-              <input
-                type="text"
-                value={ownerName}
-                onChange={(e) => setOwnerName(e.target.value)}
-                className={inputClass}
-              />
-            </div>
-            <div>
-              <label className={labelClass}>Phone</label>
-              <input
-                type="tel"
-                value={formatPhoneDisplay(phone)}
-                onChange={(e) => handlePhoneChange(e.target.value)}
-                className={inputClass}
-              />
-            </div>
-            <div>
-              <label className={labelClass}>Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className={inputClass}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className={labelClass}>City</label>
-                <input
-                  type="text"
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  className={inputClass}
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-gray-900">
+              Business info
+            </h2>
+            <Link
+              href="/contractor/business"
+              className="flex items-center gap-1 rounded-md bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-200"
+            >
+              Edit business
+              <ExternalLink className="h-3 w-3" />
+            </Link>
+          </div>
+          <div className="space-y-3">
+            {site.logo_url && (
+              <div className="flex items-center gap-3">
+                <img
+                  src={site.logo_url}
+                  alt={site.business_name}
+                  className="h-10 w-10 rounded-full object-cover"
                 />
               </div>
+            )}
+            <div className="grid grid-cols-2 gap-x-4 gap-y-2">
               <div>
-                <label className={labelClass}>State</label>
-                <select
-                  value={state}
-                  onChange={(e) => setState(e.target.value)}
-                  className={inputClass}
-                >
-                  {US_STATES.map((s) => (
-                    <option key={s.value} value={s.value}>
-                      {s.label}
-                    </option>
-                  ))}
-                </select>
+                <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400">Business</p>
+                <p className="text-sm text-gray-900">{site.business_name}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400">Owner</p>
+                <p className="text-sm text-gray-900">{site.owner_name}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400">Phone</p>
+                <p className="text-sm text-gray-900">{formatPhoneDisplay(site.phone)}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400">Email</p>
+                <p className="text-sm text-gray-900">{site.email || <span className="text-gray-300">&mdash;</span>}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400">Trade</p>
+                <p className="text-sm text-gray-900">{site.trade}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400">Location</p>
+                <p className="text-sm text-gray-900">{site.city}, {site.state}</p>
               </div>
             </div>
-            <div>
-              <label className={labelClass}>Trade</label>
-              <select
-                value={trade}
-                onChange={(e) => handleTradeChange(e.target.value)}
-                className={inputClass}
-              >
-                {TRADES.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {availableServices.length > 0 && (
+            {site.services.length > 0 && (
               <div>
-                <label className={labelClass}>Services</label>
-                <div className="grid grid-cols-2 gap-1.5">
-                  {availableServices.map((service) => (
-                    <label
-                      key={service}
-                      className={`flex cursor-pointer items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs transition-colors ${
-                        services.includes(service)
-                          ? "border-gray-900 bg-gray-900 text-white"
-                          : "border-gray-200 text-gray-700 hover:border-gray-300"
-                      }`}
+                <p className="mb-1 text-[10px] font-medium uppercase tracking-wider text-gray-400">Services</p>
+                <div className="flex flex-wrap gap-1">
+                  {site.services.map((s) => (
+                    <span
+                      key={s}
+                      className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] text-gray-600"
                     >
-                      <input
-                        type="checkbox"
-                        checked={services.includes(service)}
-                        onChange={() => handleServiceToggle(service)}
-                        className="sr-only"
-                      />
-                      {service}
-                    </label>
+                      {s}
+                    </span>
                   ))}
                 </div>
               </div>
@@ -239,10 +148,10 @@ export default function ContractorSiteEditor({ site }: Props) {
           </div>
         </div>
 
-        {/* Settings */}
+        {/* Site settings — editable */}
         <div className="rounded-xl border border-gray-200 bg-white p-5">
           <h2 className="mb-4 text-sm font-semibold text-gray-900">
-            Card settings
+            Site settings
           </h2>
           <div className="space-y-4">
             <div>
@@ -324,7 +233,7 @@ export default function ContractorSiteEditor({ site }: Props) {
               disabled={saving}
               className="w-full rounded-lg bg-gray-900 py-2.5 text-sm font-semibold text-white hover:bg-gray-800 disabled:opacity-50"
             >
-              {saving ? "Saving..." : "Save changes"}
+              {saving ? "Saving..." : "Save site settings"}
             </button>
           </div>
         </div>

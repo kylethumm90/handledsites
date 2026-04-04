@@ -22,6 +22,8 @@ export function getSupabaseAdmin(): SupabaseClient {
 
 export type ContractorSite = {
   id: string;
+  business_id: string;
+  type: "business_card" | "quiz_funnel";
   business_name: string;
   owner_name: string;
   phone: string;
@@ -43,5 +45,77 @@ export type ContractorSite = {
   hours_end: number;
   review_count: number | null;
   avg_rating: number | null;
+  created_at: string;
+  // Tracking & integrations (business-level)
+  gtm_id: string | null;
+  meta_pixel_id: string | null;
+  zapier_webhook_url: string | null;
+};
+
+// New unified types
+
+export type Business = {
+  id: string;
+  name: string;
+  owner_name: string;
+  phone: string;
+  email: string | null;
+  city: string;
+  state: string;
+  trade: string;
+  services: string[];
+  logo_url: string | null;
+  gtm_id: string | null;
+  meta_pixel_id: string | null;
+  zapier_webhook_url: string | null;
+  created_at: string;
+};
+
+export type Site = {
+  id: string;
+  business_id: string;
+  type: "business_card" | "quiz_funnel";
+  slug: string;
+  is_active: boolean;
+  created_at: string;
+  // Business card fields
+  cover_image_url: string | null;
+  qr_redirect_url: string | null;
+  banner_message: string | null;
+  hours_start: number | null;
+  hours_end: number | null;
+  badge_licensed: boolean | null;
+  badge_free_estimates: boolean | null;
+  badge_emergency: boolean | null;
+  badge_family_owned: boolean | null;
+  review_count: number | null;
+  avg_rating: number | null;
+  // Quiz funnel fields
+  headline: string | null;
+  cta_text: string | null;
+  accent_color: string | null;
+};
+
+export type SiteFull = Site & {
+  business_name: string;
+  owner_name: string;
+  business_phone: string;
+  business_email: string | null;
+  city: string;
+  state: string;
+  trade: string;
+  services: string[];
+  logo_url: string | null;
+};
+
+export type Lead = {
+  id: string;
+  business_id: string;
+  site_id: string | null;
+  source: string;
+  name: string;
+  phone: string;
+  email: string | null;
+  answers: Record<string, string> | null;
   created_at: string;
 };

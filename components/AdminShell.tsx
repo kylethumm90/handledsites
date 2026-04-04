@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { LayoutDashboard, List, FileText, ChevronDown, ExternalLink } from "lucide-react";
+import { LayoutDashboard, List, Users, FileText, ChevronDown, ExternalLink } from "lucide-react";
 
 const LANDING_PAGES = [
   {
@@ -24,7 +24,7 @@ export default function AdminShell({
   active,
 }: {
   children: React.ReactNode;
-  active: "dashboard" | "sites" | "landing-pages";
+  active: "dashboard" | "sites" | "businesses" | "landing-pages";
 }) {
   const [lpOpen, setLpOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -63,6 +63,10 @@ export default function AdminShell({
               <Link href="/admin/sites" className={navLinkClass("sites")}>
                 <List className="h-3.5 w-3.5" />
                 Sites
+              </Link>
+              <Link href="/admin/businesses" className={navLinkClass("businesses")}>
+                <Users className="h-3.5 w-3.5" />
+                Businesses
               </Link>
 
               {/* Landing Pages dropdown */}
