@@ -31,7 +31,7 @@ const TEMPLATES: { trade: string; items: { name: string; path: string | null }[]
     trade: "Electrical",
     items: [
       { name: "Business Card", path: "/thumm-electric" },
-      { name: "Quiz Funnel", path: null },
+      { name: "Quiz Funnel", path: "/q/thumm-electric" },
     ],
   },
   {
@@ -44,36 +44,36 @@ const TEMPLATES: { trade: string; items: { name: string; path: string | null }[]
   {
     trade: "HVAC",
     items: [
-      { name: "Business Card", path: null },
-      { name: "Quiz Funnel", path: null },
+      { name: "Business Card", path: "/summit-air-solutions" },
+      { name: "Quiz Funnel", path: "/q/summit-air-solutions" },
     ],
   },
   {
     trade: "Roofing",
     items: [
-      { name: "Business Card", path: null },
-      { name: "Quiz Funnel", path: null },
+      { name: "Business Card", path: "/apex-roofing" },
+      { name: "Quiz Funnel", path: "/q/apex-roofing" },
     ],
   },
   {
     trade: "Plumbing",
     items: [
-      { name: "Business Card", path: null },
-      { name: "Quiz Funnel", path: null },
+      { name: "Business Card", path: "/flowright-plumbing" },
+      { name: "Quiz Funnel", path: "/q/flowright-plumbing" },
     ],
   },
   {
     trade: "Painting",
     items: [
-      { name: "Business Card", path: null },
-      { name: "Quiz Funnel", path: null },
+      { name: "Business Card", path: "/colorcraft-painters" },
+      { name: "Quiz Funnel", path: "/q/colorcraft-painters" },
     ],
   },
   {
     trade: "General Contractor",
     items: [
-      { name: "Business Card", path: null },
-      { name: "Quiz Funnel", path: null },
+      { name: "Business Card", path: "/buildright-construction" },
+      { name: "Quiz Funnel", path: "/q/buildright-construction" },
     ],
   },
 ];
