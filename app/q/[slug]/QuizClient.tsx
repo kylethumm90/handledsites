@@ -275,6 +275,12 @@ export default function QuizClient({
           max-width: 200px;
           object-fit: contain;
         }
+        .qf-topbar-name {
+          font-size: 22px;
+          font-weight: 800;
+          color: var(--heading);
+          letter-spacing: -0.5px;
+        }
         .qf-progress {
           height: 4px;
           background: var(--border);
@@ -592,11 +598,13 @@ export default function QuizClient({
 
       {/* Fixed top bar: logo + progress */}
       <div className="qf-topbar">
-        {funnel.logoUrl && (
-          <div className="qf-topbar-logo">
+        <div className="qf-topbar-logo">
+          {funnel.logoUrl ? (
             <img src={funnel.logoUrl} alt={funnel.businessName} />
-          </div>
-        )}
+          ) : (
+            <span className="qf-topbar-name">{funnel.businessName}</span>
+          )}
+        </div>
         <div className="qf-progress">
           <div className="qf-progress-fill" style={{ width: `${progress}%` }} />
         </div>
