@@ -6,6 +6,7 @@ import LogoutButton from "@/components/LogoutButton";
 
 const TABS = [
   { label: "Dashboard", href: "/contractor/dashboard" },
+  { label: "Customers", href: "/contractor/customers" },
   { label: "Business Info", href: "/contractor/business" },
   { label: "Sites", href: "/contractor/sites" },
   { label: "Settings", href: "/contractor/settings" },
@@ -34,7 +35,7 @@ export default function ContractorAuthLayout({
       <div className="border-b border-gray-200 bg-white px-4">
         <div className="mx-auto flex max-w-3xl gap-1">
           {TABS.map((tab) => {
-            const isActive = pathname === tab.href;
+            const isActive = pathname === tab.href || pathname.startsWith(tab.href + "/");
             return (
               <Link
                 key={tab.href}

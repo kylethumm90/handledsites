@@ -117,5 +117,18 @@ export type Lead = {
   phone: string;
   email: string | null;
   answers: Record<string, string> | null;
+  service_needed: string | null;
+  status: string;
+  notes: string | null;
   created_at: string;
+};
+
+export type ActivityLogEntry = {
+  id: string;
+  created_at: string;
+  business_id: string;
+  lead_id: string | null;
+  type: string;
+  summary: string;
+  agent: string | null;
 };
