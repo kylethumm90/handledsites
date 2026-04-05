@@ -7,7 +7,6 @@ import LogoutButton from "@/components/LogoutButton";
 const TABS = [
   { label: "Dashboard", href: "/contractor/dashboard" },
   { label: "Customers", href: "/contractor/customers" },
-  { label: "Business Info", href: "/contractor/business" },
   { label: "Sites", href: "/contractor/sites" },
   { label: "Settings", href: "/contractor/settings" },
 ];
