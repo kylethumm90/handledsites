@@ -86,6 +86,7 @@ export async function POST(request: NextRequest) {
         { business_id: biz.id, type: "business_card", slug },
         { business_id: biz.id, type: "quiz_funnel", slug },
         { business_id: biz.id, type: "review_funnel", slug },
+        { business_id: biz.id, type: "website", slug },
       ])
       .select("id, type");
 

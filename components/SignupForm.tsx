@@ -208,6 +208,11 @@ export default function SignupForm() {
             type: "review_funnel",
             slug,
           },
+          {
+            business_id: bizData.id,
+            type: "website",
+            slug,
+          },
         ]);
 
       if (siteError) {

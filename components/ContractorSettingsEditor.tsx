@@ -27,6 +27,7 @@ export default function ContractorSettingsEditor({ business }: Props) {
   const [city, setCity] = useState(business.city);
   const [state, setState] = useState(business.state);
   const [services, setServices] = useState<string[]>(business.services);
+  const [aboutBio, setAboutBio] = useState(business.about_bio ?? "");
 
   // Google Reviews
   const [googleReviewUrl, setGoogleReviewUrl] = useState(business.google_review_url ?? "");
@@ -102,6 +103,7 @@ export default function ContractorSettingsEditor({ business }: Props) {
           state,
           services,
           logo_url: logoUrl,
+          about_bio: aboutBio.trim() || null,
           google_review_url: googleReviewUrl || null,
           gtm_id: gtmId || null,
           meta_pixel_id: metaPixelId || null,
@@ -204,6 +206,19 @@ export default function ContractorSettingsEditor({ business }: Props) {
               </div>
             </div>
           )}
+          <div>
+            <label className={labelClass}>About your business</label>
+            <textarea
+              value={aboutBio}
+              onChange={(e) => setAboutBio(e.target.value)}
+              placeholder="Tell customers a bit about your business, experience, and what makes you different."
+              rows={4}
+              className={inputClass}
+            />
+            <p className="mt-1 text-xs text-gray-400">
+              This shows on your website. Leave blank to hide the about section.
+            </p>
+          </div>
         </div>
       </div>
 

@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 type SiteInfo = {
   id: string;
-  type: "business_card" | "quiz_funnel" | "review_funnel";
+  type: "business_card" | "quiz_funnel" | "review_funnel" | "website";
   slug: string;
   is_active: boolean;
 };

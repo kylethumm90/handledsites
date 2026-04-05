@@ -185,6 +185,7 @@ export default function AdminCreateSiteButton() {
                   <option value="business_card">Business Card</option>
                   <option value="quiz_funnel">Quiz Funnel</option>
                   <option value="review_funnel">Review Funnel</option>
+                  <option value="website">Website</option>
                 </select>
               </div>
 
