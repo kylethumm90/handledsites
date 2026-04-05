@@ -20,6 +20,15 @@ function formatPhoneInput(value: string): string {
   return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
 }
 
+type PlaceResult = {
+  placeId: string;
+  name: string;
+  address: string;
+  rating: number | null;
+  reviewCount: number | null;
+  reviews: { text: string; author: string; rating: number }[];
+};
+
 export default function OnboardingWizard() {
   const [step, setStep] = useState<Step>(1);
   const [trade, setTrade] = useState("");
@@ -37,11 +46,67 @@ export default function OnboardingWizard() {
   const [phase, setPhase] = useState<Phase>("form");
   const [uploadedLogoUrl, setUploadedLogoUrl] = useState<string | null>(null);
 
+  // Google Places data
+  const [googlePlaceId, setGooglePlaceId] = useState("");
+  const [streetAddress, setStreetAddress] = useState("");
+  const [googleRating, setGoogleRating] = useState<number | null>(null);
+  const [googleReviewCount, setGoogleReviewCount] = useState<number | null>(null);
+  const [googleReviews, setGoogleReviews] = useState<{ text: string; author: string; rating: number }[] | null>(null);
+  const [googleReviewUrl, setGoogleReviewUrl] = useState("");
+  const [placeQuery, setPlaceQuery] = useState("");
+  const [placeResults, setPlaceResults] = useState<PlaceResult[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const searchTimeout = useRef<NodeJS.Timeout>();
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const workDoneRef = useRef(false);
   const phoneDigits = phone.replace(/\D/g, "");
   const progress = (step / 7) * 100;
   const availableServices = trade ? TRADE_SERVICES[trade as Trade] || [] : [];
+
+  const handlePlaceSearch = (value: string) => {
+    setPlaceQuery(value);
+    setShowDropdown(false);
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    if (value.length < 3) { setPlaceResults([]); return; }
+    searchTimeout.current = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const res = await fetch(`/api/places/search?q=${encodeURIComponent(value)}`);
+        const data = await res.json();
+        setPlaceResults(data.results || []);
+        setShowDropdown(true);
+      } catch { setPlaceResults([]); }
+      finally { setSearching(false); }
+    }, 400);
+  };
+
+  const selectPlace = (place: PlaceResult) => {
+    setBusinessName(place.name);
+    setGooglePlaceId(place.placeId);
+    setStreetAddress(place.address);
+    setGoogleReviewUrl(`https://search.google.com/local/writereview?placeid=${place.placeId}`);
+    setGoogleRating(place.rating);
+    setGoogleReviewCount(place.reviewCount);
+    setGoogleReviews(place.reviews.length > 0 ? place.reviews : null);
+
+    // Parse city/state from address (last parts: "City, ST ZIP, Country" or "City, ST ZIP")
+    const parts = place.address.split(",").map((p) => p.trim());
+    if (parts.length >= 2) {
+      setCity(parts[parts.length - 3] || parts[parts.length - 2] || "");
+      const stateZip = parts[parts.length - 2] || "";
+      const stateMatch = stateZip.match(/^([A-Z]{2})\s/);
+      if (stateMatch) setState(stateMatch[1]);
+    }
+
+    // Extract phone from name if available (not in Places API, so skip)
+    setPlaceQuery("");
+    setPlaceResults([]);
+    setShowDropdown(false);
+    // Skip to step 4 (services) after a brief delay
+    setTimeout(() => setStep(4), 300);
+  };
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -90,6 +155,12 @@ export default function OnboardingWizard() {
     const { data: bizData, error: bizError } = await supabase.from("businesses").insert({
       name: businessName, owner_name: businessName, phone: phoneDigits,
       email: email || null, city, state, trade, services, logo_url: logoUrl, about_bio: aboutBio,
+      google_place_id: googlePlaceId || null,
+      street_address: streetAddress || null,
+      google_rating: googleRating,
+      google_review_count: googleReviewCount,
+      google_reviews: googleReviews,
+      google_review_url: googleReviewUrl || null,
     }).select("id").single();
     if (bizError) throw new Error(bizError.message);
 
@@ -300,27 +371,69 @@ export default function OnboardingWizard() {
 
         {step === 2 && (
           <div>
-            <h2 className="mb-2 text-2xl font-bold text-gray-900">What&apos;s your business name?</h2>
-            <p className="mb-6 text-sm text-gray-500">This is what customers will see.</p>
-            <input type="text" value={businessName} onChange={(e) => setBusinessName(e.target.value)} placeholder="e.g. Flowright Plumbing" className={inputClass} autoFocus />
-            <button onClick={() => setStep(3)} disabled={!businessName.trim()} className={btnNext}>Next</button>
+            <h2 className="mb-2 text-2xl font-bold text-gray-900">Find your business on Google</h2>
+            <p className="mb-6 text-sm text-gray-500">We&apos;ll pull in your name, address, and reviews automatically.</p>
+            <div className="relative">
+              <div className="relative">
+                <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                <input
+                  type="text"
+                  value={placeQuery}
+                  onChange={(e) => handlePlaceSearch(e.target.value)}
+                  placeholder="Search your business name..."
+                  className={`${inputClass} pl-10`}
+                  autoFocus
+                />
+                {searching && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600" />
+                  </div>
+                )}
+              </div>
+              {showDropdown && placeResults.length > 0 && (
+                <div className="absolute left-0 right-0 z-10 mt-1 rounded-xl border border-gray-200 bg-white shadow-lg overflow-hidden">
+                  {placeResults.map((place) => (
+                    <button key={place.placeId} onClick={() => selectPlace(place)} className="flex w-full flex-col px-4 py-3 text-left hover:bg-gray-50 border-b border-gray-50 last:border-0">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-gray-900">{place.name}</span>
+                        {place.rating && (
+                          <span className="flex items-center gap-1 text-xs text-gray-500">
+                            <span className="text-amber-400">★</span> {place.rating}
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-xs text-gray-500">{place.address}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="mt-4 text-center">
+              <button onClick={() => setStep(3)} className="text-xs text-gray-400 hover:text-gray-600">
+                I&apos;ll enter it manually
+              </button>
+            </div>
           </div>
         )}
 
         {step === 3 && (
           <div>
-            <h2 className="mb-2 text-2xl font-bold text-gray-900">Where are you located?</h2>
-            <p className="mb-6 text-sm text-gray-500">So customers know you&apos;re local.</p>
-            <div className="grid grid-cols-2 gap-3">
-              <input type="text" value={city} onChange={(e) => setCity(e.target.value)} placeholder="City" className={inputClass} autoFocus />
-              <select value={state} onChange={(e) => setState(e.target.value)} className={inputClass}>
-                <option value="">State</option>
-                {["AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY","DC"].map((s) => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
+            <h2 className="mb-2 text-2xl font-bold text-gray-900">Tell us about your business</h2>
+            <p className="mb-6 text-sm text-gray-500">We&apos;ll use this across all your sites.</p>
+            <div className="space-y-3">
+              <input type="text" value={businessName} onChange={(e) => setBusinessName(e.target.value)} placeholder="Business name" className={inputClass} autoFocus />
+              <div className="grid grid-cols-2 gap-3">
+                <input type="text" value={city} onChange={(e) => setCity(e.target.value)} placeholder="City" className={inputClass} />
+                <select value={state} onChange={(e) => setState(e.target.value)} className={inputClass}>
+                  <option value="">State</option>
+                  {["AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY","DC"].map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+              <input type="tel" value={phone} onChange={(e) => setPhone(formatPhoneInput(e.target.value))} placeholder="Phone number" className={inputClass} />
             </div>
-            <button onClick={() => setStep(4)} disabled={!city.trim() || !state} className={btnNext}>Next</button>
+            <button onClick={() => setStep(4)} disabled={!businessName.trim() || !city.trim() || !state || phoneDigits.length !== 10} className={btnNext}>Next</button>
           </div>
         )}
 
@@ -355,8 +468,15 @@ export default function OnboardingWizard() {
             <h2 className="mb-2 text-2xl font-bold text-gray-900">How can customers reach you?</h2>
             <p className="mb-6 text-sm text-gray-500">Your phone number will be on all your sites.</p>
             <div className="space-y-3">
-              <input type="tel" value={phone} onChange={(e) => setPhone(formatPhoneInput(e.target.value))} placeholder="(555) 123-4567" className={inputClass} autoFocus />
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email (optional)" className={inputClass} />
+              {phoneDigits.length !== 10 && (
+                <input type="tel" value={phone} onChange={(e) => setPhone(formatPhoneInput(e.target.value))} placeholder="(555) 123-4567" className={inputClass} autoFocus />
+              )}
+              {phoneDigits.length === 10 && (
+                <div className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 text-sm text-gray-500">
+                  {formatPhoneInput(phone)}
+                </div>
+              )}
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email (optional)" className={inputClass} autoFocus={phoneDigits.length === 10} />
             </div>
             <button onClick={() => setStep(7)} disabled={phoneDigits.length !== 10} className={btnNext}>Next</button>
           </div>
