@@ -67,7 +67,7 @@ export default function PhonePreview({
             <img
               src={logoUrl}
               alt="Logo"
-              className="h-16 w-16 rounded-full object-cover"
+              className="h-32 w-32 rounded-full object-cover"
               style={{ border: "2px solid white" }}
             />
           ) : (
