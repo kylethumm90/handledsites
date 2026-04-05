@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { Business } from "@/lib/supabase";
-import { TRADES, TRADE_SERVICES, US_STATES, Trade } from "@/lib/constants";
+import { TRADE_SERVICES, US_STATES, Trade } from "@/lib/constants";
 import ImageUpload from "./ImageUpload";
 
 type Props = { business: Business };
@@ -18,22 +18,11 @@ export default function ContractorBusinessEditor({ business }: Props) {
   const [email, setEmail] = useState(business.email ?? "");
   const [city, setCity] = useState(business.city);
   const [state, setState] = useState(business.state);
-  const [trade, setTrade] = useState(business.trade);
   const [services, setServices] = useState<string[]>(business.services);
 
-  // Integrations
-  const [gtmId, setGtmId] = useState(business.gtm_id ?? "");
-  const [metaPixelId, setMetaPixelId] = useState(business.meta_pixel_id ?? "");
-  const [zapierWebhookUrl, setZapierWebhookUrl] = useState(business.zapier_webhook_url ?? "");
-
-  const availableServices = trade
-    ? TRADE_SERVICES[trade as Trade] || []
+  const availableServices = business.trade
+    ? TRADE_SERVICES[business.trade as Trade] || []
     : [];
-
-  const handleTradeChange = (newTrade: string) => {
-    setTrade(newTrade);
-    setServices([]);
-  };
 
   const handleServiceToggle = (service: string) => {
     setServices((prev) =>
@@ -66,12 +55,8 @@ export default function ContractorBusinessEditor({ business }: Props) {
           email: email || null,
           city,
           state,
-          trade,
           services,
           logo_url: logoUrl,
-          gtm_id: gtmId || null,
-          meta_pixel_id: metaPixelId || null,
-          zapier_webhook_url: zapierWebhookUrl || null,
         }),
       });
       if (!res.ok) throw new Error("Save failed");
@@ -91,190 +76,132 @@ export default function ContractorBusinessEditor({ business }: Props) {
     <div>
       <div className="mb-6">
         <h1 className="text-xl font-semibold text-gray-900">
-          Edit Business Info
+          Business Info
         </h1>
         <p className="mt-0.5 text-xs text-gray-400">
           This info is shared across all your sites.
         </p>
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-2">
-        {/* Business info */}
-        <div className="rounded-xl border border-gray-200 bg-white p-5">
-          <h2 className="mb-4 text-sm font-semibold text-gray-900">
-            Business info
-          </h2>
-          <div className="space-y-4">
-            <ImageUpload
-              currentUrl={logoUrl}
-              storagePath={`logos/${business.id}`}
-              onUploaded={setLogoUrl}
-              shape="circle"
-              label="Profile picture"
+      <div className="rounded-xl border border-gray-200 bg-white p-5">
+        <div className="space-y-4">
+          <ImageUpload
+            currentUrl={logoUrl}
+            storagePath={`logos/${business.id}`}
+            onUploaded={setLogoUrl}
+            shape="circle"
+            label="Profile picture"
+          />
+          <div>
+            <label className={labelClass}>Business name</label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className={inputClass}
             />
+          </div>
+          <div>
+            <label className={labelClass}>Owner name</label>
+            <input
+              type="text"
+              value={ownerName}
+              onChange={(e) => setOwnerName(e.target.value)}
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label className={labelClass}>Phone</label>
+            <input
+              type="tel"
+              value={formatPhoneDisplay(phone)}
+              onChange={(e) => handlePhoneChange(e.target.value)}
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label className={labelClass}>Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Optional"
+              className={inputClass}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className={labelClass}>Business name</label>
+              <label className={labelClass}>City</label>
               <input
                 type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
                 className={inputClass}
               />
             </div>
             <div>
-              <label className={labelClass}>Owner name</label>
-              <input
-                type="text"
-                value={ownerName}
-                onChange={(e) => setOwnerName(e.target.value)}
-                className={inputClass}
-              />
-            </div>
-            <div>
-              <label className={labelClass}>Phone</label>
-              <input
-                type="tel"
-                value={formatPhoneDisplay(phone)}
-                onChange={(e) => handlePhoneChange(e.target.value)}
-                className={inputClass}
-              />
-            </div>
-            <div>
-              <label className={labelClass}>Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Optional"
-                className={inputClass}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className={labelClass}>City</label>
-                <input
-                  type="text"
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  className={inputClass}
-                />
-              </div>
-              <div>
-                <label className={labelClass}>State</label>
-                <select
-                  value={state}
-                  onChange={(e) => setState(e.target.value)}
-                  className={inputClass}
-                >
-                  {US_STATES.map((s) => (
-                    <option key={s.value} value={s.value}>
-                      {s.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <div>
-              <label className={labelClass}>Trade</label>
+              <label className={labelClass}>State</label>
               <select
-                value={trade}
-                onChange={(e) => handleTradeChange(e.target.value)}
+                value={state}
+                onChange={(e) => setState(e.target.value)}
                 className={inputClass}
               >
-                {TRADES.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
+                {US_STATES.map((s) => (
+                  <option key={s.value} value={s.value}>
+                    {s.label}
                   </option>
                 ))}
               </select>
             </div>
-            {availableServices.length > 0 && (
-              <div>
-                <label className={labelClass}>Services</label>
-                <div className="grid grid-cols-2 gap-1.5">
-                  {availableServices.map((service) => (
-                    <label
-                      key={service}
-                      className={`flex cursor-pointer items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs transition-colors ${
-                        services.includes(service)
-                          ? "border-gray-900 bg-gray-900 text-white"
-                          : "border-gray-200 text-gray-700 hover:border-gray-300"
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={services.includes(service)}
-                        onChange={() => handleServiceToggle(service)}
-                        className="sr-only"
-                      />
-                      {service}
-                    </label>
-                  ))}
-                </div>
+          </div>
+          <div>
+            <label className={labelClass}>Trade</label>
+            <div className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 text-sm text-gray-500">
+              {business.trade}
+            </div>
+          </div>
+          {availableServices.length > 0 && (
+            <div>
+              <label className={labelClass}>Services</label>
+              <div className="grid grid-cols-2 gap-1.5">
+                {availableServices.map((service) => (
+                  <label
+                    key={service}
+                    className={`flex cursor-pointer items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs transition-colors ${
+                      services.includes(service)
+                        ? "border-gray-900 bg-gray-900 text-white"
+                        : "border-gray-200 text-gray-700 hover:border-gray-300"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={services.includes(service)}
+                      onChange={() => handleServiceToggle(service)}
+                      className="sr-only"
+                    />
+                    {service}
+                  </label>
+                ))}
               </div>
-            )}
-          </div>
-        </div>
+            </div>
+          )}
 
-        {/* Integrations */}
-        <div className="rounded-xl border border-gray-200 bg-white p-5">
-          <h2 className="mb-4 text-sm font-semibold text-gray-900">
-            Integrations &amp; tracking
-          </h2>
-          <div className="space-y-4">
-            <div>
-              <label className={labelClass}>Google Tag Manager ID</label>
-              <input
-                type="text"
-                value={gtmId}
-                onChange={(e) => setGtmId(e.target.value)}
-                placeholder="GTM-XXXXXXX"
-                className={inputClass}
-              />
-            </div>
-            <div>
-              <label className={labelClass}>Meta Pixel ID</label>
-              <input
-                type="text"
-                value={metaPixelId}
-                onChange={(e) => setMetaPixelId(e.target.value)}
-                placeholder="123456789012345"
-                className={inputClass}
-              />
-            </div>
-            <div>
-              <label className={labelClass}>Zapier webhook URL</label>
-              <input
-                type="url"
-                value={zapierWebhookUrl}
-                onChange={(e) => setZapierWebhookUrl(e.target.value)}
-                placeholder="https://hooks.zapier.com/hooks/catch/..."
-                className={inputClass}
-              />
-              <p className="mt-1 text-xs text-gray-400">
-                Quiz lead data will be POSTed here on each submission
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
+          {message && (
+            <p
+              className={`text-sm ${message.includes("Error") ? "text-red-600" : "text-green-600"}`}
+            >
+              {message}
+            </p>
+          )}
 
-      {/* Save */}
-      <div className="mt-8">
-        {message && (
-          <p
-            className={`mb-3 text-sm ${message.includes("Error") ? "text-red-600" : "text-green-600"}`}
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="w-full rounded-lg bg-gray-900 py-2.5 text-sm font-semibold text-white hover:bg-gray-800 disabled:opacity-50"
           >
-            {message}
-          </p>
-        )}
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="w-full rounded-lg bg-gray-900 py-2.5 text-sm font-semibold text-white hover:bg-gray-800 disabled:opacity-50"
-        >
-          {saving ? "Saving..." : "Save changes"}
-        </button>
+            {saving ? "Saving..." : "Save changes"}
+          </button>
+        </div>
       </div>
     </div>
   );
