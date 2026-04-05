@@ -166,7 +166,7 @@ export default async function WebsitePage({ params }: { params: { slug: string }
           <div className="ws-container ws-nav-inner">
             <div className="ws-nav-logo">
               {site.logo_url ? (
-                <img src={site.logo_url} alt={site.business_name} style={{ width: 36, height: 36, borderRadius: 8, objectFit: "cover" }} />
+                <img src={site.logo_url} alt={site.business_name} style={{ width: 72, height: 72, borderRadius: 10, objectFit: "cover" }} />
               ) : (
                 <div className="ws-nav-logo-icon">
                   <span style={{ fontSize: 14, fontWeight: 800, color: "#fff" }}>{ownerInitials(site.business_name)}</span>
@@ -368,9 +368,9 @@ export default async function WebsitePage({ params }: { params: { slug: string }
                 </div>
               )}
 
-              {site.google_review_url && (
+              {site.google_place_id && (
                 <div style={{ textAlign: "center", marginTop: 24 }}>
-                  <a className="ws-btn-outline" href={site.google_review_url} target="_blank" rel="noopener noreferrer">
+                  <a className="ws-btn-outline" href={`https://www.google.com/maps/place/?q=place_id:${site.google_place_id}`} target="_blank" rel="noopener noreferrer">
                     See all {site.google_review_count || ""} reviews on Google
                   </a>
                 </div>
