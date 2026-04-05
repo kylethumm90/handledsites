@@ -135,7 +135,7 @@ export default async function AdminBusinessesPage({ searchParams }: Props) {
                 >
                   <td className="px-4 py-3">
                     <Link
-                      href={`/admin/sites?q=${encodeURIComponent(biz.name)}`}
+                      href={`/admin/businesses/${biz.id}`}
                       className="font-medium text-gray-900 hover:text-blue-600"
                     >
                       {biz.name}

@@ -1,24 +1,35 @@
 import { redirect } from "next/navigation";
 import { validateSessionFromCookie } from "@/lib/contractor-auth";
 import { getSupabaseAdmin, ContractorSite } from "@/lib/supabase";
-import ContractorSiteEditor from "@/components/ContractorSiteEditor";
+import ContractorSitesEditor from "@/components/ContractorSitesEditor";
 
 export const dynamic = "force-dynamic";
 
-export default async function ContractorEditPage() {
+export default async function ContractorSitesPage() {
   const siteId = await validateSessionFromCookie();
   if (!siteId) redirect("/contractor/login");
 
-  const { data, error } = await getSupabaseAdmin()
-    .from("sites_full")
-    .select("*")
+  const supabase = getSupabaseAdmin();
+
+  // Get the site to find business_id
+  const { data: currentSite } = await supabase
+    .from("sites")
+    .select("business_id")
     .eq("id", siteId)
     .single();
 
-  if (error || !data) redirect("/contractor/login");
+  if (!currentSite) redirect("/contractor/login");
 
-  const site = {
+  // Fetch all sites for this business via the joined view
+  const { data: allSites } = await supabase
+    .from("sites_full")
+    .select("*")
+    .eq("business_id", currentSite.business_id)
+    .order("type", { ascending: true });
+
+  const sites: ContractorSite[] = (allSites || []).map((data) => ({
     id: data.id,
+    business_id: data.business_id,
     type: data.type,
     business_name: data.business_name,
     owner_name: data.owner_name,
@@ -45,7 +56,7 @@ export default async function ContractorEditPage() {
     gtm_id: data.gtm_id ?? null,
     meta_pixel_id: data.meta_pixel_id ?? null,
     zapier_webhook_url: data.zapier_webhook_url ?? null,
-  } as ContractorSite;
+  }));
 
-  return <ContractorSiteEditor site={site} />;
+  return <ContractorSitesEditor sites={sites} />;
 }

@@ -79,8 +79,8 @@ export default function DashboardClient({
 
   // Setup checklist
   const checklist = [
-    { label: "Upload a logo", done: !!logoUrl, href: "/contractor/edit" },
-    { label: "Add your services", done: services.length > 0, href: "/contractor/edit" },
+    { label: "Upload a logo", done: !!logoUrl, href: "/contractor/business" },
+    { label: "Add your services", done: services.length > 0, href: "/contractor/business" },
     { label: "Share your link", done: false, href: null },
   ];
   const allDone = checklist.every((c) => c.done);

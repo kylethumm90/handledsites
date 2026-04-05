@@ -22,6 +22,7 @@ export function getSupabaseAdmin(): SupabaseClient {
 
 export type ContractorSite = {
   id: string;
+  business_id: string;
   type: "business_card" | "quiz_funnel";
   business_name: string;
   owner_name: string;
@@ -64,6 +65,9 @@ export type Business = {
   trade: string;
   services: string[];
   logo_url: string | null;
+  gtm_id: string | null;
+  meta_pixel_id: string | null;
+  zapier_webhook_url: string | null;
   created_at: string;
 };
 
