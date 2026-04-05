@@ -17,67 +17,83 @@ export default function WebsitePreview({
   state,
   services,
 }: Props) {
+  const initials = businessName
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() || "")
+    .join("");
+
   return (
-    <div className="relative mx-auto w-[280px]">
-      <div
-        className="mx-auto flex h-[580px] w-[280px] flex-col rounded-[2.5rem] border-4 overflow-hidden"
-        style={{ borderColor: "#d1d5db", backgroundColor: "#ffffff" }}
-      >
-        {/* Notch */}
-        <div className="mx-auto mt-2 mb-1 h-4 w-20 flex-shrink-0 rounded-full" style={{ backgroundColor: "#e5e7eb" }} />
+    <div className="w-[420px]">
+      {/* Browser chrome */}
+      <div className="rounded-t-xl border border-b-0 border-gray-200 bg-gray-100 px-3 py-2">
+        <div className="flex items-center gap-2">
+          <div className="flex gap-1.5">
+            <div className="h-2.5 w-2.5 rounded-full bg-red-400" />
+            <div className="h-2.5 w-2.5 rounded-full bg-yellow-400" />
+            <div className="h-2.5 w-2.5 rounded-full bg-green-400" />
+          </div>
+          <div className="flex-1 rounded-md bg-white px-3 py-1 text-[9px] text-gray-400 font-mono truncate">
+            handledsites.com/s/{businessName.toLowerCase().replace(/\s+/g, "-")}
+          </div>
+        </div>
+      </div>
+
+      {/* Browser viewport */}
+      <div className="overflow-hidden rounded-b-xl border border-gray-200 bg-white" style={{ height: 280 }}>
+        {/* Nav */}
+        <div className="flex items-center justify-between border-b border-gray-100 px-4 py-2">
+          <div className="flex items-center gap-1.5">
+            <div className="flex h-5 w-5 items-center justify-center rounded bg-blue-600 text-[7px] font-bold text-white">{initials}</div>
+            <span className="text-[9px] font-bold text-gray-900">{businessName}</span>
+          </div>
+          <div className="flex items-center gap-1 rounded bg-orange-500 px-2 py-1 text-[7px] font-bold text-white">
+            <Phone className="h-2 w-2" />
+            Call
+          </div>
+        </div>
 
         {/* Hero */}
-        <div className="bg-gray-900 px-5 py-6 text-center">
-          <p className="text-xs font-bold text-white">{businessName}</p>
-          <p className="mt-1 text-[9px] text-gray-400">{trade} · {city}, {state}</p>
-          <div className="mt-3 flex justify-center gap-2">
-            <div className="flex items-center gap-1 rounded-md bg-white px-3 py-1.5 text-[8px] font-semibold text-gray-900">
-              <Phone className="h-2.5 w-2.5" />
-              Call now
-            </div>
-            <div className="rounded-md border border-gray-600 px-3 py-1.5 text-[8px] font-semibold text-white">
-              Text us
-            </div>
+        <div className="bg-[#0C1A2E] px-4 py-5 text-center">
+          <div className="mb-1.5 inline-flex items-center gap-1 rounded-full border border-white/20 bg-white/10 px-2 py-0.5 text-[7px] text-white/80">
+            <div className="h-1 w-1 rounded-full bg-green-400" />
+            Available now
+          </div>
+          <div className="text-[11px] font-extrabold text-white leading-tight">{trade} Services in {city}, {state}</div>
+          <div className="mt-1 text-[7px] text-white/60">Licensed & insured</div>
+          <div className="mt-2 flex justify-center gap-1.5">
+            <div className="rounded bg-orange-500 px-2.5 py-1 text-[7px] font-bold text-white">Call Now</div>
+            <div className="rounded border border-white/25 px-2 py-1 text-[7px] text-white/80">Get a Quote</div>
+          </div>
+        </div>
+
+        {/* Proof bar */}
+        <div className="flex items-center justify-center gap-4 bg-blue-600 px-3 py-1.5">
+          <div className="text-center">
+            <div className="text-[9px] font-extrabold text-white">4.9</div>
+            <div className="text-[6px] text-white/70">rating</div>
+          </div>
+          <div className="h-3 w-px bg-white/25" />
+          <div className="text-[7px] text-yellow-300">★★★★★</div>
+          <div className="h-3 w-px bg-white/25" />
+          <div className="text-center">
+            <div className="text-[9px] font-extrabold text-white">24/7</div>
+            <div className="text-[6px] text-white/70">emergency</div>
           </div>
         </div>
 
         {/* Services */}
-        <div className="flex-1 px-4 py-4">
-          <p className="mb-2 text-center text-[7px] font-medium uppercase tracking-wider text-gray-400">
-            Our Services
-          </p>
-          <div className="grid grid-cols-2 gap-1.5">
-            {services.slice(0, 6).map((s) => (
-              <div
-                key={s}
-                className="rounded-md bg-gray-50 px-2 py-1.5 text-center text-[7px] font-medium text-gray-600"
-              >
+        <div className="px-4 py-3">
+          <div className="mb-1.5 text-[7px] font-bold uppercase tracking-wider text-blue-600">What we do</div>
+          <div className="text-[9px] font-extrabold text-gray-900 mb-2">{trade} services for every situation</div>
+          <div className="grid grid-cols-3 gap-1">
+            {services.slice(0, 6).filter((s) => s !== "Free Estimates").map((s) => (
+              <div key={s} className="rounded border border-gray-100 bg-gray-50 px-1.5 py-1 text-center text-[6px] font-medium text-gray-600 truncate">
                 {s}
               </div>
             ))}
           </div>
-
-          {/* Contact hint */}
-          <div className="mt-4">
-            <p className="mb-1.5 text-center text-[7px] font-medium uppercase tracking-wider text-gray-400">
-              Get In Touch
-            </p>
-            <div className="space-y-1">
-              <div className="rounded-md border border-gray-200 px-2 py-1.5 text-[7px] text-gray-400">
-                Your name
-              </div>
-              <div className="rounded-md border border-gray-200 px-2 py-1.5 text-[7px] text-gray-400">
-                Phone number
-              </div>
-              <div className="rounded-md bg-gray-900 px-2 py-1.5 text-center text-[7px] font-semibold text-white">
-                Send message
-              </div>
-            </div>
-          </div>
         </div>
-
-        {/* Home indicator */}
-        <div className="mx-auto mb-2 mt-2 h-1 w-16 flex-shrink-0 rounded-full bg-gray-300" />
       </div>
     </div>
   );
