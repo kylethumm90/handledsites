@@ -75,7 +75,7 @@ export default function PhonePreview({
               className="flex h-16 w-16 items-center justify-center rounded-full bg-card-surface"
               style={{ border: "2px solid white" }}
             >
-              <span className="text-lg font-bold text-white">
+              <span className="text-2xl font-bold text-white">
                 {initials || "YB"}
               </span>
             </div>
@@ -87,45 +87,45 @@ export default function PhonePreview({
 
           {/* Business name */}
           <div>
-            <h3 className="text-sm font-bold text-white">
+            <h3 className="text-lg font-bold text-white">
               {businessName || "Your Business"}
             </h3>
-            <p className="text-xs text-card-muted">
+            <p className="text-sm text-card-muted">
               {city || "Your City"}, {state || "ST"}
             </p>
           </div>
 
           {/* Badge pill */}
           <div
-            className="inline-flex items-center gap-1"
+            className="inline-flex items-center gap-1.5"
             style={{
               background: "#1e2235",
               border: "1px solid rgba(255,255,255,0.08)",
-              fontSize: "9px",
-              padding: "3px 8px",
+              fontSize: "12px",
+              padding: "4px 10px",
               borderRadius: "20px",
             }}
           >
-            <Shield className="h-2.5 w-2.5 text-card-muted" />
+            <Shield className="h-3 w-3 text-card-muted" />
             <span className="text-card-muted">Licensed & Insured</span>
           </div>
 
           {/* Available dot */}
           <div className="flex items-center justify-center gap-1.5">
-            <div className="h-2 w-2 animate-pulse-dot rounded-full bg-green-500" />
-            <span className="text-xs text-green-400">Available now</span>
+            <div className="h-2.5 w-2.5 animate-pulse-dot rounded-full bg-green-500" />
+            <span className="text-sm text-green-400">Available now</span>
           </div>
 
           {/* CTA buttons */}
           <div className="w-full space-y-2 px-2">
-            <div className="flex w-full items-center justify-center gap-2 rounded-lg bg-card-call py-2.5 text-xs font-semibold text-white">
-              <Phone className="h-3 w-3" />
+            <div className="flex w-full items-center justify-center gap-2 rounded-lg bg-card-call py-3 text-sm font-semibold text-white">
+              <Phone className="h-4 w-4" />
               {formatPhone(phone)}
             </div>
-            <div className="w-full rounded-lg bg-card-text-bg py-2.5 text-xs font-semibold text-card-text-fg">
+            <div className="w-full rounded-lg bg-card-text-bg py-3 text-sm font-semibold text-card-text-fg">
               Text us instead
             </div>
-            <div className="w-full rounded-lg bg-card-save-bg py-2.5 text-xs font-semibold text-card-save-fg">
+            <div className="w-full rounded-lg bg-card-save-bg py-3 text-sm font-semibold text-card-save-fg">
               Save to contacts
             </div>
           </div>

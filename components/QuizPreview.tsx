@@ -55,14 +55,14 @@ export default function QuizPreview({
               className="h-24 max-w-[180px] object-contain"
             />
           ) : (
-            <span className="text-sm font-bold text-gray-900 truncate">
+            <span className="text-lg font-bold text-gray-900 truncate">
               {businessName}
             </span>
           )}
         </div>
 
         {/* Progress bar */}
-        <div className="h-1 w-full bg-gray-200">
+        <div className="h-1.5 w-full bg-gray-200">
           <div
             className="h-full rounded-r-full"
             style={{ width: "15%", backgroundColor: accent }}
@@ -73,30 +73,30 @@ export default function QuizPreview({
         <div className="flex flex-1 flex-col px-5 pt-5">
           {/* Headline */}
           <h3
-            className="mb-5 text-center text-sm font-bold leading-snug"
+            className="mb-5 text-center text-base font-bold leading-snug"
             style={{ color: "#1a1a1a" }}
           >
             {headline}
           </h3>
 
           {/* Question */}
-          <p className="mb-3 text-center text-xs font-medium text-gray-600">
+          <p className="mb-3 text-center text-sm font-medium text-gray-600">
             Are you the homeowner?
           </p>
 
           {/* Options */}
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             {SAMPLE_OPTIONS.map((option, i) => (
               <div
                 key={option}
-                className="flex items-center gap-3 rounded-xl border-2 px-3.5 py-2.5"
+                className="flex items-center gap-3 rounded-xl border-2 px-4 py-3"
                 style={{
                   borderColor: i === 0 ? accent : "#e5e7eb",
                   backgroundColor: i === 0 ? `${accent}10` : "white",
                 }}
               >
                 <span
-                  className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md text-[10px] font-bold"
+                  className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md text-xs font-bold"
                   style={{
                     backgroundColor: i === 0 ? accent : "#f3f4f6",
                     color: i === 0 ? "white" : "#6b7280",
@@ -105,7 +105,7 @@ export default function QuizPreview({
                   {letters[i]}
                 </span>
                 <span
-                  className="text-xs font-medium"
+                  className="text-sm font-medium"
                   style={{ color: i === 0 ? accent : "#374151" }}
                 >
                   {option}

@@ -176,20 +176,20 @@ function ReviewPreview({ businessName, logoUrl }: { businessName: string; logoUr
           {logoUrl ? (
             <img src={logoUrl} alt={businessName} className="h-24 max-w-[180px] object-contain" />
           ) : (
-            <span className="text-sm font-bold text-gray-900">{businessName}</span>
+            <span className="text-lg font-bold text-gray-900">{businessName}</span>
           )}
         </div>
 
         {/* Content */}
         <div className="flex flex-1 flex-col items-center px-6 pt-6">
           <div className="mb-6 rounded-2xl border border-gray-200 bg-white px-6 py-6 shadow-sm w-full">
-            <h3 className="mb-5 text-center text-sm font-semibold text-gray-900">
+            <h3 className="mb-5 text-center text-base font-semibold text-gray-900">
               How was your experience<br />with {businessName}?
             </h3>
             <div className="flex justify-center gap-2.5">
               {["😍", "😊", "😐", "😕", "😤"].map((e) => (
                 <div key={e} className="flex flex-col items-center gap-1">
-                  <span className="text-2xl">{e}</span>
+                  <span className="text-3xl">{e}</span>
                 </div>
               ))}
             </div>
