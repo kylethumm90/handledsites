@@ -351,7 +351,7 @@ export default async function WebsitePage({ params }: { params: { slug: string }
               {/* Review cards */}
               {site.google_reviews && site.google_reviews.length > 0 && (
                 <div className="ws-reviews-grid">
-                  {site.google_reviews.map((review, i) => {
+                  {site.google_reviews.slice(0, 3).map((review, i) => {
                     const initials = review.author.split(" ").map((w) => w[0]).join("").slice(0, 2);
                     const colors = ["#1A56DB", "#0F3BAA", "#F97316", "#10b981", "#6366f1"];
                     return (
