@@ -22,7 +22,8 @@ export async function GET(request: NextRequest) {
         headers: {
           "Content-Type": "application/json",
           "X-Goog-Api-Key": apiKey,
-          "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress",
+          "X-Goog-FieldMask":
+            "places.id,places.displayName,places.formattedAddress,places.rating,places.userRatingCount,places.reviews",
         },
         body: JSON.stringify({
           textQuery: query,
@@ -40,13 +41,20 @@ export async function GET(request: NextRequest) {
     }
 
     const data = await res.json();
-    const results = (data.places || []).map(
-      (p: { id: string; displayName?: { text: string }; formattedAddress?: string }) => ({
-        placeId: p.id,
-        name: p.displayName?.text || "",
-        address: p.formattedAddress || "",
-      })
-    );
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const results = (data.places || []).map((p: any) => ({
+      placeId: p.id,
+      name: p.displayName?.text || "",
+      address: p.formattedAddress || "",
+      rating: p.rating ?? null,
+      reviewCount: p.userRatingCount ?? null,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      reviews: (p.reviews || []).slice(0, 5).map((r: any) => ({
+        text: r.text?.text || r.originalText?.text || "",
+        author: r.authorAttribution?.displayName || "Google User",
+        rating: r.rating || 0,
+      })),
+    }));
 
     return NextResponse.json({ results });
   } catch (err) {

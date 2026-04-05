@@ -83,6 +83,11 @@ export type Business = {
   social_instagram: string | null;
   social_google: string | null;
   social_nextdoor: string | null;
+  street_address: string | null;
+  google_place_id: string | null;
+  google_rating: number | null;
+  google_review_count: number | null;
+  google_reviews: { text: string; author: string; rating: number }[] | null;
   created_at: string;
 };
 

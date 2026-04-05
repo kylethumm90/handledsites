@@ -35,6 +35,11 @@ type SiteData = {
   social_instagram: string | null;
   social_google: string | null;
   social_nextdoor: string | null;
+  street_address: string | null;
+  google_place_id: string | null;
+  google_rating: number | null;
+  google_review_count: number | null;
+  google_reviews: { text: string; author: string; rating: number }[] | null;
 };
 
 async function getSiteData(slug: string): Promise<SiteData | null> {
@@ -75,6 +80,11 @@ async function getSiteData(slug: string): Promise<SiteData | null> {
     social_instagram: data.social_instagram,
     social_google: data.social_google,
     social_nextdoor: data.social_nextdoor,
+    street_address: data.street_address,
+    google_place_id: data.google_place_id,
+    google_rating: data.google_rating,
+    google_review_count: data.google_review_count,
+    google_reviews: data.google_reviews,
   };
 }
 
@@ -82,6 +92,10 @@ function fmtPhone(p: string): string {
   const d = p.replace(/\D/g, "");
   if (d.length === 10) return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`;
   return p;
+}
+
+function googleMapsEmbedUrl(address: string): string {
+  return `https://www.google.com/maps?q=${encodeURIComponent(address)}&output=embed`;
 }
 
 function ownerInitials(name: string): string {
@@ -200,22 +214,22 @@ export default async function WebsitePage({ params }: { params: { slug: string }
         </section>
 
         {/* Proof Bar */}
-        {(site.review_count || site.years_in_business) && (
+        {(site.google_review_count || site.google_rating || site.years_in_business) && (
           <div className="ws-proof-bar">
             <div className="ws-container ws-proof-inner">
-              {site.review_count && (
+              {site.google_review_count && (
                 <>
                   <div className="ws-proof-item">
-                    <div><div className="ws-proof-num">{site.review_count}</div><div className="ws-proof-label">Google reviews</div></div>
+                    <div><div className="ws-proof-num">{site.google_review_count}</div><div className="ws-proof-label">Google reviews</div></div>
                   </div>
                   <div className="ws-proof-divider" />
                 </>
               )}
-              {site.avg_rating && (
+              {site.google_rating && (
                 <>
                   <div className="ws-proof-item">
                     <div className="ws-stars">★★★★★</div>
-                    <div><div className="ws-proof-num">{site.avg_rating}</div><div className="ws-proof-label">avg rating</div></div>
+                    <div><div className="ws-proof-num">{site.google_rating}</div><div className="ws-proof-label">avg rating</div></div>
                   </div>
                   <div className="ws-proof-divider" />
                 </>
@@ -319,21 +333,48 @@ export default async function WebsitePage({ params }: { params: { slug: string }
         )}
 
         {/* Reviews */}
-        {site.google_review_url && (
+        {(site.google_reviews?.length || site.google_review_url) && (
           <section className="ws-section">
-            <div className="ws-container" style={{ textAlign: "center" }}>
-              <div className="ws-section-label">What customers say</div>
-              <h2 className="ws-section-title">Real reviews from real neighbors</h2>
-              {site.review_count && site.avg_rating && (
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, margin: "16px 0 24px" }}>
-                  <div className="ws-stars" style={{ fontSize: 20 }}>★★★★★</div>
-                  <span style={{ fontSize: 22, fontWeight: 800 }}>{site.avg_rating}</span>
-                  <span style={{ fontSize: 13, color: "#6B7280" }}>{site.review_count} reviews</span>
+            <div className="ws-container">
+              <div style={{ textAlign: "center", marginBottom: 32 }}>
+                <div className="ws-section-label">What customers say</div>
+                <h2 className="ws-section-title">Real reviews from real neighbors</h2>
+                {site.google_rating && site.google_review_count && (
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginTop: 8 }}>
+                    <div className="ws-stars" style={{ fontSize: 20 }}>★★★★★</div>
+                    <span style={{ fontSize: 22, fontWeight: 800 }}>{site.google_rating}</span>
+                    <span style={{ fontSize: 13, color: "#6B7280" }}>{site.google_review_count} reviews</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Review cards */}
+              {site.google_reviews && site.google_reviews.length > 0 && (
+                <div className="ws-reviews-grid">
+                  {site.google_reviews.map((review, i) => {
+                    const initials = review.author.split(" ").map((w) => w[0]).join("").slice(0, 2);
+                    const colors = ["#1A56DB", "#0F3BAA", "#F97316", "#10b981", "#6366f1"];
+                    return (
+                      <div key={i} className="ws-review-card">
+                        <div className="ws-stars" style={{ marginBottom: 8 }}>{"★".repeat(review.rating)}{"☆".repeat(5 - review.rating)}</div>
+                        <p className="ws-review-text">&ldquo;{review.text}&rdquo;</p>
+                        <div className="ws-review-author">
+                          <div className="ws-review-avatar" style={{ background: colors[i % colors.length] }}>{initials}</div>
+                          <div className="ws-review-name">{review.author}</div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
-              <a className="ws-btn-outline" href={site.google_review_url} target="_blank" rel="noopener noreferrer">
-                See all reviews on Google
-              </a>
+
+              {site.google_review_url && (
+                <div style={{ textAlign: "center", marginTop: 24 }}>
+                  <a className="ws-btn-outline" href={site.google_review_url} target="_blank" rel="noopener noreferrer">
+                    See all {site.google_review_count || ""} reviews on Google
+                  </a>
+                </div>
+              )}
             </div>
           </section>
         )}
@@ -367,19 +408,38 @@ export default async function WebsitePage({ params }: { params: { slug: string }
         </section>
 
         {/* Service Area */}
-        {site.service_areas && site.service_areas.length > 0 && (
+        {(site.service_areas?.length || site.google_place_id) && (
           <section className="ws-section ws-section-alt">
             <div className="ws-container">
               <div className="ws-section-label">Where we work</div>
               <h2 className="ws-section-title">Serving {site.city} and surrounding areas</h2>
-              <div className="ws-area-grid">
-                {site.service_areas.map((area) => (
-                  <div key={area} className="ws-area-pill">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" width="12" height="12"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                    {area}
-                  </div>
-                ))}
-              </div>
+
+              {/* Map */}
+              {site.google_place_id && (
+                <div className="ws-map-wrap">
+                  <iframe
+                    src={googleMapsEmbedUrl(site.street_address || `${site.business_name}, ${site.city}, ${site.state}`)}
+                    width="100%"
+                    height="300"
+                    style={{ border: 0 }}
+                    allowFullScreen
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                    title={`Map showing ${site.business_name} in ${site.city}, ${site.state}`}
+                  />
+                </div>
+              )}
+
+              {site.service_areas && site.service_areas.length > 0 && (
+                <div className="ws-area-grid">
+                  {site.service_areas.map((area) => (
+                    <div key={area} className="ws-area-pill">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" width="12" height="12"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                      {area}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </section>
         )}
@@ -409,7 +469,7 @@ export default async function WebsitePage({ params }: { params: { slug: string }
                 <h4>Contact</h4>
                 <ul>
                   <li>{fmtPhone(site.phone)}</li>
-                  <li>{site.city}, {site.state}</li>
+                  {site.street_address ? <li>{site.street_address}</li> : <li>{site.city}, {site.state}</li>}
                   {site.email && <li>{site.email}</li>}
                 </ul>
               </div>
@@ -528,6 +588,18 @@ const WEBSITE_CSS = `
 .ws-owner-name { font-weight: 700; font-size: 14px; }
 .ws-owner-title { font-size: 12px; color: #6B7280; }
 
+/* REVIEWS */
+.ws-reviews-grid { display: grid; grid-template-columns: 1fr; gap: 14px; }
+.ws-review-card { background: #fff; border: 1px solid #E5E7EB; border-radius: 14px; padding: 20px; }
+.ws-review-text { font-size: 14px; color: #374151; line-height: 1.65; margin-bottom: 14px; }
+.ws-review-author { display: flex; align-items: center; gap: 10px; }
+.ws-review-avatar { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px; color: #fff; flex-shrink: 0; }
+.ws-review-name { font-size: 13px; font-weight: 600; color: #0C1A2E; }
+
+/* MAP */
+.ws-map-wrap { margin-bottom: 20px; border-radius: 14px; overflow: hidden; border: 1px solid #E5E7EB; background: #F1F5F9; }
+.ws-map-wrap iframe { display: block; width: 100%; height: 280px; }
+
 .ws-btn-outline { display: inline-flex; align-items: center; gap: 7px; border: 1.5px solid #1A56DB; color: #1A56DB; padding: 11px 22px; border-radius: 10px; font-weight: 600; font-size: 14px; transition: background 0.15s; }
 .ws-btn-outline:hover { background: #EBF2FF; }
 
@@ -559,10 +631,12 @@ const WEBSITE_CSS = `
   .ws-nav-license { display: block; }
   .ws-services-grid { grid-template-columns: repeat(3, 1fr); }
   .ws-why-grid { grid-template-columns: repeat(4, 1fr); }
+  .ws-reviews-grid { grid-template-columns: repeat(3, 1fr); }
   .ws-about-inner { grid-template-columns: auto 1fr; }
   .ws-form-inner { grid-template-columns: 1fr 1fr; }
   .ws-footer-inner { grid-template-columns: 2fr 1fr 1fr; }
   .ws-years-badge { right: -12px; }
+  .ws-map-wrap iframe { height: 340px; }
 }
 @media(min-width: 900px) {
   .ws-section { padding: 56px 0; }
