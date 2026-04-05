@@ -94,7 +94,8 @@ export async function generateMetadata({ params }: { params: { slug: string } })
     ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
     : site.google_rating?.toString() || "5.0";
   const title = `${site.business_name} Reviews | ${site.trade} in ${site.city}, ${site.state}`;
-  const description = `See what ${site.city} homeowners are saying about ${site.business_name}. ${reviews.length} reviews with a ${avgRating} star average.`;
+  const metaCount = site.google_review_count || reviews.length;
+  const description = `See what ${site.city} homeowners are saying about ${site.business_name}. ${metaCount} reviews with a ${avgRating} star average.`;
   return {
     title, description,
     openGraph: { title, description, type: "website" },
@@ -106,10 +107,9 @@ export default async function ReviewWallPage({ params }: { params: { slug: strin
   if (!result) notFound();
   const { site, reviews } = result;
 
-  const avgRating = reviews.length > 0
-    ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
-    : site.google_rating?.toString() || "5.0";
-  const totalCount = reviews.length || site.google_review_count || 0;
+  const avgRating = site.google_rating?.toString()
+    || (reviews.length > 0 ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1) : "5.0");
+  const totalCount = site.google_review_count || reviews.length || 0;
   const recommendedPct = reviews.length > 0
     ? Math.round((reviews.filter((r) => r.rating >= 4).length / reviews.length) * 100)
     : 100;
