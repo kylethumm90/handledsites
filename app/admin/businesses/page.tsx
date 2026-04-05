@@ -3,6 +3,7 @@ import { isAdminAuthenticated } from "@/lib/admin-auth";
 import { getSupabaseAdmin, Business } from "@/lib/supabase";
 import { TRADES } from "@/lib/constants";
 import AdminShell from "@/components/AdminShell";
+import ImpersonateButton from "@/components/ImpersonateButton";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -34,18 +35,22 @@ async function getBusinesses(searchParams: Props["searchParams"]) {
   const { data, count } = await query;
   const businesses = (data || []) as Business[];
 
-  // Get site counts for each business
+  // Get site counts and first site ID for each business
   const siteCountMap: Record<string, number> = {};
+  const siteIdMap: Record<string, string> = {};
   if (businesses.length > 0) {
     const bizIds = businesses.map((b) => b.id);
     const { data: sites } = await supabase
       .from("sites")
-      .select("business_id")
+      .select("id, business_id")
       .in("business_id", bizIds);
 
     if (sites) {
       for (const site of sites) {
         siteCountMap[site.business_id] = (siteCountMap[site.business_id] || 0) + 1;
+        if (!siteIdMap[site.business_id]) {
+          siteIdMap[site.business_id] = site.id;
+        }
       }
     }
   }
@@ -53,6 +58,7 @@ async function getBusinesses(searchParams: Props["searchParams"]) {
   return {
     businesses,
     siteCountMap,
+    siteIdMap,
     total: count || 0,
     page,
     totalPages: Math.ceil((count || 0) / PAGE_SIZE),
@@ -62,7 +68,7 @@ async function getBusinesses(searchParams: Props["searchParams"]) {
 export default async function AdminBusinessesPage({ searchParams }: Props) {
   if (!isAdminAuthenticated()) redirect("/admin/login");
 
-  const { businesses, siteCountMap, total, page, totalPages } =
+  const { businesses, siteCountMap, siteIdMap, total, page, totalPages } =
     await getBusinesses(searchParams);
 
   return (
@@ -115,13 +121,14 @@ export default async function AdminBusinessesPage({ searchParams }: Props) {
               <th className="px-4 py-3 font-medium">Location</th>
               <th className="px-4 py-3 font-medium">Sites</th>
               <th className="px-4 py-3 font-medium">Created</th>
+              <th className="px-4 py-3 font-medium"></th>
             </tr>
           </thead>
           <tbody>
             {businesses.length === 0 ? (
               <tr>
                 <td
-                  colSpan={7}
+                  colSpan={8}
                   className="px-4 py-8 text-center text-sm text-gray-400"
                 >
                   No businesses found
@@ -156,6 +163,11 @@ export default async function AdminBusinessesPage({ searchParams }: Props) {
                   </td>
                   <td className="px-4 py-3 text-gray-400">
                     {new Date(biz.created_at).toLocaleDateString()}
+                  </td>
+                  <td className="px-4 py-3">
+                    {siteIdMap[biz.id] && (
+                      <ImpersonateButton siteId={siteIdMap[biz.id]} />
+                    )}
                   </td>
                 </tr>
               ))
