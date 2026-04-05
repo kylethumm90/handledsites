@@ -4,6 +4,8 @@ import { useState } from "react";
 import type { ContractorSite } from "@/lib/supabase";
 import { ExternalLink, Copy, Check } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
+import PhonePreview from "./PhonePreview";
+import QuizPreview from "./QuizPreview";
 
 type Props = { sites: ContractorSite[] };
 
@@ -126,7 +128,29 @@ function SiteCard({ site }: { site: ContractorSite }) {
         </a>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_auto]">
+      <div className="grid gap-6 lg:grid-cols-[auto_1fr_auto]">
+        {/* Preview */}
+        <div className="flex justify-center pointer-events-none">
+          <div style={{ transform: "scale(0.65)", transformOrigin: "top center", marginBottom: "-200px" }}>
+            {site.type === "business_card" ? (
+              <PhonePreview
+                businessName={site.business_name}
+                phone={site.phone}
+                city={site.city}
+                state={site.state}
+                trade={site.trade}
+                logoUrl={site.logo_url}
+              />
+            ) : (
+              <QuizPreview
+                businessName={site.business_name}
+                trade={site.trade}
+                logoUrl={site.logo_url}
+              />
+            )}
+          </div>
+        </div>
+
         {/* Settings */}
         <div className="space-y-4">
           <div>
