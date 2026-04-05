@@ -48,6 +48,10 @@ async function getContractor(slug: string): Promise<ContractorSite | null> {
     gtm_id: data.gtm_id ?? null,
     meta_pixel_id: data.meta_pixel_id ?? null,
     zapier_webhook_url: data.zapier_webhook_url ?? null,
+    social_facebook: data.social_facebook ?? null,
+    social_instagram: data.social_instagram ?? null,
+    social_google: data.social_google ?? null,
+    social_nextdoor: data.social_nextdoor ?? null,
   } as ContractorSite;
 }
 

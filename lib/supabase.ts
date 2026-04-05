@@ -50,6 +50,11 @@ export type ContractorSite = {
   gtm_id: string | null;
   meta_pixel_id: string | null;
   zapier_webhook_url: string | null;
+  // Social links
+  social_facebook: string | null;
+  social_instagram: string | null;
+  social_google: string | null;
+  social_nextdoor: string | null;
 };
 
 // New unified types
@@ -74,6 +79,10 @@ export type Business = {
   service_areas: string[] | null;
   license_number: string | null;
   hero_tagline: string | null;
+  social_facebook: string | null;
+  social_instagram: string | null;
+  social_google: string | null;
+  social_nextdoor: string | null;
   created_at: string;
 };
 
