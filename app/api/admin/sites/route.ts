@@ -79,23 +79,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: bizError.message }, { status: 400 });
     }
 
-    // Create site
-    const siteType = body.type || "business_card";
-    const { data: site, error: siteError } = await supabase
+    // Create all three site types
+    const { data: sites, error: siteError } = await supabase
       .from("sites")
-      .insert({
-        business_id: biz.id,
-        type: siteType,
-        slug,
-      })
-      .select("id")
-      .single();
+      .insert([
+        { business_id: biz.id, type: "business_card", slug },
+        { business_id: biz.id, type: "quiz_funnel", slug },
+        { business_id: biz.id, type: "review_funnel", slug },
+      ])
+      .select("id, type");
 
     if (siteError) {
       return NextResponse.json({ error: siteError.message }, { status: 400 });
     }
 
-    return NextResponse.json({ id: site.id, slug });
+    const cardSite = sites?.find((s) => s.type === "business_card");
+    return NextResponse.json({ id: cardSite?.id || sites?.[0]?.id, slug });
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Failed to create site" },

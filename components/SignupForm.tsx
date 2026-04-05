@@ -185,18 +185,30 @@ export default function SignupForm() {
         throw new Error(bizError.message);
       }
 
-      // Create business card site
+      // Create all three site types
       const { error: siteError } = await supabase
         .from("sites")
-        .insert({
-          business_id: bizData.id,
-          type: "business_card",
-          slug,
-          badge_licensed: form.badgeLicensed,
-          badge_free_estimates: form.badgeFreeEstimates,
-          badge_emergency: form.badgeEmergency,
-          badge_family_owned: form.badgeFamilyOwned,
-        });
+        .insert([
+          {
+            business_id: bizData.id,
+            type: "business_card",
+            slug,
+            badge_licensed: form.badgeLicensed,
+            badge_free_estimates: form.badgeFreeEstimates,
+            badge_emergency: form.badgeEmergency,
+            badge_family_owned: form.badgeFamilyOwned,
+          },
+          {
+            business_id: bizData.id,
+            type: "quiz_funnel",
+            slug,
+          },
+          {
+            business_id: bizData.id,
+            type: "review_funnel",
+            slug,
+          },
+        ]);
 
       if (siteError) {
         throw new Error(siteError.message);
