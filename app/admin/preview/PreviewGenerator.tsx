@@ -97,10 +97,11 @@ export default function PreviewGenerator() {
           backgroundPosition: "center",
         }}
       >
-        {/* Row 1: Three phones */}
-        <div className="flex flex-wrap justify-center gap-8">
+        {/* Row 1: Business card (large, left) + Quiz & Review (smaller, right) */}
+        <div className="flex justify-center gap-6">
+          {/* Business Card — hero, larger */}
           <div className="flex flex-col items-center gap-1">
-            <div style={{ transform: "scale(0.6)", transformOrigin: "top center", height: 348, width: 168 }}>
+            <div style={{ transform: "scale(0.7)", transformOrigin: "top center", height: 406, width: 196 }}>
               <PhonePreview
                 businessName={displayName}
                 phone={phone}
@@ -110,31 +111,34 @@ export default function PreviewGenerator() {
                 logoUrl={logoUrl}
               />
             </div>
-            <span className="rounded-full bg-gray-900/80 px-3 py-1 text-lg font-semibold text-white backdrop-blur-sm">
+            <span className="rounded-full bg-gray-900/80 px-4 py-1.5 text-lg font-semibold text-white backdrop-blur-sm">
               📇 Digital Business Card
             </span>
           </div>
 
-          <div className="flex flex-col items-center gap-1">
-            <div style={{ transform: "scale(0.6)", transformOrigin: "top center", height: 348, width: 168 }}>
-              <QuizPreview
-                businessName={displayName}
-                trade={trade}
-                logoUrl={logoUrl}
-              />
+          {/* Quiz + Review — smaller, stacked */}
+          <div className="flex flex-col items-center gap-4 pt-4">
+            <div className="flex flex-col items-center gap-1">
+              <div style={{ transform: "scale(0.45)", transformOrigin: "top center", height: 261, width: 126 }}>
+                <QuizPreview
+                  businessName={displayName}
+                  trade={trade}
+                  logoUrl={logoUrl}
+                />
+              </div>
+              <span className="rounded-full bg-gray-900/80 px-3 py-1 text-sm font-medium text-white backdrop-blur-sm">
+                ⚡ Instant Quote Funnel
+              </span>
             </div>
-            <span className="rounded-full bg-gray-900/80 px-3 py-1 text-base font-medium text-white backdrop-blur-sm">
-              ⚡ Instant Quote Funnel
-            </span>
-          </div>
 
-          <div className="flex flex-col items-center gap-1">
-            <div style={{ transform: "scale(0.6)", transformOrigin: "top center", height: 348, width: 168 }}>
-              <ReviewPreview businessName={displayName} logoUrl={logoUrl} />
+            <div className="flex flex-col items-center gap-1">
+              <div style={{ transform: "scale(0.45)", transformOrigin: "top center", height: 261, width: 126 }}>
+                <ReviewPreview businessName={displayName} logoUrl={logoUrl} />
+              </div>
+              <span className="rounded-full bg-gray-900/80 px-3 py-1 text-sm font-medium text-white backdrop-blur-sm">
+                ⭐ Review Booster
+              </span>
             </div>
-            <span className="rounded-full bg-gray-900/80 px-3 py-1 text-base font-medium text-white backdrop-blur-sm">
-              ⭐ Review Booster
-            </span>
           </div>
         </div>
 

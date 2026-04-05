@@ -47,7 +47,7 @@ export default function WebsitePreview({
         <div className="flex items-center justify-between border-b border-gray-100 px-4 py-2">
           <div className="flex items-center gap-1.5">
             {logoUrl ? (
-              <img src={logoUrl} alt="" className="h-[85px] w-[85px] rounded object-cover" />
+              <img src={logoUrl} alt="" className="h-[42px] w-[42px] rounded object-cover" />
             ) : (
               <div className="flex h-5 w-5 items-center justify-center rounded bg-blue-600 text-[7px] font-bold text-white">{initials}</div>
             )}
