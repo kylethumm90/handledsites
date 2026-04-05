@@ -45,7 +45,7 @@ export default async function ContractorDashboardPage() {
       services={currentSite.services || []}
       sites={(allSites || []).map((s) => ({
         id: s.id,
-        type: s.type as "business_card" | "quiz_funnel",
+        type: s.type as "business_card" | "quiz_funnel" | "review_funnel",
         slug: s.slug,
         isActive: s.is_active,
       }))}

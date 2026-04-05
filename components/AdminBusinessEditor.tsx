@@ -10,7 +10,7 @@ import ImageUpload from "./ImageUpload";
 
 type SiteInfo = {
   id: string;
-  type: "business_card" | "quiz_funnel";
+  type: "business_card" | "quiz_funnel" | "review_funnel";
   slug: string;
   is_active: boolean;
 };

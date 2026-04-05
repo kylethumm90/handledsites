@@ -23,7 +23,7 @@ export function getSupabaseAdmin(): SupabaseClient {
 export type ContractorSite = {
   id: string;
   business_id: string;
-  type: "business_card" | "quiz_funnel";
+  type: "business_card" | "quiz_funnel" | "review_funnel";
   business_name: string;
   owner_name: string;
   phone: string;
@@ -68,13 +68,14 @@ export type Business = {
   gtm_id: string | null;
   meta_pixel_id: string | null;
   zapier_webhook_url: string | null;
+  google_review_url: string | null;
   created_at: string;
 };
 
 export type Site = {
   id: string;
   business_id: string;
-  type: "business_card" | "quiz_funnel";
+  type: "business_card" | "quiz_funnel" | "review_funnel";
   slug: string;
   is_active: boolean;
   created_at: string;
@@ -131,4 +132,16 @@ export type ActivityLogEntry = {
   type: string;
   summary: string;
   agent: string | null;
+};
+
+export type ReviewResponse = {
+  id: string;
+  created_at: string;
+  business_id: string;
+  site_id: string | null;
+  rating: number;
+  feedback: string | null;
+  generated_review: string | null;
+  is_positive: boolean;
+  tech_name: string | null;
 };

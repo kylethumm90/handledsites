@@ -18,6 +18,7 @@ export default function AdminCreateSiteButton() {
   const [city, setCity] = useState("");
   const [state, setState] = useState("TX");
   const [trade, setTrade] = useState<string>(TRADES[0]);
+  const [siteType, setSiteType] = useState<string>("business_card");
 
   const formatPhoneDisplay = (p: string) => {
     if (p.length === 10) return `(${p.slice(0, 3)}) ${p.slice(3, 6)}-${p.slice(6)}`;
@@ -45,6 +46,7 @@ export default function AdminCreateSiteButton() {
           city,
           state,
           trade,
+          type: siteType,
         }),
       });
 
@@ -170,6 +172,19 @@ export default function AdminCreateSiteButton() {
                       {t}
                     </option>
                   ))}
+                </select>
+              </div>
+
+              <div>
+                <label className={labelClass}>Site type *</label>
+                <select
+                  value={siteType}
+                  onChange={(e) => setSiteType(e.target.value)}
+                  className={inputClass}
+                >
+                  <option value="business_card">Business Card</option>
+                  <option value="quiz_funnel">Quiz Funnel</option>
+                  <option value="review_funnel">Review Funnel</option>
                 </select>
               </div>
 

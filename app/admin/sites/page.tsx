@@ -129,10 +129,12 @@ export default async function AdminSitesPage({ searchParams }: Props) {
                       className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${
                         site.type === "business_card"
                           ? "bg-gray-100 text-gray-600"
-                          : "bg-amber-50 text-amber-700"
+                          : site.type === "quiz_funnel"
+                          ? "bg-amber-50 text-amber-700"
+                          : "bg-green-50 text-green-700"
                       }`}
                     >
-                      {site.type === "business_card" ? "Business Card" : "Quiz Funnel"}
+                      {site.type === "business_card" ? "Business Card" : site.type === "quiz_funnel" ? "Quiz Funnel" : "Review Funnel"}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-gray-600">
@@ -147,7 +149,7 @@ export default async function AdminSitesPage({ searchParams }: Props) {
                   </td>
                   <td className="px-4 py-3">
                     <a
-                      href={site.type === "quiz_funnel" ? `/q/${site.slug}` : `/${site.slug}`}
+                      href={site.type === "quiz_funnel" ? `/q/${site.slug}` : site.type === "review_funnel" ? `/r/${site.slug}` : `/${site.slug}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-gray-400 hover:text-gray-600"

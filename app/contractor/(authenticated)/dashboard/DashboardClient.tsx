@@ -7,7 +7,7 @@ import type { Lead } from "@/lib/supabase";
 
 type SiteInfo = {
   id: string;
-  type: "business_card" | "quiz_funnel";
+  type: "business_card" | "quiz_funnel" | "review_funnel";
   slug: string;
   isActive: boolean;
 };
@@ -28,11 +28,15 @@ function formatPhone(p: string): string {
 }
 
 function siteUrl(site: SiteInfo): string {
-  return site.type === "quiz_funnel" ? `/q/${site.slug}` : `/${site.slug}`;
+  if (site.type === "quiz_funnel") return `/q/${site.slug}`;
+  if (site.type === "review_funnel") return `/r/${site.slug}`;
+  return `/${site.slug}`;
 }
 
 function siteLabel(type: string): string {
-  return type === "business_card" ? "Business Card" : "Quiz Funnel";
+  if (type === "business_card") return "Business Card";
+  if (type === "quiz_funnel") return "Quiz Funnel";
+  return "Review Funnel";
 }
 
 function CopyButton({ text }: { text: string }) {

@@ -79,12 +79,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: bizError.message }, { status: 400 });
     }
 
-    // Create business card site
+    // Create site
+    const siteType = body.type || "business_card";
     const { data: site, error: siteError } = await supabase
       .from("sites")
       .insert({
         business_id: biz.id,
-        type: "business_card",
+        type: siteType,
         slug,
       })
       .select("id")

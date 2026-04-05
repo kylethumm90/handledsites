@@ -9,6 +9,7 @@ export default function ContractorSettingsEditor({ business }: Props) {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
 
+  const [googleReviewUrl, setGoogleReviewUrl] = useState(business.google_review_url ?? "");
   const [gtmId, setGtmId] = useState(business.gtm_id ?? "");
   const [metaPixelId, setMetaPixelId] = useState(business.meta_pixel_id ?? "");
   const [zapierWebhookUrl, setZapierWebhookUrl] = useState(business.zapier_webhook_url ?? "");
@@ -21,6 +22,7 @@ export default function ContractorSettingsEditor({ business }: Props) {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          google_review_url: googleReviewUrl || null,
           gtm_id: gtmId || null,
           meta_pixel_id: metaPixelId || null,
           zapier_webhook_url: zapierWebhookUrl || null,
@@ -48,7 +50,28 @@ export default function ContractorSettingsEditor({ business }: Props) {
         </p>
       </div>
 
+      {/* Google Reviews */}
       <div className="rounded-xl border border-gray-200 bg-white p-5">
+        <h2 className="mb-4 text-sm font-semibold text-gray-900">
+          Google Reviews
+        </h2>
+        <div>
+          <label className={labelClass}>Google Review URL</label>
+          <input
+            type="url"
+            value={googleReviewUrl}
+            onChange={(e) => setGoogleReviewUrl(e.target.value)}
+            placeholder="https://g.page/r/..."
+            className={inputClass}
+          />
+          <p className="mt-1 text-xs text-gray-400">
+            Paste your Google review link here. Happy customers will be directed to leave a review.
+          </p>
+        </div>
+      </div>
+
+      {/* Integrations */}
+      <div className="mt-6 rounded-xl border border-gray-200 bg-white p-5">
         <h2 className="mb-4 text-sm font-semibold text-gray-900">
           Integrations &amp; tracking
         </h2>
