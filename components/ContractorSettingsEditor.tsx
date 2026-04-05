@@ -167,9 +167,10 @@ export default function ContractorSettingsEditor({ business }: Props) {
         <p className="mt-0.5 text-xs text-gray-400">Manage your business info, Google profile, and integrations.</p>
       </div>
 
-      {/* Section 1: Business Info */}
+      {/* Section 1: Business Info — universal, applies to all sites */}
       <div className="rounded-xl border border-gray-200 bg-white p-5">
-        <h2 className="mb-4 text-sm font-semibold text-gray-900">Business info</h2>
+        <h2 className="mb-1 text-sm font-semibold text-gray-900">Business Info</h2>
+        <p className="mb-4 text-xs text-gray-400">Core details that appear across all your sites.</p>
         <div className="space-y-4">
           <ImageUpload currentUrl={logoUrl} storagePath={`logos/${business.id}`} onUploaded={setLogoUrl} shape="circle" label="Profile picture" />
           <div>
@@ -217,56 +218,10 @@ export default function ContractorSettingsEditor({ business }: Props) {
               </div>
             </div>
           )}
-
-          {/* Social links */}
-          <div>
-            <label className={labelClass}>Social links</label>
-            <p className="mb-2 text-xs text-gray-400">Add your social profiles. These show on your business card and website.</p>
-            <div className="space-y-2">
-              <div className="relative">
-                <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
-                <input type="url" value={socialFacebook} onChange={(e) => setSocialFacebook(e.target.value)} placeholder="https://facebook.com/yourbusiness" className={`${inputClass} pl-10`} />
-              </div>
-              <div className="relative">
-                <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
-                <input type="url" value={socialInstagram} onChange={(e) => setSocialInstagram(e.target.value)} placeholder="https://instagram.com/yourbusiness" className={`${inputClass} pl-10`} />
-              </div>
-              <div className="relative">
-                <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
-                <input type="url" value={socialNextdoor} onChange={(e) => setSocialNextdoor(e.target.value)} placeholder="https://nextdoor.com/pages/..." className={`${inputClass} pl-10`} />
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <label className={labelClass}>About your business</label>
-            <textarea value={aboutBio} onChange={(e) => setAboutBio(e.target.value)} placeholder="Tell customers a bit about your business, experience, and what makes you different." rows={4} className={inputClass} />
-            <p className="mt-1 text-xs text-gray-400">This shows on your website. Leave blank to hide the about section.</p>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={labelClass}>Years in business</label>
-              <input type="number" value={yearsInBusiness} onChange={(e) => setYearsInBusiness(e.target.value)} placeholder="e.g. 18" className={inputClass} />
-            </div>
-            <div>
-              <label className={labelClass}>License number</label>
-              <input type="text" value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value)} placeholder="e.g. HVAC-AL-004821" className={inputClass} />
-            </div>
-          </div>
-          <div>
-            <label className={labelClass}>Hero tagline</label>
-            <input type="text" value={heroTagline} onChange={(e) => setHeroTagline(e.target.value)} placeholder={`e.g. Fast, Reliable ${business.trade} in ${business.city}, ${business.state}`} className={inputClass} />
-            <p className="mt-1 text-xs text-gray-400">Main headline on your website. Leave blank for auto-generated.</p>
-          </div>
-          <div>
-            <label className={labelClass}>Service areas</label>
-            <input type="text" value={serviceAreasText} onChange={(e) => setServiceAreasText(e.target.value)} placeholder="e.g. Huntsville, Madison, Decatur, Athens" className={inputClass} />
-            <p className="mt-1 text-xs text-gray-400">Comma-separated list of cities you serve.</p>
-          </div>
         </div>
       </div>
 
-      {/* Section 2: Google My Business */}
+      {/* Section 2: Google My Business — business card + website */}
       <div className="mt-6 rounded-xl border border-gray-200 bg-white p-5">
         <h2 className="mb-1 text-sm font-semibold text-gray-900">Google My Business</h2>
         <p className="mb-4 text-xs text-gray-400">Connect your Google Business Profile to pull in reviews, ratings, and your address.</p>
@@ -338,7 +293,60 @@ export default function ContractorSettingsEditor({ business }: Props) {
         )}
       </div>
 
-      {/* Section 3: Integrations & Tracking */}
+      {/* Section 3: Website — website-only fields */}
+      <div className="mt-6 rounded-xl border border-gray-200 bg-white p-5">
+        <h2 className="mb-1 text-sm font-semibold text-gray-900">Website</h2>
+        <p className="mb-4 text-xs text-gray-400">These settings only apply to your one-page website.</p>
+        <div className="space-y-4">
+          <div>
+            <label className={labelClass}>About your business</label>
+            <textarea value={aboutBio} onChange={(e) => setAboutBio(e.target.value)} placeholder="Tell customers a bit about your business, experience, and what makes you different." rows={4} className={inputClass} />
+            <p className="mt-1 text-xs text-gray-400">Leave blank to hide the about section.</p>
+          </div>
+          <div>
+            <label className={labelClass}>Hero tagline</label>
+            <input type="text" value={heroTagline} onChange={(e) => setHeroTagline(e.target.value)} placeholder={`e.g. Fast, Reliable ${business.trade} in ${business.city}, ${business.state}`} className={inputClass} />
+            <p className="mt-1 text-xs text-gray-400">Main headline on your website. Leave blank for auto-generated.</p>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelClass}>Years in business</label>
+              <input type="number" value={yearsInBusiness} onChange={(e) => setYearsInBusiness(e.target.value)} placeholder="e.g. 18" className={inputClass} />
+            </div>
+            <div>
+              <label className={labelClass}>License number</label>
+              <input type="text" value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value)} placeholder="e.g. HVAC-AL-004821" className={inputClass} />
+            </div>
+          </div>
+          <div>
+            <label className={labelClass}>Service areas</label>
+            <input type="text" value={serviceAreasText} onChange={(e) => setServiceAreasText(e.target.value)} placeholder="e.g. Huntsville, Madison, Decatur, Athens" className={inputClass} />
+            <p className="mt-1 text-xs text-gray-400">Comma-separated list of cities you serve.</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Section 4: Social Links — business card + website */}
+      <div className="mt-6 rounded-xl border border-gray-200 bg-white p-5">
+        <h2 className="mb-1 text-sm font-semibold text-gray-900">Social Links</h2>
+        <p className="mb-4 text-xs text-gray-400">These show on your business card and website.</p>
+        <div className="space-y-2">
+          <div className="relative">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+            <input type="url" value={socialFacebook} onChange={(e) => setSocialFacebook(e.target.value)} placeholder="https://facebook.com/yourbusiness" className={`${inputClass} pl-10`} />
+          </div>
+          <div className="relative">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+            <input type="url" value={socialInstagram} onChange={(e) => setSocialInstagram(e.target.value)} placeholder="https://instagram.com/yourbusiness" className={`${inputClass} pl-10`} />
+          </div>
+          <div className="relative">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
+            <input type="url" value={socialNextdoor} onChange={(e) => setSocialNextdoor(e.target.value)} placeholder="https://nextdoor.com/pages/..." className={`${inputClass} pl-10`} />
+          </div>
+        </div>
+      </div>
+
+      {/* Section 5: Integrations & Tracking */}
       <div className="mt-6 rounded-xl border border-gray-200 bg-white p-5">
         <h2 className="mb-4 text-sm font-semibold text-gray-900">Integrations &amp; tracking</h2>
         <div className="space-y-4">
