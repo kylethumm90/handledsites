@@ -32,24 +32,26 @@ export default function ContractorAuthLayout({
       </nav>
 
       {/* Tab bar */}
-      <div className="border-b border-gray-200 bg-white px-4">
-        <div className="mx-auto flex max-w-3xl gap-1">
-          {TABS.map((tab) => {
-            const isActive = pathname === tab.href || pathname.startsWith(tab.href + "/");
-            return (
-              <Link
-                key={tab.href}
-                href={tab.href}
-                className={`px-4 py-2.5 text-sm font-medium transition-colors ${
-                  isActive
-                    ? "border-b-2 border-gray-900 text-gray-900"
-                    : "border-b-2 border-transparent text-gray-500 hover:text-gray-700"
-                }`}
-              >
-                {tab.label}
-              </Link>
-            );
-          })}
+      <div className="border-b border-gray-200 bg-white">
+        <div className="mx-auto max-w-3xl overflow-x-auto scrollbar-hide">
+          <div className="flex min-w-max px-4">
+            {TABS.map((tab) => {
+              const isActive = pathname === tab.href || pathname.startsWith(tab.href + "/");
+              return (
+                <Link
+                  key={tab.href}
+                  href={tab.href}
+                  className={`flex-shrink-0 whitespace-nowrap px-3 py-2.5 text-xs font-medium transition-colors sm:px-4 sm:text-sm ${
+                    isActive
+                      ? "border-b-2 border-gray-900 text-gray-900"
+                      : "border-b-2 border-transparent text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                  {tab.label}
+                </Link>
+              );
+            })}
+          </div>
         </div>
       </div>
 
