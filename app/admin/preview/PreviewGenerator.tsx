@@ -97,8 +97,8 @@ export default function PreviewGenerator() {
           backgroundPosition: "center",
         }}
       >
-        {/* Row 1: Business card (large, left) + Quiz & Review (smaller, right) */}
-        <div className="flex justify-center gap-6">
+        {/* Row 1: Business card (large, left) + Quiz & Review (smaller, side by side, right) */}
+        <div className="flex items-center justify-center gap-6">
           {/* Business Card — hero, larger */}
           <div className="flex flex-col items-center gap-1">
             <div style={{ transform: "scale(0.7)", transformOrigin: "top center", height: 406, width: 196 }}>
@@ -116,8 +116,8 @@ export default function PreviewGenerator() {
             </span>
           </div>
 
-          {/* Quiz + Review — smaller, stacked */}
-          <div className="flex flex-col items-center gap-4 pt-4">
+          {/* Quiz + Review — smaller, side by side */}
+          <div className="flex items-start gap-5">
             <div className="flex flex-col items-center gap-1">
               <div style={{ transform: "scale(0.45)", transformOrigin: "top center", height: 261, width: 126 }}>
                 <QuizPreview
