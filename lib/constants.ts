@@ -125,7 +125,7 @@ export const US_STATES = [
 export const DEFAULT_BANNER_MESSAGE = "Now booking spring projects — call today!";
 
 export const TRADE_IMAGES: Record<string, string> = {
-  "HVAC": "/cover-hvac.png",
+  "HVAC": "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=800",
   "Roofing": "/cover-roofing.png",
   "Plumbing": "https://images.unsplash.com/photo-1585704032915-c3400ca199e7?w=800",
   "Electrical": "/cover-electrician.png",
