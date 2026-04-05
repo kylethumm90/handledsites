@@ -100,6 +100,14 @@ export default function OnboardingWizard() {
       { business_id: bizData.id, type: "website", slug: generatedSlug },
     ]);
     if (siteError) throw new Error(siteError.message);
+
+    // Auto-login: create a contractor session
+    await fetch("/api/onboarding/auto-login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ slug: generatedSlug }),
+    });
+
     return generatedSlug;
   };
 
@@ -245,7 +253,7 @@ export default function OnboardingWizard() {
         {/* Exit */}
         <div className="mt-10 text-center transition-opacity duration-400" style={{ opacity: showExit ? 1 : 0 }}>
           <a
-            href="/contractor/login"
+            href="/contractor/sites"
             className="inline-block rounded-full bg-gray-900 px-8 py-3 text-sm font-semibold text-white hover:bg-gray-800"
           >
             Go to your dashboard
