@@ -51,8 +51,8 @@ function QuizFunnelCard({ site }: { site: ContractorSite }) {
     <div className="rounded-xl border border-gray-200 bg-white p-5">
       <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-start">
         {/* Preview */}
-        <div className="pointer-events-none flex-shrink-0">
-          <div style={{ transform: "scale(0.55)", transformOrigin: "top center", height: "320px", width: "154px" }}>
+        <div className="pointer-events-none flex-shrink-0 overflow-hidden rounded-xl" style={{ width: "154px", height: "320px" }}>
+          <div style={{ transform: "scale(0.55)", transformOrigin: "top left", width: "280px", height: "580px" }}>
             <QuizPreview
               businessName={site.business_name}
               trade={site.trade}
@@ -62,7 +62,7 @@ function QuizFunnelCard({ site }: { site: ContractorSite }) {
         </div>
 
         {/* Info */}
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 sm:pt-2">
           <span className="inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
             Quiz Funnel
           </span>
