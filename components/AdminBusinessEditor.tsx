@@ -303,12 +303,13 @@ export default function AdminBusinessEditor({ business, sites }: Props) {
                     <div className="flex items-center gap-2">
                       <span
                         className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                          s.type === "business_card"
-                            ? "bg-gray-100 text-gray-600"
-                            : "bg-amber-50 text-amber-700"
+                          s.type === "business_card" ? "bg-gray-100 text-gray-600"
+                            : s.type === "quiz_funnel" ? "bg-amber-50 text-amber-700"
+                            : s.type === "website" ? "bg-blue-50 text-blue-700"
+                            : "bg-green-50 text-green-700"
                         }`}
                       >
-                        {s.type === "business_card" ? "Card" : "Quiz"}
+                        {s.type === "business_card" ? "Card" : s.type === "quiz_funnel" ? "Quiz" : s.type === "website" ? "Website" : "Review"}
                       </span>
                       <span className="text-sm text-gray-700">/{s.slug}</span>
                     </div>
