@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { LayoutDashboard, List, Users, FileText, Layers, ChevronDown, ExternalLink } from "lucide-react";
+import { LayoutDashboard, List, Users, FileText, Layers, Wrench, ChevronDown, ExternalLink } from "lucide-react";
 
 const LANDING_PAGES = [
   {
@@ -83,12 +83,14 @@ export default function AdminShell({
   active,
 }: {
   children: React.ReactNode;
-  active: "dashboard" | "sites" | "businesses" | "templates" | "landing-pages";
+  active: "dashboard" | "sites" | "businesses" | "templates" | "landing-pages" | "tools";
 }) {
   const [lpOpen, setLpOpen] = useState(false);
   const [tplOpen, setTplOpen] = useState(false);
+  const [toolsOpen, setToolsOpen] = useState(false);
   const lpRef = useRef<HTMLDivElement>(null);
   const tplRef = useRef<HTMLDivElement>(null);
+  const toolsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -97,6 +99,9 @@ export default function AdminShell({
       }
       if (tplRef.current && !tplRef.current.contains(e.target as Node)) {
         setTplOpen(false);
+      }
+      if (toolsRef.current && !toolsRef.current.contains(e.target as Node)) {
+        setToolsOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClick);
@@ -136,7 +141,7 @@ export default function AdminShell({
               {/* Templates dropdown */}
               <div className="relative" ref={tplRef}>
                 <button
-                  onClick={() => { setTplOpen(!tplOpen); setLpOpen(false); }}
+                  onClick={() => { setTplOpen(!tplOpen); setLpOpen(false); setToolsOpen(false); }}
                   className={`${navLinkClass("templates")} cursor-pointer`}
                 >
                   <Layers className="h-3.5 w-3.5" />
@@ -181,7 +186,7 @@ export default function AdminShell({
               {/* Landing Pages dropdown */}
               <div className="relative" ref={lpRef}>
                 <button
-                  onClick={() => { setLpOpen(!lpOpen); setTplOpen(false); }}
+                  onClick={() => { setLpOpen(!lpOpen); setTplOpen(false); setToolsOpen(false); }}
                   className={`${navLinkClass("landing-pages")} cursor-pointer`}
                 >
                   <FileText className="h-3.5 w-3.5" />
@@ -202,6 +207,28 @@ export default function AdminShell({
                         <ExternalLink className="h-3 w-3 text-gray-400" />
                       </a>
                     ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Tools dropdown */}
+              <div className="relative" ref={toolsRef}>
+                <button
+                  onClick={() => { setToolsOpen(!toolsOpen); setLpOpen(false); setTplOpen(false); }}
+                  className={`${navLinkClass("tools")} cursor-pointer`}
+                >
+                  <Wrench className="h-3.5 w-3.5" />
+                  Tools
+                  <ChevronDown className={`h-3 w-3 transition-transform ${toolsOpen ? "rotate-180" : ""}`} />
+                </button>
+                {toolsOpen && (
+                  <div className="absolute left-0 top-full z-50 mt-1 min-w-[200px] rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                    <Link
+                      href="/admin/preview"
+                      className="flex items-center justify-between px-3 py-2 text-xs text-gray-700 hover:bg-gray-50"
+                    >
+                      Teaser Generator
+                    </Link>
                   </div>
                 )}
               </div>
