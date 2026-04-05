@@ -52,7 +52,7 @@ export default function QuizPreview({
             <img
               src={logoUrl}
               alt={businessName}
-              className="h-8 max-w-[120px] object-contain"
+              className="h-24 max-w-[180px] object-contain"
             />
           ) : (
             <span className="text-sm font-bold text-gray-900 truncate">

@@ -8,6 +8,7 @@ type Props = {
   city: string;
   state: string;
   services: string[];
+  logoUrl?: string | null;
 };
 
 export default function WebsitePreview({
@@ -16,6 +17,7 @@ export default function WebsitePreview({
   city,
   state,
   services,
+  logoUrl,
 }: Props) {
   const initials = businessName
     .split(/\s+/)
@@ -44,7 +46,11 @@ export default function WebsitePreview({
         {/* Nav */}
         <div className="flex items-center justify-between border-b border-gray-100 px-4 py-2">
           <div className="flex items-center gap-1.5">
-            <div className="flex h-5 w-5 items-center justify-center rounded bg-blue-600 text-[7px] font-bold text-white">{initials}</div>
+            {logoUrl ? (
+              <img src={logoUrl} alt="" className="h-5 w-5 rounded object-cover" />
+            ) : (
+              <div className="flex h-5 w-5 items-center justify-center rounded bg-blue-600 text-[7px] font-bold text-white">{initials}</div>
+            )}
             <span className="text-[9px] font-bold text-gray-900">{businessName}</span>
           </div>
           <div className="flex items-center gap-1 rounded bg-orange-500 px-2 py-1 text-[7px] font-bold text-white">

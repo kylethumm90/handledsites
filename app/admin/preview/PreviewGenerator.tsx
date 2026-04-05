@@ -90,9 +90,8 @@ export default function PreviewGenerator() {
 
       {/* Preview grid */}
       <div className="rounded-xl border border-gray-200 bg-gray-50 p-8">
+        {/* Row 1: Three phones */}
         <div className="flex flex-wrap justify-center gap-8">
-
-          {/* Business Card */}
           <div className="flex flex-col items-center gap-2">
             <div style={{ transform: "scale(0.6)", transformOrigin: "top center", height: 348, width: 168 }}>
               <PhonePreview
@@ -107,7 +106,6 @@ export default function PreviewGenerator() {
             <span className="text-xs font-medium text-gray-500">Business Card</span>
           </div>
 
-          {/* Quiz Funnel */}
           <div className="flex flex-col items-center gap-2">
             <div style={{ transform: "scale(0.6)", transformOrigin: "top center", height: 348, width: 168 }}>
               <QuizPreview
@@ -119,23 +117,25 @@ export default function PreviewGenerator() {
             <span className="text-xs font-medium text-gray-500">Quiz Funnel</span>
           </div>
 
-          {/* Review Funnel */}
           <div className="flex flex-col items-center gap-2">
             <div style={{ transform: "scale(0.6)", transformOrigin: "top center", height: 348, width: 168 }}>
               <ReviewPreview businessName={displayName} logoUrl={logoUrl} />
             </div>
             <span className="text-xs font-medium text-gray-500">Review Funnel</span>
           </div>
+        </div>
 
-          {/* Website */}
+        {/* Row 2: Website */}
+        <div className="mt-8 flex justify-center">
           <div className="flex flex-col items-center gap-2">
-            <div style={{ transform: "scale(0.55)", transformOrigin: "top center", height: 220, width: 231 }}>
+            <div style={{ transform: "scale(0.7)", transformOrigin: "top center", height: 245, width: 294 }}>
               <WebsitePreview
                 businessName={displayName}
                 trade={trade}
                 city={city}
                 state={state}
                 services={services}
+                logoUrl={logoUrl}
               />
             </div>
             <span className="text-xs font-medium text-gray-500">Website</span>
@@ -159,7 +159,7 @@ function ReviewPreview({ businessName, logoUrl }: { businessName: string; logoUr
         {/* Logo / name */}
         <div className="flex items-center justify-center bg-white px-4 py-4">
           {logoUrl ? (
-            <img src={logoUrl} alt={businessName} className="h-8 max-w-[120px] object-contain" />
+            <img src={logoUrl} alt={businessName} className="h-24 max-w-[180px] object-contain" />
           ) : (
             <span className="text-sm font-bold text-gray-900">{businessName}</span>
           )}
