@@ -118,14 +118,6 @@ export default function ContractorCard({ contractor }: Props) {
         slug={contractor.slug}
       />
 
-      {/* Social Links */}
-      <SocialLinks
-        facebook={contractor.social_facebook}
-        instagram={contractor.social_instagram}
-        google={contractor.social_google}
-        nextdoor={contractor.social_nextdoor}
-      />
-
       {/* Services Grid */}
       {contractor.services.length > 0 && (
         <ServicesGrid services={contractor.services} />
@@ -135,6 +127,14 @@ export default function ContractorCard({ contractor }: Props) {
       <ReviewStars
         reviewCount={contractor.review_count}
         avgRating={contractor.avg_rating}
+      />
+
+      {/* Social Links */}
+      <SocialLinks
+        facebook={contractor.social_facebook}
+        instagram={contractor.social_instagram}
+        google={contractor.social_google}
+        nextdoor={contractor.social_nextdoor}
       />
 
       {/* Location pill */}
