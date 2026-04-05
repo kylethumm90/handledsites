@@ -28,6 +28,12 @@ export default function ContractorSettingsEditor({ business }: Props) {
   const [state, setState] = useState(business.state);
   const [services, setServices] = useState<string[]>(business.services);
   const [aboutBio, setAboutBio] = useState(business.about_bio ?? "");
+  const [yearsInBusiness, setYearsInBusiness] = useState(business.years_in_business ?? "");
+  const [licenseNumber, setLicenseNumber] = useState(business.license_number ?? "");
+  const [heroTagline, setHeroTagline] = useState(business.hero_tagline ?? "");
+  const [serviceAreasText, setServiceAreasText] = useState(
+    (business.service_areas || []).join(", ")
+  );
 
   // Google Reviews
   const [googleReviewUrl, setGoogleReviewUrl] = useState(business.google_review_url ?? "");
@@ -104,6 +110,12 @@ export default function ContractorSettingsEditor({ business }: Props) {
           services,
           logo_url: logoUrl,
           about_bio: aboutBio.trim() || null,
+          years_in_business: yearsInBusiness === "" ? null : Number(yearsInBusiness),
+          license_number: licenseNumber.trim() || null,
+          hero_tagline: heroTagline.trim() || null,
+          service_areas: serviceAreasText.trim()
+            ? serviceAreasText.split(",").map((s) => s.trim()).filter(Boolean)
+            : null,
           google_review_url: googleReviewUrl || null,
           gtm_id: gtmId || null,
           meta_pixel_id: metaPixelId || null,
@@ -217,6 +229,54 @@ export default function ContractorSettingsEditor({ business }: Props) {
             />
             <p className="mt-1 text-xs text-gray-400">
               This shows on your website. Leave blank to hide the about section.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelClass}>Years in business</label>
+              <input
+                type="number"
+                value={yearsInBusiness}
+                onChange={(e) => setYearsInBusiness(e.target.value)}
+                placeholder="e.g. 18"
+                className={inputClass}
+              />
+            </div>
+            <div>
+              <label className={labelClass}>License number</label>
+              <input
+                type="text"
+                value={licenseNumber}
+                onChange={(e) => setLicenseNumber(e.target.value)}
+                placeholder="e.g. HVAC-AL-004821"
+                className={inputClass}
+              />
+            </div>
+          </div>
+          <div>
+            <label className={labelClass}>Hero tagline</label>
+            <input
+              type="text"
+              value={heroTagline}
+              onChange={(e) => setHeroTagline(e.target.value)}
+              placeholder={`e.g. Fast, Reliable ${business.trade} in ${business.city}, ${business.state}`}
+              className={inputClass}
+            />
+            <p className="mt-1 text-xs text-gray-400">
+              Main headline on your website. Leave blank for auto-generated.
+            </p>
+          </div>
+          <div>
+            <label className={labelClass}>Service areas</label>
+            <input
+              type="text"
+              value={serviceAreasText}
+              onChange={(e) => setServiceAreasText(e.target.value)}
+              placeholder="e.g. Huntsville, Madison, Decatur, Athens"
+              className={inputClass}
+            />
+            <p className="mt-1 text-xs text-gray-400">
+              Comma-separated list of cities you serve.
             </p>
           </div>
         </div>

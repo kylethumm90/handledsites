@@ -4,7 +4,8 @@ import { validateSessionFromRequest } from "@/lib/contractor-auth";
 
 const ALLOWED_FIELDS = new Set([
   "name", "owner_name", "phone", "email", "city", "state", "trade", "services", "logo_url",
-  "about_bio", "gtm_id", "meta_pixel_id", "zapier_webhook_url", "google_review_url",
+  "about_bio", "years_in_business", "service_areas", "license_number", "hero_tagline",
+  "gtm_id", "meta_pixel_id", "zapier_webhook_url", "google_review_url",
 ]);
 
 export async function PUT(request: NextRequest) {

@@ -70,6 +70,10 @@ export type Business = {
   zapier_webhook_url: string | null;
   google_review_url: string | null;
   about_bio: string | null;
+  years_in_business: number | null;
+  service_areas: string[] | null;
+  license_number: string | null;
+  hero_tagline: string | null;
   created_at: string;
 };
 
