@@ -239,8 +239,8 @@ const REVIEW_WALL_CSS = `
 .rw-star { fill: #E5E7EB; }
 .rw-star-filled { fill: #F59E0B; }
 .rw-google-icon { flex-shrink: 0; }
-.rw-call-btn { display: inline-flex; align-items: center; gap: 6px; background: #0C1A2E; color: #fff; padding: 10px 24px; border-radius: 8px; font-size: 14px; font-weight: 700; }
-.rw-call-btn:hover { background: #162544; }
+.rw-call-btn { display: inline-flex; align-items: center; gap: 6px; background: #F97316; color: #fff; padding: 12px 28px; border-radius: 8px; font-size: 15px; font-weight: 700; }
+.rw-call-btn:hover { background: #C2550D; }
 
 .rw-section { padding: 40px 0 0; }
 .rw-section-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; color: #6B7280; margin-bottom: 20px; }
@@ -273,8 +273,8 @@ const REVIEW_WALL_CSS = `
 .rw-sf-num { font-size: 28px; font-weight: 800; }
 .rw-sf-label { font-size: 12px; color: rgba(255,255,255,0.6); font-weight: 500; }
 .rw-sf-cta { text-align: center; margin-top: 20px; }
-.rw-sf-btn { display: inline-flex; align-items: center; gap: 6px; border: 1.5px solid rgba(255,255,255,0.3); color: #fff; padding: 10px 22px; border-radius: 8px; font-size: 13px; font-weight: 600; }
-.rw-sf-btn:hover { background: rgba(255,255,255,0.1); }
+.rw-sf-btn { display: inline-flex; align-items: center; gap: 6px; background: #F97316; color: #fff; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 700; }
+.rw-sf-btn:hover { background: #C2550D; }
 
 .rw-footer { padding: 32px 0 16px; text-align: center; }
 .rw-footer-name { font-size: 14px; font-weight: 600; color: #0C1A2E; margin-bottom: 4px; }
