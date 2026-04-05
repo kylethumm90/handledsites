@@ -14,6 +14,7 @@ function siteUrl(site: ContractorSite): string {
   if (site.type === "quiz_funnel") return `/q/${site.slug}`;
   if (site.type === "review_funnel") return `/r/${site.slug}`;
   if (site.type === "website") return `/s/${site.slug}`;
+  if (site.type === "review_wall") return `/reviews/${site.slug}`;
   return `/${site.slug}`;
 }
 
@@ -130,6 +131,52 @@ function ReviewFunnelCard({ site }: { site: ContractorSite }) {
           <div className="mt-3">
             <a
               href={`/r/${site.slug}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+            >
+              View
+              <ExternalLink className="h-3 w-3" />
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ReviewWallCard({ site }: { site: ContractorSite }) {
+  const baseUrl =
+    typeof window !== "undefined"
+      ? window.location.origin
+      : "https://handledsites.com";
+  const fullUrl = `${baseUrl}/reviews/${site.slug}`;
+
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-5">
+      <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-start">
+        <div className="flex h-[100px] w-[154px] flex-shrink-0 items-center justify-center rounded-xl border border-gray-100 bg-gray-50">
+          <div className="flex flex-col items-center gap-1">
+            <div className="flex gap-0.5 text-amber-400 text-lg">★★★★★</div>
+            <span className="text-[10px] font-semibold text-gray-500">4.9 · 48 reviews</span>
+          </div>
+        </div>
+
+        <div className="flex-1 min-w-0 sm:pt-2">
+          <span className="inline-flex rounded-full bg-purple-50 px-2 py-0.5 text-[10px] font-semibold text-purple-700">
+            Review Wall
+          </span>
+
+          <div className="mt-3 flex items-center gap-2">
+            <span className="truncate rounded-md bg-gray-50 px-2 py-1 text-xs font-mono text-gray-600">
+              {fullUrl}
+            </span>
+            <CopyButton text={fullUrl} />
+          </div>
+
+          <div className="mt-3">
+            <a
+              href={`/reviews/${site.slug}`}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
@@ -410,6 +457,8 @@ export default function ContractorSitesEditor({ sites }: Props) {
               <ReviewFunnelCard key={site.id} site={site} />
             ) : site.type === "website" ? (
               <WebsiteCard key={site.id} site={site} />
+            ) : site.type === "review_wall" ? (
+              <ReviewWallCard key={site.id} site={site} />
             ) : null
           )}
         </div>

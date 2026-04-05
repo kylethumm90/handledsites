@@ -136,7 +136,7 @@ export default function AdminSiteEditor({ site }: Props) {
             {impersonating ? "Opening..." : "View as user"}
           </button>
           <a
-            href={site.type === "quiz_funnel" ? `/q/${site.slug}` : site.type === "review_funnel" ? `/r/${site.slug}` : site.type === "website" ? `/s/${site.slug}` : `/${site.slug}`}
+            href={site.type === "quiz_funnel" ? `/q/${site.slug}` : site.type === "review_funnel" ? `/r/${site.slug}` : site.type === "website" ? `/s/${site.slug}` : site.type === "review_wall" ? `/reviews/${site.slug}` : `/${site.slug}`}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"

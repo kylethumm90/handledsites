@@ -169,6 +169,7 @@ export default function OnboardingWizard() {
       { business_id: bizData.id, type: "quiz_funnel", slug: generatedSlug },
       { business_id: bizData.id, type: "review_funnel", slug: generatedSlug },
       { business_id: bizData.id, type: "website", slug: generatedSlug },
+      { business_id: bizData.id, type: "review_wall", slug: generatedSlug },
     ]);
     if (siteError) throw new Error(siteError.message);
 

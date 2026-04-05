@@ -133,10 +133,12 @@ export default async function AdminSitesPage({ searchParams }: Props) {
                           ? "bg-amber-50 text-amber-700"
                           : site.type === "website"
                           ? "bg-blue-50 text-blue-700"
+                          : site.type === "review_wall"
+                          ? "bg-purple-50 text-purple-700"
                           : "bg-green-50 text-green-700"
                       }`}
                     >
-                      {site.type === "business_card" ? "Business Card" : site.type === "quiz_funnel" ? "Quiz Funnel" : site.type === "website" ? "Website" : "Review Funnel"}
+                      {site.type === "business_card" ? "Business Card" : site.type === "quiz_funnel" ? "Quiz Funnel" : site.type === "website" ? "Website" : site.type === "review_wall" ? "Review Wall" : "Review Funnel"}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-gray-600">
@@ -151,7 +153,7 @@ export default async function AdminSitesPage({ searchParams }: Props) {
                   </td>
                   <td className="px-4 py-3">
                     <a
-                      href={site.type === "quiz_funnel" ? `/q/${site.slug}` : site.type === "review_funnel" ? `/r/${site.slug}` : site.type === "website" ? `/s/${site.slug}` : `/${site.slug}`}
+                      href={site.type === "quiz_funnel" ? `/q/${site.slug}` : site.type === "review_funnel" ? `/r/${site.slug}` : site.type === "website" ? `/s/${site.slug}` : site.type === "review_wall" ? `/reviews/${site.slug}` : `/${site.slug}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-gray-400 hover:text-gray-600"

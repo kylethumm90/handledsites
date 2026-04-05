@@ -213,6 +213,11 @@ export default function SignupForm() {
             type: "website",
             slug,
           },
+          {
+            business_id: bizData.id,
+            type: "review_wall",
+            slug,
+          },
         ]);
 
       if (siteError) {
