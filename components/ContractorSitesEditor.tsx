@@ -9,10 +9,6 @@ import QuizPreview from "./QuizPreview";
 
 type Props = { sites: ContractorSite[] };
 
-function siteLabel(type: string): string {
-  return type === "business_card" ? "Business Card" : "Quiz Funnel";
-}
-
 function siteUrl(site: ContractorSite): string {
   return site.type === "quiz_funnel" ? `/q/${site.slug}` : `/${site.slug}`;
 }
@@ -44,7 +40,58 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
-function SiteCard({ site }: { site: ContractorSite }) {
+function QuizFunnelCard({ site }: { site: ContractorSite }) {
+  const baseUrl =
+    typeof window !== "undefined"
+      ? window.location.origin
+      : "https://handledsites.com";
+  const fullUrl = `${baseUrl}${siteUrl(site)}`;
+
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-5">
+      <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-start">
+        {/* Preview */}
+        <div className="pointer-events-none flex-shrink-0">
+          <div style={{ transform: "scale(0.55)", transformOrigin: "top center", height: "320px", width: "154px" }}>
+            <QuizPreview
+              businessName={site.business_name}
+              trade={site.trade}
+              logoUrl={site.logo_url}
+            />
+          </div>
+        </div>
+
+        {/* Info */}
+        <div className="flex-1 min-w-0">
+          <span className="inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+            Quiz Funnel
+          </span>
+
+          <div className="mt-3 flex items-center gap-2">
+            <span className="truncate rounded-md bg-gray-50 px-2 py-1 text-xs font-mono text-gray-600">
+              {fullUrl}
+            </span>
+            <CopyButton text={fullUrl} />
+          </div>
+
+          <div className="mt-3">
+            <a
+              href={siteUrl(site)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+            >
+              View
+              <ExternalLink className="h-3 w-3" />
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BusinessCardSiteCard({ site }: { site: ContractorSite }) {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -99,17 +146,9 @@ function SiteCard({ site }: { site: ContractorSite }) {
       {/* Header: type badge + URL + actions */}
       <div className="mb-4 flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <span
-              className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                site.type === "business_card"
-                  ? "bg-gray-100 text-gray-600"
-                  : "bg-amber-50 text-amber-700"
-              }`}
-            >
-              {siteLabel(site.type)}
-            </span>
-          </div>
+          <span className="inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-600">
+            Business Card
+          </span>
           <div className="mt-2 flex items-center gap-2">
             <span className="truncate rounded-md bg-gray-50 px-2 py-1 text-xs font-mono text-gray-600">
               {fullUrl}
@@ -132,22 +171,14 @@ function SiteCard({ site }: { site: ContractorSite }) {
         {/* Preview */}
         <div className="flex justify-center pointer-events-none">
           <div style={{ transform: "scale(0.65)", transformOrigin: "top center", marginBottom: "-200px" }}>
-            {site.type === "business_card" ? (
-              <PhonePreview
-                businessName={site.business_name}
-                phone={site.phone}
-                city={site.city}
-                state={site.state}
-                trade={site.trade}
-                logoUrl={site.logo_url}
-              />
-            ) : (
-              <QuizPreview
-                businessName={site.business_name}
-                trade={site.trade}
-                logoUrl={site.logo_url}
-              />
-            )}
+            <PhonePreview
+              businessName={site.business_name}
+              phone={site.phone}
+              city={site.city}
+              state={site.state}
+              trade={site.trade}
+              logoUrl={site.logo_url}
+            />
           </div>
         </div>
 
@@ -268,9 +299,13 @@ export default function ContractorSitesEditor({ sites }: Props) {
         </div>
       ) : (
         <div className="space-y-6">
-          {sites.map((site) => (
-            <SiteCard key={site.id} site={site} />
-          ))}
+          {sites.map((site) =>
+            site.type === "business_card" ? (
+              <BusinessCardSiteCard key={site.id} site={site} />
+            ) : (
+              <QuizFunnelCard key={site.id} site={site} />
+            )
+          )}
         </div>
       )}
     </div>
