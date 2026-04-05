@@ -3,7 +3,6 @@ import { isAdminAuthenticated } from "@/lib/admin-auth";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import AdminShell from "@/components/AdminShell";
 import Link from "next/link";
-import { ExternalLink } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -11,38 +10,38 @@ async function getStats() {
   const supabase = getSupabaseAdmin();
 
   const { data: all, count: totalCount } = await supabase
-    .from("sites_full")
+    .from("businesses")
     .select("*", { count: "exact" });
 
-  const sites = all || [];
+  const businesses = all || [];
   const total = totalCount || 0;
 
   const now = new Date();
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
   const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7).toISOString();
 
-  const today = sites.filter((s) => s.created_at >= todayStart).length;
-  const thisWeek = sites.filter((s) => s.created_at >= weekStart).length;
+  const today = businesses.filter((b) => b.created_at >= todayStart).length;
+  const thisWeek = businesses.filter((b) => b.created_at >= weekStart).length;
 
   // Trade breakdown
   const byTrade: Record<string, number> = {};
-  sites.forEach((s) => {
-    byTrade[s.trade] = (byTrade[s.trade] || 0) + 1;
+  businesses.forEach((b) => {
+    byTrade[b.trade] = (byTrade[b.trade] || 0) + 1;
   });
   const tradeBreakdown = Object.entries(byTrade)
     .sort((a, b) => b[1] - a[1]);
 
   // State breakdown (top 10)
   const byState: Record<string, number> = {};
-  sites.forEach((s) => {
-    byState[s.state] = (byState[s.state] || 0) + 1;
+  businesses.forEach((b) => {
+    byState[b.state] = (byState[b.state] || 0) + 1;
   });
   const stateBreakdown = Object.entries(byState)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 10);
 
   // Recent signups
-  const recent = [...sites]
+  const recent = [...businesses]
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     .slice(0, 10);
 
@@ -61,7 +60,7 @@ export default async function AdminDashboard() {
       {/* Stats cards */}
       <div className="mb-8 grid gap-4 sm:grid-cols-3">
         <div className="rounded-xl border border-gray-200 bg-white p-5">
-          <p className="text-xs font-medium text-gray-500">Total sites</p>
+          <p className="text-xs font-medium text-gray-500">Total businesses</p>
           <p className="mt-1 text-3xl font-bold text-gray-900">{stats.total}</p>
         </div>
         <div className="rounded-xl border border-gray-200 bg-white p-5">
@@ -130,7 +129,7 @@ export default async function AdminDashboard() {
           Recent signups
         </h2>
         {stats.recent.length === 0 ? (
-          <p className="text-sm text-gray-400">No sites yet</p>
+          <p className="text-sm text-gray-400">No businesses yet</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
@@ -141,42 +140,31 @@ export default async function AdminDashboard() {
                   <th className="pb-2 pr-4 font-medium">Trade</th>
                   <th className="pb-2 pr-4 font-medium">Location</th>
                   <th className="pb-2 pr-4 font-medium">Created</th>
-                  <th className="pb-2 font-medium"></th>
                 </tr>
               </thead>
               <tbody>
-                {stats.recent.map((site) => (
+                {stats.recent.map((biz) => (
                   <tr
-                    key={site.id}
+                    key={biz.id}
                     className="border-b border-gray-50 last:border-0"
                   >
                     <td className="py-2.5 pr-4">
                       <Link
-                        href={`/admin/sites/${site.id}`}
+                        href={`/admin/businesses/${biz.id}`}
                         className="font-medium text-gray-900 hover:text-blue-600"
                       >
-                        {site.business_name}
+                        {biz.name}
                       </Link>
                     </td>
                     <td className="py-2.5 pr-4 text-gray-600">
-                      {site.owner_name}
+                      {biz.owner_name}
                     </td>
-                    <td className="py-2.5 pr-4 text-gray-600">{site.trade}</td>
+                    <td className="py-2.5 pr-4 text-gray-600">{biz.trade}</td>
                     <td className="py-2.5 pr-4 text-gray-600">
-                      {site.city}, {site.state}
+                      {biz.city}, {biz.state}
                     </td>
                     <td className="py-2.5 pr-4 text-gray-400">
-                      {new Date(site.created_at).toLocaleDateString()}
-                    </td>
-                    <td className="py-2.5">
-                      <a
-                        href={site.type === "quiz_funnel" ? `/q/${site.slug}` : site.type === "review_funnel" ? `/r/${site.slug}` : `/${site.slug}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-gray-400 hover:text-gray-600"
-                      >
-                        <ExternalLink className="h-3.5 w-3.5" />
-                      </a>
+                      {new Date(biz.created_at).toLocaleDateString()}
                     </td>
                   </tr>
                 ))}

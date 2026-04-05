@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Copy } from "lucide-react";
+import { Check, Copy, ExternalLink } from "lucide-react";
 
 type Props = {
   siteId: string;
@@ -56,16 +56,6 @@ export default function ReviewClient({
       setStep("result");
     } catch {
       setSubmitting(false);
-    }
-  };
-
-  const handleCopyAndReview = async () => {
-    if (generatedReview) {
-      await navigator.clipboard.writeText(generatedReview);
-      setCopied(true);
-    }
-    if (googleReviewUrl) {
-      window.open(googleReviewUrl, "_blank");
     }
   };
 
@@ -147,7 +137,7 @@ export default function ReviewClient({
         </div>
       )}
 
-      {/* Step 3: Result */}
+      {/* Step 3: Result - Happy */}
       {step === "result" && isPositive && (
         <div className="py-8">
           <div className="mb-6 flex justify-center">
@@ -155,45 +145,86 @@ export default function ReviewClient({
               <Check className="h-7 w-7 text-green-600" />
             </div>
           </div>
-          <h2 className="mb-2 text-center text-base font-semibold text-gray-900">
+          <h2 className="mb-6 text-center text-base font-semibold text-gray-900">
             Thanks for the kind words!
           </h2>
-          <p className="mb-6 text-center text-sm text-gray-500">
-            Mind sharing your experience on Google?
-            {!googleReviewUrl && " (Ask your contractor for their Google review link)"}
-          </p>
 
           {generatedReview && (
-            <div className="mb-4 rounded-xl border border-gray-200 bg-gray-50 p-4">
-              <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-gray-400">
-                Your review (feel free to edit before posting)
-              </p>
-              <textarea
-                value={generatedReview}
-                onChange={(e) => setGeneratedReview(e.target.value)}
-                rows={4}
-                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-400 focus:outline-none"
-              />
-            </div>
-          )}
+            <>
+              {/* Review text */}
+              <div className="mb-3 rounded-xl border border-gray-200 bg-gray-50 p-4">
+                <textarea
+                  value={generatedReview}
+                  onChange={(e) => setGeneratedReview(e.target.value)}
+                  rows={4}
+                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-400 focus:outline-none"
+                />
+                <p className="mt-2 text-[10px] text-gray-400 text-center">
+                  Feel free to edit before posting
+                </p>
+              </div>
 
-          {googleReviewUrl && (
-            <button
-              onClick={handleCopyAndReview}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-gray-900 py-3 text-sm font-semibold text-white hover:bg-gray-800"
-            >
-              {copied ? (
+              {/* Step 1: Copy */}
+              <button
+                onClick={async () => {
+                  if (generatedReview) {
+                    await navigator.clipboard.writeText(generatedReview);
+                    setCopied(true);
+                  }
+                }}
+                className={`flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition-colors ${
+                  copied
+                    ? "bg-green-50 text-green-700"
+                    : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                {copied ? (
+                  <>
+                    <Check className="h-4 w-4" />
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-4 w-4" />
+                    Copy review
+                  </>
+                )}
+              </button>
+
+              {/* Step 2: Go to Google */}
+              {googleReviewUrl ? (
                 <>
-                  <Check className="h-4 w-4" />
-                  Copied! Opening Google...
+                  <p className="my-3 text-center text-xs text-gray-400">
+                    Then paste it on Google
+                  </p>
+                  <a
+                    href={googleReviewUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-gray-900 py-3 text-sm font-semibold text-white hover:bg-gray-800"
+                  >
+                    Leave a review on Google
+                    <ExternalLink className="h-4 w-4" />
+                  </a>
                 </>
               ) : (
-                <>
-                  <Copy className="h-4 w-4" />
-                  Copy &amp; Review on Google
-                </>
+                <p className="mt-3 text-center text-xs text-gray-400">
+                  Share this review wherever {businessName} collects reviews.
+                </p>
               )}
-            </button>
+            </>
+          )}
+
+          {!generatedReview && googleReviewUrl && (
+            <a
+              href={googleReviewUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-gray-900 py-3 text-sm font-semibold text-white hover:bg-gray-800"
+            >
+              Leave a review on Google
+              <ExternalLink className="h-4 w-4" />
+            </a>
           )}
 
           <button
