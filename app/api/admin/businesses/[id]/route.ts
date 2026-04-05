@@ -45,3 +45,25 @@ export async function PUT(
 
   return NextResponse.json({ success: true });
 }
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  if (!isAuthed(request)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const supabase = getSupabaseAdmin();
+
+  const { error } = await supabase
+    .from("businesses")
+    .delete()
+    .eq("id", params.id);
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 400 });
+  }
+
+  return NextResponse.json({ success: true });
+}

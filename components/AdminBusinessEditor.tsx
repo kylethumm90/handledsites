@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Business } from "@/lib/supabase";
 import { TRADES, TRADE_SERVICES, US_STATES, Trade } from "@/lib/constants";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Trash2 } from "lucide-react";
 import Link from "next/link";
 import ImageUpload from "./ImageUpload";
 
@@ -24,6 +24,8 @@ export default function AdminBusinessEditor({ business, sites }: Props) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const [logoUrl, setLogoUrl] = useState(business.logo_url);
   const [name, setName] = useState(business.name);
@@ -344,6 +346,56 @@ export default function AdminBusinessEditor({ business, sites }: Props) {
         >
           {saving ? "Saving..." : "Save all changes"}
         </button>
+      </div>
+
+      {/* Delete zone */}
+      <div className="mt-8 rounded-xl border border-red-100 bg-red-50 p-5">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-semibold text-red-900">Delete this business</h3>
+            <p className="mt-1 text-xs text-red-700">
+              This will permanently delete the business and all linked sites, leads, and data. This cannot be undone.
+            </p>
+          </div>
+          {showDeleteConfirm ? (
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-white"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  setDeleting(true);
+                  try {
+                    const res = await fetch(`/api/admin/businesses/${business.id}`, { method: "DELETE" });
+                    if (!res.ok) throw new Error("Delete failed");
+                    router.push("/admin/businesses");
+                    router.refresh();
+                  } catch {
+                    setMessage("Error deleting business");
+                    setDeleting(false);
+                    setShowDeleteConfirm(false);
+                  }
+                }}
+                disabled={deleting}
+                className="flex items-center gap-1 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                <Trash2 className="h-3 w-3" />
+                {deleting ? "Deleting..." : "Yes, delete everything"}
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="flex items-center gap-1 rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100"
+            >
+              <Trash2 className="h-3 w-3" />
+              Delete
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
