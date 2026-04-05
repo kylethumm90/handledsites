@@ -1,9 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import type { Business } from "@/lib/supabase";
+import { Search, Check } from "lucide-react";
 
 type Props = { business: Business };
+
+type PlaceResult = {
+  placeId: string;
+  name: string;
+  address: string;
+};
 
 export default function ContractorSettingsEditor({ business }: Props) {
   const [saving, setSaving] = useState(false);
@@ -13,6 +20,46 @@ export default function ContractorSettingsEditor({ business }: Props) {
   const [gtmId, setGtmId] = useState(business.gtm_id ?? "");
   const [metaPixelId, setMetaPixelId] = useState(business.meta_pixel_id ?? "");
   const [zapierWebhookUrl, setZapierWebhookUrl] = useState(business.zapier_webhook_url ?? "");
+
+  // Google Places search state
+  const [placeQuery, setPlaceQuery] = useState("");
+  const [placeResults, setPlaceResults] = useState<PlaceResult[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const searchTimeout = useRef<NodeJS.Timeout>();
+
+  const handlePlaceSearch = (value: string) => {
+    setPlaceQuery(value);
+    setShowDropdown(false);
+
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    if (value.length < 3) {
+      setPlaceResults([]);
+      return;
+    }
+
+    searchTimeout.current = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const res = await fetch(`/api/places/search?q=${encodeURIComponent(value)}`);
+        const data = await res.json();
+        setPlaceResults(data.results || []);
+        setShowDropdown(true);
+      } catch {
+        setPlaceResults([]);
+      } finally {
+        setSearching(false);
+      }
+    }, 400);
+  };
+
+  const selectPlace = (place: PlaceResult) => {
+    const url = `https://search.google.com/local/writereview?placeid=${place.placeId}`;
+    setGoogleReviewUrl(url);
+    setPlaceQuery("");
+    setPlaceResults([]);
+    setShowDropdown(false);
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -55,19 +102,76 @@ export default function ContractorSettingsEditor({ business }: Props) {
         <h2 className="mb-4 text-sm font-semibold text-gray-900">
           Google Reviews
         </h2>
-        <div>
-          <label className={labelClass}>Google Review URL</label>
-          <input
-            type="url"
-            value={googleReviewUrl}
-            onChange={(e) => setGoogleReviewUrl(e.target.value)}
-            placeholder="https://g.page/r/..."
-            className={inputClass}
-          />
-          <p className="mt-1 text-xs text-gray-400">
-            Paste your Google review link here. Happy customers will be directed to leave a review.
-          </p>
+
+        {/* Search for business */}
+        <div className="relative mb-3">
+          <label className={labelClass}>Find your business on Google</label>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              value={placeQuery}
+              onChange={(e) => handlePlaceSearch(e.target.value)}
+              placeholder="Search your business name..."
+              className={`${inputClass} pl-9`}
+            />
+            {searching && (
+              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600" />
+              </div>
+            )}
+          </div>
+
+          {/* Dropdown results */}
+          {showDropdown && placeResults.length > 0 && (
+            <div className="absolute left-0 right-0 z-10 mt-1 rounded-lg border border-gray-200 bg-white shadow-lg">
+              {placeResults.map((place) => (
+                <button
+                  key={place.placeId}
+                  onClick={() => selectPlace(place)}
+                  className="flex w-full flex-col px-3 py-2.5 text-left hover:bg-gray-50 first:rounded-t-lg last:rounded-b-lg"
+                >
+                  <span className="text-sm font-medium text-gray-900">{place.name}</span>
+                  <span className="text-xs text-gray-500">{place.address}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
+
+        {/* Current URL display */}
+        {googleReviewUrl ? (
+          <div className="rounded-lg border border-green-100 bg-green-50 px-3 py-2.5">
+            <div className="flex items-center gap-2">
+              <Check className="h-3.5 w-3.5 flex-shrink-0 text-green-600" />
+              <span className="text-xs font-medium text-green-700">Review link connected</span>
+            </div>
+            <p className="mt-1 truncate text-xs font-mono text-green-600">
+              {googleReviewUrl}
+            </p>
+            <button
+              onClick={() => setGoogleReviewUrl("")}
+              className="mt-1.5 text-[10px] text-green-600 underline hover:text-green-800"
+            >
+              Change
+            </button>
+          </div>
+        ) : (
+          <div>
+            <label className={labelClass}>Or paste your review link directly</label>
+            <input
+              type="url"
+              value={googleReviewUrl}
+              onChange={(e) => setGoogleReviewUrl(e.target.value)}
+              placeholder="https://search.google.com/local/writereview?placeid=..."
+              className={inputClass}
+            />
+          </div>
+        )}
+
+        <p className="mt-2 text-xs text-gray-400">
+          Happy customers from your review funnel will be directed here to leave a Google review.
+        </p>
       </div>
 
       {/* Integrations */}
