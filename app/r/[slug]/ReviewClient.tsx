@@ -10,7 +10,7 @@ type Props = {
   googleReviewUrl: string | null;
 };
 
-type Step = "rating" | "feedback" | "result";
+type Step = "rating" | "questions" | "feedback" | "result";
 
 const EMOJIS = [
   { emoji: "😍", label: "Loved it", value: 5 },
@@ -28,6 +28,8 @@ export default function ReviewClient({
 }: Props) {
   const [step, setStep] = useState<Step>("rating");
   const [rating, setRating] = useState(0);
+  const [professionalism, setProfessionalism] = useState("");
+  const [communication, setCommunication] = useState("");
   const [feedback, setFeedback] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [generatedReview, setGeneratedReview] = useState<string | null>(null);
@@ -37,7 +39,7 @@ export default function ReviewClient({
 
   const handleRating = (value: number) => {
     setRating(value);
-    setStep("feedback");
+    setStep("questions");
   };
 
   const handleSubmit = async () => {
@@ -46,7 +48,7 @@ export default function ReviewClient({
       const res = await fetch("/api/review/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ site_id: siteId, rating, feedback }),
+        body: JSON.stringify({ site_id: siteId, rating, professionalism, communication, feedback }),
       });
       const data = await res.json();
       setIsPositive(data.is_positive);
@@ -102,7 +104,73 @@ export default function ReviewClient({
         </div>
       )}
 
-      {/* Step 2: Feedback */}
+      {/* Step 2: Quick questions */}
+      {step === "questions" && (
+        <div className="py-8">
+          <div className="mb-6 flex justify-center">
+            <span className="text-4xl">
+              {EMOJIS.find((e) => e.value === rating)?.emoji}
+            </span>
+          </div>
+
+          <div className="space-y-6">
+            {/* Professionalism */}
+            <div>
+              <p className="mb-3 text-center text-sm font-medium text-gray-900">
+                How professional was the team?
+              </p>
+              <div className="flex justify-center gap-2">
+                {["Very", "Somewhat", "Not really"].map((option) => (
+                  <button
+                    key={option}
+                    onClick={() => setProfessionalism(option)}
+                    className={`rounded-full px-4 py-2.5 text-sm font-medium transition-all ${
+                      professionalism === option
+                        ? "bg-gray-900 text-white"
+                        : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                    }`}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Communication */}
+            <div>
+              <p className="mb-3 text-center text-sm font-medium text-gray-900">
+                How was communication throughout?
+              </p>
+              <div className="flex justify-center gap-2">
+                {["Great", "Okay", "Poor"].map((option) => (
+                  <button
+                    key={option}
+                    onClick={() => setCommunication(option)}
+                    className={`rounded-full px-4 py-2.5 text-sm font-medium transition-all ${
+                      communication === option
+                        ? "bg-gray-900 text-white"
+                        : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                    }`}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {professionalism && communication && (
+            <button
+              onClick={() => setStep("feedback")}
+              className="mt-6 w-full rounded-xl bg-gray-900 py-3 text-sm font-semibold text-white hover:bg-gray-800"
+            >
+              Continue
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Step 3: Feedback */}
       {step === "feedback" && (
         <div className="py-8">
           <div className="mb-6 flex justify-center">

@@ -14,7 +14,7 @@ export default async function ContractorDashboardPage() {
 
   const { data: currentSite } = await supabase
     .from("sites_full")
-    .select("business_id, business_name")
+    .select("business_id, business_name, logo_url")
     .eq("id", siteId)
     .single();
 
@@ -41,6 +41,7 @@ export default async function ContractorDashboardPage() {
   return (
     <DashboardClient
       businessName={currentSite.business_name}
+      logoUrl={currentSite.logo_url}
       leads={(leads || []) as Lead[]}
       totalLeads={totalLeads || 0}
       newLeadsThisWeek={newLeadsThisWeek || 0}

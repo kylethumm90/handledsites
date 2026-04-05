@@ -4,7 +4,7 @@ import Anthropic from "@anthropic-ai/sdk";
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const { site_id, rating, feedback } = body;
+  const { site_id, rating, feedback, professionalism, communication } = body;
 
   if (!site_id || !rating) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -49,7 +49,10 @@ Rules:
           messages: [
             {
               role: "user",
-              content: `The customer rated their experience ${rating}/5 and said: "${feedback}"`,
+              content: `The customer rated their experience ${rating}/5.
+Professionalism: ${professionalism || "not answered"}
+Communication: ${communication || "not answered"}
+Additional feedback: "${feedback}"`,
             },
           ],
         });
@@ -70,6 +73,8 @@ Rules:
     feedback: feedback?.trim() || null,
     generated_review: generatedReview,
     is_positive: isPositive,
+    professionalism: professionalism || null,
+    communication: communication || null,
   });
 
   if (isPositive) {

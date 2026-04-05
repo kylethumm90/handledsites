@@ -7,6 +7,7 @@ import { relativeTime, avatarColor, initials } from "@/lib/utils";
 
 type Props = {
   businessName: string;
+  logoUrl: string | null;
   leads: Lead[];
   totalLeads: number;
   newLeadsThisWeek: number;
@@ -36,33 +37,36 @@ function serviceFromLead(lead: Lead): string | null {
 
 export default function DashboardClient({
   businessName,
+  logoUrl,
   leads,
   totalLeads,
   newLeadsThisWeek,
 }: Props) {
   const router = useRouter();
 
-  const bizInitials = (businessName || "")
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() || "")
-    .join("");
-
   return (
     <div className="space-y-8">
       {/* Greeting header */}
-      <div className="flex items-start justify-between">
+      <div className="flex items-center gap-3">
+        {logoUrl ? (
+          <img
+            src={logoUrl}
+            alt={businessName}
+            className="h-10 w-10 flex-shrink-0 rounded-full object-cover"
+          />
+        ) : (
+          <div
+            className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white"
+            style={{ backgroundColor: avatarColor(businessName) }}
+          >
+            {initials(businessName)}
+          </div>
+        )}
         <div>
           <p className="text-sm text-gray-500">{getGreeting()}</p>
-          <h1 className="mt-0.5 text-xl font-bold text-gray-900">
+          <h1 className="text-xl font-bold text-gray-900">
             {businessName}
           </h1>
-        </div>
-        <div
-          className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white"
-          style={{ backgroundColor: avatarColor(businessName) }}
-        >
-          {bizInitials}
         </div>
       </div>
 

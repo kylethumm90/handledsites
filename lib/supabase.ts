@@ -144,4 +144,6 @@ export type ReviewResponse = {
   generated_review: string | null;
   is_positive: boolean;
   tech_name: string | null;
+  professionalism: string | null;
+  communication: string | null;
 };
