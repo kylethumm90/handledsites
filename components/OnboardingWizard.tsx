@@ -466,7 +466,7 @@ export default function OnboardingWizard() {
         {step === 6 && (
           <div>
             <h2 className="mb-2 text-2xl font-bold text-gray-900">How can customers reach you?</h2>
-            <p className="mb-6 text-sm text-gray-500">Your phone number will be on all your sites.</p>
+            <p className="mb-6 text-sm text-gray-500">Your phone number shows on all your sites. Your email is how you&apos;ll log in.</p>
             <div className="space-y-3">
               {phoneDigits.length !== 10 && (
                 <input type="tel" value={phone} onChange={(e) => setPhone(formatPhoneInput(e.target.value))} placeholder="(555) 123-4567" className={inputClass} autoFocus />
@@ -476,16 +476,16 @@ export default function OnboardingWizard() {
                   {formatPhoneInput(phone)}
                 </div>
               )}
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email (optional)" className={inputClass} autoFocus={phoneDigits.length === 10} />
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" className={inputClass} autoFocus={phoneDigits.length === 10} />
             </div>
-            <button onClick={() => setStep(7)} disabled={phoneDigits.length !== 10} className={btnNext}>Next</button>
+            <button onClick={() => setStep(7)} disabled={phoneDigits.length !== 10 || !email.trim()} className={btnNext}>Next</button>
           </div>
         )}
 
         {step === 7 && (
           <div>
             <h2 className="mb-2 text-2xl font-bold text-gray-900">Got a logo?</h2>
-            <p className="mb-6 text-sm text-gray-500">Upload it now or use your initials.</p>
+            <p className="mb-6 text-sm text-gray-500">Upload it now or skip — you can always update it later in Settings.</p>
             {logoPreview ? (
               <div className="mb-4 flex items-center gap-4">
                 <img src={logoPreview} alt="Logo" className="h-16 w-16 rounded-full object-cover" />
