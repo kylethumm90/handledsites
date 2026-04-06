@@ -122,7 +122,7 @@ export default function PreviewGenerator() {
                 handledsites.com/{displayName.toLowerCase().replace(/\s+/g, "-")}
               </p>
             </div>
-            <span className="rounded-full bg-gray-900/80 px-3 py-1 text-sm font-medium text-white backdrop-blur-sm">
+            <span className="whitespace-nowrap rounded-full bg-gray-900/80 px-4 py-1.5 text-base font-semibold text-white backdrop-blur-sm">
               📱 Scan to Connect
             </span>
           </div>
@@ -139,13 +139,13 @@ export default function PreviewGenerator() {
                 logoUrl={logoUrl}
               />
             </div>
-            <span className="rounded-full bg-gray-900/80 px-4 py-1.5 text-lg font-semibold text-white backdrop-blur-sm">
+            <span className="whitespace-nowrap rounded-full bg-gray-900/80 px-5 py-2 text-xl font-bold text-white backdrop-blur-sm">
               📇 Digital Business Card
             </span>
           </div>
 
           {/* Quiz + Review — smaller, side by side */}
-          <div className="flex items-start gap-3">
+          <div className="flex items-start gap-6">
             <div className="flex flex-col items-center gap-1" style={{ width: 140 }}>
               <div className="flex justify-center" style={{ width: "100%", height: 261, overflow: "hidden" }}>
                 <div style={{ transform: "scale(0.45)", transformOrigin: "top center", width: 280, height: 580 }}>
@@ -156,7 +156,7 @@ export default function PreviewGenerator() {
                   />
                 </div>
               </div>
-              <span className="whitespace-nowrap rounded-full bg-gray-900/80 px-3 py-1 text-sm font-medium text-white backdrop-blur-sm">
+              <span className="whitespace-nowrap rounded-full bg-gray-900/80 px-4 py-1.5 text-base font-semibold text-white backdrop-blur-sm">
                 ⚡ Instant Quote
               </span>
             </div>
@@ -167,7 +167,7 @@ export default function PreviewGenerator() {
                   <ReviewPreview businessName={displayName} logoUrl={logoUrl} />
                 </div>
               </div>
-              <span className="whitespace-nowrap rounded-full bg-gray-900/80 px-3 py-1 text-sm font-medium text-white backdrop-blur-sm">
+              <span className="whitespace-nowrap rounded-full bg-gray-900/80 px-4 py-1.5 text-base font-semibold text-white backdrop-blur-sm">
                 ⭐ Review Collector
               </span>
             </div>
@@ -187,7 +187,7 @@ export default function PreviewGenerator() {
                 logoUrl={logoUrl}
               />
             </div>
-            <span className="rounded-full bg-gray-900/80 px-3 py-1 text-base font-medium text-white backdrop-blur-sm">
+            <span className="whitespace-nowrap rounded-full bg-gray-900/80 px-5 py-2 text-lg font-semibold text-white backdrop-blur-sm">
               🌐 Lead Conversion Site
             </span>
           </div>
@@ -202,7 +202,7 @@ export default function PreviewGenerator() {
                 logoUrl={logoUrl}
               />
             </div>
-            <span className="rounded-full bg-gray-900/80 px-3 py-1 text-base font-medium text-white backdrop-blur-sm">
+            <span className="whitespace-nowrap rounded-full bg-gray-900/80 px-5 py-2 text-lg font-semibold text-white backdrop-blur-sm">
               ⭐ Review Wall
             </span>
           </div>
