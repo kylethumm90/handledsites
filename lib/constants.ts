@@ -7,6 +7,7 @@ export const TRADES = [
   "Painting",
   "Solar",
   "General Contractor",
+  "Pest Control",
   "Other",
 ] as const;
 
@@ -21,6 +22,7 @@ export const TRADE_SERVICES: Record<Trade, string[]> = {
   Painting: ["Interior Painting", "Exterior Painting", "Cabinet Refinishing", "Drywall Repair", "Staining", "Free Estimates"],
   Solar: ["Panel Installation", "System Design", "Roof Assessment", "Battery Storage", "Maintenance & Repair", "Free Estimates"],
   "General Contractor": ["Remodeling", "Additions", "Framing", "Concrete Work", "Demolition", "Free Estimates"],
+  "Pest Control": ["General Pest Control", "Termite Treatment", "Rodent Control", "Bed Bug Treatment", "Mosquito & Tick Control", "Free Estimates"],
   Other: ["Repairs", "Installations", "Maintenance", "Inspections", "Emergency", "Free Estimates"],
 };
 
@@ -65,6 +67,11 @@ export const SERVICE_DESCRIPTIONS: Record<string, string> = {
   "Framing": "Professional structural framing for new construction and additions.",
   "Concrete Work": "Foundations, driveways, patios, and decorative concrete.",
   "Demolition": "Safe, efficient demolition and site preparation.",
+  "General Pest Control": "Comprehensive treatment for ants, spiders, roaches, and other common household pests.",
+  "Termite Treatment": "Professional termite inspection, treatment, and prevention to protect your home's structure.",
+  "Rodent Control": "Humane and effective removal of mice and rats with exclusion to prevent re-entry.",
+  "Bed Bug Treatment": "Thorough bed bug elimination using heat treatment and targeted application methods.",
+  "Mosquito & Tick Control": "Yard treatments to reduce mosquito and tick populations and keep your family safe outdoors.",
   "Free Estimates": "Free, no-obligation estimates on all our services.",
 };
 
@@ -133,5 +140,6 @@ export const TRADE_IMAGES: Record<string, string> = {
   "Painting": "https://images.unsplash.com/photo-1562259949-e8e7689d7828?w=800",
   "Solar": "/cover-solar.png",
   "General Contractor": "/cover-contractor.png",
+  "Pest Control": "/cover-pest-control.png",
   "default": "/cover-default.png",
 };

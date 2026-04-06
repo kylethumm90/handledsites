@@ -16,6 +16,7 @@ const QUIZ_HEADLINES: Record<string, string> = {
   Electrical: "Is Your Home\u2019s Wiring Up to Code?",
   Painting: "How Much Should Your Paint Job Actually Cost?",
   "General Contractor": "What\u2019s Your Project Worth?",
+  "Pest Control": "Got Pests? Find Out What It\u2019ll Take to Get Rid of Them",
 };
 
 const SAMPLE_OPTIONS = ["Yes", "No", "Not sure", "Renting"];

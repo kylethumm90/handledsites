@@ -76,6 +76,13 @@ const TEMPLATES: { trade: string; items: { name: string; path: string | null }[]
       { name: "Quiz Funnel", path: "/q/buildright-construction" },
     ],
   },
+  {
+    trade: "Pest Control",
+    items: [
+      { name: "Business Card", path: null },
+      { name: "Quiz Funnel", path: null },
+    ],
+  },
 ];
 
 export default function AdminShell({

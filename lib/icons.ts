@@ -26,6 +26,10 @@ import {
   ThermometerSun,
   Gauge,
   Sun,
+  Bug,
+  Shield,
+  Rat,
+  BedDouble,
   type LucideIcon,
 } from "lucide-react";
 
@@ -38,6 +42,7 @@ export const TRADE_ICONS: Record<string, LucideIcon> = {
   Painting: Paintbrush,
   Solar: Sun,
   "General Contractor": Hammer,
+  "Pest Control": Bug,
   Other: Settings2,
 };
 
@@ -97,6 +102,13 @@ export const SERVICE_ICONS: Record<string, LucideIcon> = {
   Framing: Hammer,
   "Concrete Work": Layers,
   Demolition: Wrench,
+
+  // Pest Control
+  "General Pest Control": Bug,
+  "Termite Treatment": Shield,
+  "Rodent Control": Rat,
+  "Bed Bug Treatment": BedDouble,
+  "Mosquito & Tick Control": Bug,
 
   // Other / shared
   Repairs: Wrench,

@@ -120,6 +120,18 @@ const TRADE_COPY: Record<string, {
     dqBody: "Feel free to reach out directly if you have questions.",
     buttonTextColor: "#ffffff",
   },
+  "Pest Control": {
+    quizHeadline: "Got Pests? Find Out What It\u2019ll Take to Get Rid of Them \u2014 in 60 Seconds.",
+    formHeadline: "We can help. Let\u2019s get you a free inspection.",
+    formSubtext: "Fill in a few details and we\u2019ll reach out fast.",
+    submitButtonText: "Get My Free Inspection \u2192",
+    finePrint: "No commitment. No obligation.",
+    thankYouHeadline: "You\u2019re all set.",
+    thankYouBody: "A pest control specialist will be in touch shortly.",
+    dqHeadline: "We work best with homeowners.",
+    dqBody: "Feel free to reach out directly if you have questions.",
+    buttonTextColor: "#ffffff",
+  },
 };
 
 const DEFAULT_COPY = {
