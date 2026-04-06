@@ -145,23 +145,27 @@ export default function PreviewGenerator() {
           </div>
 
           {/* Quiz + Review — smaller, side by side */}
-          <div className="flex items-start gap-5">
-            <div className="flex flex-col items-center gap-1">
-              <div style={{ transform: "scale(0.45)", transformOrigin: "top center", height: 261, width: 126 }}>
-                <QuizPreview
-                  businessName={displayName}
-                  trade={trade}
-                  logoUrl={logoUrl}
-                />
+          <div className="flex items-start gap-3">
+            <div className="flex flex-col items-center gap-1" style={{ width: 140 }}>
+              <div className="flex justify-center" style={{ width: "100%", height: 261, overflow: "hidden" }}>
+                <div style={{ transform: "scale(0.45)", transformOrigin: "top center", width: 280, height: 580 }}>
+                  <QuizPreview
+                    businessName={displayName}
+                    trade={trade}
+                    logoUrl={logoUrl}
+                  />
+                </div>
               </div>
               <span className="rounded-full bg-gray-900/80 px-3 py-1 text-sm font-medium text-white backdrop-blur-sm">
                 ⚡ Instant Quote
               </span>
             </div>
 
-            <div className="flex flex-col items-center gap-1">
-              <div style={{ transform: "scale(0.45)", transformOrigin: "top center", height: 261, width: 126 }}>
-                <ReviewPreview businessName={displayName} logoUrl={logoUrl} />
+            <div className="flex flex-col items-center gap-1" style={{ width: 140 }}>
+              <div className="flex justify-center" style={{ width: "100%", height: 261, overflow: "hidden" }}>
+                <div style={{ transform: "scale(0.45)", transformOrigin: "top center", width: 280, height: 580 }}>
+                  <ReviewPreview businessName={displayName} logoUrl={logoUrl} />
+                </div>
               </div>
               <span className="rounded-full bg-gray-900/80 px-3 py-1 text-sm font-medium text-white backdrop-blur-sm">
                 ⭐ Review Collector
