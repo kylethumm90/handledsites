@@ -190,7 +190,7 @@ export default function PreviewGenerator() {
                 />
                 {logoUrl && (
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <img src={logoUrl} alt="" className="h-10 w-10 rounded-lg border-2 border-white bg-white object-cover shadow-sm" />
+                    <img src={logoUrl} alt="" className="h-20 w-20 rounded-full border-3 border-white bg-white object-cover shadow-md" />
                   </div>
                 )}
               </div>
