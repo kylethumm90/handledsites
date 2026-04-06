@@ -6,6 +6,7 @@ import { TRADES, TRADE_SERVICES, Trade } from "@/lib/constants";
 import PhonePreview from "@/components/PhonePreview";
 import QuizPreview from "@/components/QuizPreview";
 import WebsitePreview from "@/components/WebsitePreview";
+import ReviewWallPreview from "@/components/ReviewWallPreview";
 
 const DEMO_SERVICES: Record<string, string[]> = {};
 TRADES.forEach((t) => {
@@ -157,6 +158,24 @@ export default function PreviewGenerator() {
             </div>
             <span className="rounded-full bg-gray-900/80 px-3 py-1 text-base font-medium text-white backdrop-blur-sm">
               🌐 Conversion Website
+            </span>
+          </div>
+        </div>
+
+        {/* Row 3: Review Wall */}
+        <div className="mt-6 flex justify-center">
+          <div className="flex flex-col items-center gap-1">
+            <div style={{ transform: "scale(0.84)", transformOrigin: "top center", height: 294, width: 353 }}>
+              <ReviewWallPreview
+                businessName={displayName}
+                trade={trade}
+                city={city}
+                state={state}
+                logoUrl={logoUrl}
+              />
+            </div>
+            <span className="rounded-full bg-gray-900/80 px-3 py-1 text-base font-medium text-white backdrop-blur-sm">
+              ⭐ Review Wall
             </span>
           </div>
         </div>
