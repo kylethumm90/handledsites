@@ -166,7 +166,7 @@ export default async function WebsitePage({ params }: { params: { slug: string }
           <div className="ws-container ws-nav-inner">
             <div className="ws-nav-logo">
               {site.logo_url ? (
-                <img src={site.logo_url} alt={site.business_name} style={{ width: 72, height: 72, borderRadius: 10, objectFit: "cover" }} />
+                <img src={site.logo_url} alt={site.business_name} style={{ width: 108, height: 108, borderRadius: 10, objectFit: "cover" }} />
               ) : (
                 <div className="ws-nav-logo-icon">
                   <span style={{ fontSize: 14, fontWeight: 800, color: "#fff" }}>{ownerInitials(site.business_name)}</span>
