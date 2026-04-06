@@ -188,7 +188,7 @@ export default function PreviewGenerator() {
               />
             </div>
             <span className="whitespace-nowrap rounded-full bg-gray-900/80 px-5 py-2 text-lg font-semibold text-white backdrop-blur-sm">
-              🌐 Lead Conversion Site
+              🌐 Conversion Website
             </span>
           </div>
 
