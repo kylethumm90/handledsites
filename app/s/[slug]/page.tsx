@@ -524,7 +524,7 @@ const WEBSITE_CSS = `
 
 /* HERO */
 .ws-hero { background: linear-gradient(135deg, #0C1A2E 0%, #162544 50%, #1a2d4a 100%); color: #fff; padding: 72px 0 64px; position: relative; overflow: hidden; }
-.ws-hero-bg { position: absolute; top: 0; right: 0; width: 50%; height: 100%; background-size: cover; background-position: center; opacity: 0.12; mask-image: linear-gradient(to left, rgba(0,0,0,0.6) 0%, transparent 100%); -webkit-mask-image: linear-gradient(to left, rgba(0,0,0,0.6) 0%, transparent 100%); }
+.ws-hero-bg { position: absolute; top: 0; right: 0; width: 100%; height: 100%; background-size: cover; background-position: center; opacity: 0.3; mask-image: linear-gradient(to right, transparent 0%, rgba(0,0,0,0.3) 30%, rgba(0,0,0,1) 70%); -webkit-mask-image: linear-gradient(to right, transparent 0%, rgba(0,0,0,0.3) 30%, rgba(0,0,0,1) 70%); }
 .ws-hero::after { content: ''; position: absolute; top: -50%; right: -20%; width: 60%; height: 200%; background: radial-gradient(ellipse, rgba(26,86,219,0.1) 0%, transparent 70%); pointer-events: none; }
 .ws-hero-inner { position: relative; z-index: 1; max-width: 640px; }
 .ws-hero-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.85); margin-bottom: 20px; width: fit-content; }
