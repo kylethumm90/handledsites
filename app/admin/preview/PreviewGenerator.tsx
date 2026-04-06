@@ -99,9 +99,35 @@ export default function PreviewGenerator() {
           backgroundPosition: "center",
         }}
       >
-        {/* Row 1: Business card (large, left) + Quiz & Review (smaller, side by side, right) */}
+        {/* Row 1: QR (left) + Business Card (center, large) + Quiz & Review (right, smaller) */}
         <div className="flex items-center justify-center gap-6">
-          {/* Business Card — hero, larger */}
+          {/* QR Code */}
+          <div className="flex flex-col items-center gap-1">
+            <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+              <div className="relative">
+                <QRCodeSVG
+                  value={`https://handledsites.com/${displayName.toLowerCase().replace(/\s+/g, "-")}`}
+                  size={160}
+                  level="M"
+                  bgColor="#ffffff"
+                  fgColor="#0C1A2E"
+                />
+                {logoUrl && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <img src={logoUrl} alt="" className="h-16 w-16 rounded-full border-2 border-white bg-white object-cover shadow-md" />
+                  </div>
+                )}
+              </div>
+              <p className="mt-2 text-center text-[8px] font-mono text-gray-400">
+                handledsites.com/{displayName.toLowerCase().replace(/\s+/g, "-")}
+              </p>
+            </div>
+            <span className="rounded-full bg-gray-900/80 px-3 py-1 text-sm font-medium text-white backdrop-blur-sm">
+              📱 Scan to Connect
+            </span>
+          </div>
+
+          {/* Business Card — hero, largest */}
           <div className="flex flex-col items-center gap-1">
             <div style={{ transform: "scale(0.7)", transformOrigin: "top center", height: 406, width: 196 }}>
               <PhonePreview
@@ -129,7 +155,7 @@ export default function PreviewGenerator() {
                 />
               </div>
               <span className="rounded-full bg-gray-900/80 px-3 py-1 text-sm font-medium text-white backdrop-blur-sm">
-                ⚡ Instant Quote Funnel
+                ⚡ Instant Quote
               </span>
             </div>
 
@@ -138,13 +164,13 @@ export default function PreviewGenerator() {
                 <ReviewPreview businessName={displayName} logoUrl={logoUrl} />
               </div>
               <span className="rounded-full bg-gray-900/80 px-3 py-1 text-sm font-medium text-white backdrop-blur-sm">
-                ⭐ Review Booster
+                ⭐ Review Collector
               </span>
             </div>
           </div>
         </div>
 
-        {/* Row 2: Website + Review Wall + QR Code */}
+        {/* Row 2: Website (left) + Review Wall (right) */}
         <div className="mt-6 flex justify-center items-start gap-6">
           <div className="flex flex-col items-center gap-1">
             <div style={{ transform: "scale(0.84)", transformOrigin: "top center", height: 294, width: 353 }}>
@@ -158,7 +184,7 @@ export default function PreviewGenerator() {
               />
             </div>
             <span className="rounded-full bg-gray-900/80 px-3 py-1 text-base font-medium text-white backdrop-blur-sm">
-              🌐 Conversion Website
+              🌐 Lead Conversion Site
             </span>
           </div>
 
@@ -174,32 +200,6 @@ export default function PreviewGenerator() {
             </div>
             <span className="rounded-full bg-gray-900/80 px-3 py-1 text-base font-medium text-white backdrop-blur-sm">
               ⭐ Review Wall
-            </span>
-          </div>
-
-          {/* QR Code */}
-          <div className="flex flex-col items-center gap-1">
-            <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-              <div className="relative">
-                <QRCodeSVG
-                  value={`https://handledsites.com/${displayName.toLowerCase().replace(/\s+/g, "-")}`}
-                  size={180}
-                  level="M"
-                  bgColor="#ffffff"
-                  fgColor="#0C1A2E"
-                />
-                {logoUrl && (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <img src={logoUrl} alt="" className="h-20 w-20 rounded-full border-3 border-white bg-white object-cover shadow-md" />
-                  </div>
-                )}
-              </div>
-              <p className="mt-3 text-center text-[9px] font-mono text-gray-400">
-                handledsites.com/{displayName.toLowerCase().replace(/\s+/g, "-")}
-              </p>
-            </div>
-            <span className="rounded-full bg-gray-900/80 px-3 py-1 text-base font-medium text-white backdrop-blur-sm">
-              📱 QR Code
             </span>
           </div>
         </div>
