@@ -145,8 +145,8 @@ export default function PreviewGenerator() {
           </div>
 
           {/* Quiz + Review — smaller, side by side */}
-          <div className="flex items-start gap-6">
-            <div className="flex flex-col items-center gap-1" style={{ width: 140 }}>
+          <div className="flex items-start gap-10">
+            <div className="flex flex-col items-center gap-1" style={{ width: 180 }}>
               <div className="flex justify-center" style={{ width: "100%", height: 261, overflow: "hidden" }}>
                 <div style={{ transform: "scale(0.45)", transformOrigin: "top center", width: 280, height: 580 }}>
                   <QuizPreview
@@ -161,7 +161,7 @@ export default function PreviewGenerator() {
               </span>
             </div>
 
-            <div className="flex flex-col items-center gap-1" style={{ width: 140 }}>
+            <div className="flex flex-col items-center gap-1" style={{ width: 180 }}>
               <div className="flex justify-center" style={{ width: "100%", height: 261, overflow: "hidden" }}>
                 <div style={{ transform: "scale(0.45)", transformOrigin: "top center", width: 280, height: 580 }}>
                   <ReviewPreview businessName={displayName} logoUrl={logoUrl} />
