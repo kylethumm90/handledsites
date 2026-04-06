@@ -9,12 +9,20 @@ export default function Home() {
       <nav className="px-6 pt-6">
         <div className="mx-auto flex max-w-5xl items-center justify-between">
           <img src="/logo-dark.png" alt="handled." className="h-7 w-auto" />
-          <a
-            href="/contractor/login"
-            className="text-sm font-medium text-gray-500 hover:text-gray-900"
-          >
-            Sign in
-          </a>
+          <div className="flex items-center gap-4">
+            <a
+              href="/contractor/login"
+              className="text-sm font-medium text-gray-500 hover:text-gray-900"
+            >
+              Sign in
+            </a>
+            <a
+              href="#get-started"
+              className="hidden rounded-full bg-gray-900 px-5 py-2 text-sm font-semibold text-white hover:bg-gray-800 sm:inline-block"
+            >
+              Create Free Page
+            </a>
+          </div>
         </div>
       </nav>
 
@@ -23,23 +31,41 @@ export default function Home() {
         <div className="mx-auto max-w-5xl">
           {/* Header */}
           <div className="mb-12 text-center md:mb-16 md:text-left">
-            <p className="mb-3 text-sm font-medium tracking-wide text-gray-500">
+            <p className="mb-3 text-sm font-semibold tracking-wide text-gray-900/60">
               FREE FOR INDEPENDENT CONTRACTORS
             </p>
             <h1
-              className="mb-4 text-4xl font-extrabold leading-tight text-gray-900 md:text-5xl lg:text-6xl"
+              className="mb-5 text-4xl font-extrabold leading-tight text-gray-900 md:text-5xl lg:text-6xl"
               style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800 }}
             >
               More calls. Five minutes. Free.
             </h1>
-            <p className="mx-auto max-w-xl text-lg text-gray-600 md:mx-0">
+            <p className="mx-auto max-w-xl text-xl font-medium text-gray-600 md:mx-0">
               A mobile business page with tap-to-call, your services, and a QR
               code you can share anywhere. Built for contractors. Free forever.
             </p>
+            <div className="mt-6 flex flex-col items-center gap-4 sm:flex-row md:items-start">
+              <a
+                href="#get-started"
+                className="inline-block rounded-full bg-gray-900 px-8 py-3.5 text-sm font-bold text-white shadow-lg shadow-gray-900/20 hover:bg-gray-800 transition-all hover:shadow-xl hover:shadow-gray-900/25"
+              >
+                Create Your Free Page &rarr;
+              </a>
+              <span className="flex items-center gap-2 text-sm text-gray-500">
+                <span className="flex -space-x-1">
+                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-[10px] font-bold text-blue-600 ring-2 ring-white">JR</span>
+                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-green-100 text-[10px] font-bold text-green-600 ring-2 ring-white">MT</span>
+                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-amber-100 text-[10px] font-bold text-amber-600 ring-2 ring-white">KS</span>
+                </span>
+                Trusted by contractors nationwide
+              </span>
+            </div>
           </div>
 
           {/* Onboarding wizard + live preview */}
-          <OnboardingWizard />
+          <div id="get-started">
+            <OnboardingWizard />
+          </div>
         </div>
       </section>
 

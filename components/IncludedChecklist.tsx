@@ -8,12 +8,12 @@ const items = [
   "Shareable QR code",
   "Real-time availability status",
   "Trust badges that build credibility",
-  "Google review integration (coming soon)",
+  "Google review integration",
 ];
 
 export default function IncludedChecklist() {
   return (
-    <section className="bg-gray-50 px-6 py-20">
+    <section className="px-6 py-20">
       <div className="mx-auto max-w-5xl">
         <div className="grid items-center gap-12 md:grid-cols-2">
           {/* Static phone mockup */}
@@ -28,25 +28,31 @@ export default function IncludedChecklist() {
           {/* Checklist */}
           <div>
             <h2
-              className="mb-2 text-3xl font-extrabold text-gray-900"
+              className="mb-3 text-3xl font-extrabold text-gray-900 lg:text-4xl"
               style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800 }}
             >
               Everything included. Free.
             </h2>
-            <p className="mb-8 text-gray-600">
+            <p className="mb-8 text-lg text-gray-600">
               No subscriptions. No hidden fees. Just a professional site that
               drives calls.
             </p>
-            <ul className="space-y-3">
+            <ul className="space-y-3.5">
               {items.map((item) => (
                 <li key={item} className="flex items-center gap-3">
-                  <div className="flex h-5 w-5 items-center justify-center rounded-full bg-green-100">
+                  <div className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-green-100">
                     <Check className="h-3 w-3 text-green-600" />
                   </div>
-                  <span className="text-sm text-gray-700">{item}</span>
+                  <span className="text-[15px] text-gray-700">{item}</span>
                 </li>
               ))}
             </ul>
+            <a
+              href="#get-started"
+              className="mt-8 inline-block rounded-full bg-gray-900 px-7 py-3 text-sm font-semibold text-white hover:bg-gray-800"
+            >
+              Get Started Free &rarr;
+            </a>
           </div>
         </div>
       </div>

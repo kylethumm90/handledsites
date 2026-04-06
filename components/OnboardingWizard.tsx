@@ -5,6 +5,7 @@ import { ArrowLeft, Upload, Check, Copy, ExternalLink } from "lucide-react";
 import { getSupabaseClient } from "@/lib/supabase";
 import { generateUniqueSlug, checkDuplicateContact } from "@/lib/slug";
 import { TRADE_SERVICES, Trade } from "@/lib/constants";
+import { TRADE_ICONS } from "@/lib/icons";
 import PhonePreview from "./PhonePreview";
 import QuizPreview from "./QuizPreview";
 import WebsitePreview from "./WebsitePreview";
@@ -360,12 +361,16 @@ export default function OnboardingWizard() {
             <h2 className="mb-2 text-2xl font-bold text-gray-900">What&apos;s your trade?</h2>
             <p className="mb-8 text-sm text-gray-500">Select the type of work you do.</p>
             <div className="space-y-3">
-              {TRADES_LIST.map((t) => (
-                <button key={t} onClick={() => { setTrade(t); setServices([]); setTimeout(() => setStep(2), 300); }}
-                  className={`w-full rounded-xl border-2 px-5 py-4 text-left text-base font-semibold transition-all ${trade === t ? "border-gray-900 bg-gray-900 text-white" : "border-gray-200 text-gray-900 hover:border-gray-400"}`}>
-                  {t}
-                </button>
-              ))}
+              {TRADES_LIST.map((t) => {
+                const Icon = TRADE_ICONS[t];
+                return (
+                  <button key={t} onClick={() => { setTrade(t); setServices([]); setTimeout(() => setStep(2), 300); }}
+                    className={`flex w-full items-center gap-3 rounded-xl border-2 px-5 py-4 text-left text-base font-semibold transition-all ${trade === t ? "border-gray-900 bg-gray-900 text-white" : "border-gray-200 text-gray-900 hover:border-gray-400 hover:bg-gray-50"}`}>
+                    {Icon && <Icon className="h-5 w-5 flex-shrink-0 opacity-60" />}
+                    {t}
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
