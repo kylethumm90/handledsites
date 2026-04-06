@@ -35,6 +35,8 @@ type FunnelData = {
   thankYouHeadline?: string;
   thankYouBody?: string;
   buttonTextColor?: string;
+  googleRating?: number | null;
+  googleReviewCount?: number | null;
 };
 
 declare global {
@@ -576,6 +578,25 @@ export default function QuizClient({
           flex-shrink: 0;
         }
 
+        /* --- Google stars indicator --- */
+        .qf-google-stars {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin-top: 28px;
+          justify-content: center;
+        }
+        .qf-google-stars-icons {
+          font-size: 16px;
+          color: #FBBC04;
+          letter-spacing: 1px;
+        }
+        .qf-google-stars-text {
+          font-size: 13px;
+          color: var(--muted);
+          font-weight: 500;
+        }
+
         /* --- Animation --- */
         @keyframes fadeUp {
           from { opacity: 0; transform: translateY(16px); }
@@ -761,6 +782,14 @@ export default function QuizClient({
             )}
           </div>
         ) : null}
+
+        {/* Google star rating indicator */}
+        {!submitted && !disqualified && funnel.googleRating && funnel.googleReviewCount && funnel.googleRating >= 4 && funnel.googleReviewCount >= 5 && (
+          <div className="qf-google-stars">
+            <span className="qf-google-stars-icons">{"★".repeat(Math.round(funnel.googleRating))}</span>
+            <span className="qf-google-stars-text">{funnel.googleRating} stars on Google ({funnel.googleReviewCount} reviews)</span>
+          </div>
+        )}
       </div>
     </>
   );

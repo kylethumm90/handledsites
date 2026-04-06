@@ -199,6 +199,8 @@ export default async function QuizFunnelPage({
         dqHeadline: copy.dqHeadline,
         dqBody: copy.dqBody,
         buttonTextColor: copy.buttonTextColor,
+        googleRating: site.google_rating || null,
+        googleReviewCount: site.google_review_count || null,
       }}
       questions={questions}
     />
