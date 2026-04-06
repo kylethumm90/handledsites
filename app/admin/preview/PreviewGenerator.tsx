@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import { Upload, X } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import { TRADES, TRADE_SERVICES, Trade } from "@/lib/constants";
 import PhonePreview from "@/components/PhonePreview";
 import QuizPreview from "@/components/QuizPreview";
@@ -143,8 +144,8 @@ export default function PreviewGenerator() {
           </div>
         </div>
 
-        {/* Row 2: Website */}
-        <div className="mt-6 flex justify-center">
+        {/* Row 2: Website + Review Wall + QR Code */}
+        <div className="mt-6 flex justify-center items-start gap-6">
           <div className="flex flex-col items-center gap-1">
             <div style={{ transform: "scale(0.84)", transformOrigin: "top center", height: 294, width: 353 }}>
               <WebsitePreview
@@ -160,10 +161,7 @@ export default function PreviewGenerator() {
               🌐 Conversion Website
             </span>
           </div>
-        </div>
 
-        {/* Row 3: Review Wall */}
-        <div className="mt-6 flex justify-center">
           <div className="flex flex-col items-center gap-1">
             <div style={{ transform: "scale(0.84)", transformOrigin: "top center", height: 294, width: 353 }}>
               <ReviewWallPreview
@@ -176,6 +174,32 @@ export default function PreviewGenerator() {
             </div>
             <span className="rounded-full bg-gray-900/80 px-3 py-1 text-base font-medium text-white backdrop-blur-sm">
               ⭐ Review Wall
+            </span>
+          </div>
+
+          {/* QR Code */}
+          <div className="flex flex-col items-center gap-1">
+            <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+              <div className="relative">
+                <QRCodeSVG
+                  value={`https://handledsites.com/${displayName.toLowerCase().replace(/\s+/g, "-")}`}
+                  size={180}
+                  level="M"
+                  bgColor="#ffffff"
+                  fgColor="#0C1A2E"
+                />
+                {logoUrl && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <img src={logoUrl} alt="" className="h-10 w-10 rounded-lg border-2 border-white bg-white object-cover shadow-sm" />
+                  </div>
+                )}
+              </div>
+              <p className="mt-3 text-center text-[9px] font-mono text-gray-400">
+                handledsites.com/{displayName.toLowerCase().replace(/\s+/g, "-")}
+              </p>
+            </div>
+            <span className="rounded-full bg-gray-900/80 px-3 py-1 text-base font-medium text-white backdrop-blur-sm">
+              📱 QR Code
             </span>
           </div>
         </div>
