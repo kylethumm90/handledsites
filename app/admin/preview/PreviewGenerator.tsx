@@ -156,7 +156,7 @@ export default function PreviewGenerator() {
                   />
                 </div>
               </div>
-              <span className="rounded-full bg-gray-900/80 px-3 py-1 text-sm font-medium text-white backdrop-blur-sm">
+              <span className="whitespace-nowrap rounded-full bg-gray-900/80 px-3 py-1 text-sm font-medium text-white backdrop-blur-sm">
                 ⚡ Instant Quote
               </span>
             </div>
@@ -167,7 +167,7 @@ export default function PreviewGenerator() {
                   <ReviewPreview businessName={displayName} logoUrl={logoUrl} />
                 </div>
               </div>
-              <span className="rounded-full bg-gray-900/80 px-3 py-1 text-sm font-medium text-white backdrop-blur-sm">
+              <span className="whitespace-nowrap rounded-full bg-gray-900/80 px-3 py-1 text-sm font-medium text-white backdrop-blur-sm">
                 ⭐ Review Collector
               </span>
             </div>
