@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
 import { getSupabaseAdmin } from "@/lib/supabase";
-import { SERVICE_DESCRIPTIONS, TRADE_IMAGES } from "@/lib/constants";
+import { SERVICE_DESCRIPTIONS, HERO_IMAGES } from "@/lib/constants";
 import WebsiteContactForm from "./WebsiteContactForm";
 
 export const revalidate = 60;
@@ -186,7 +186,7 @@ export default async function WebsitePage({ params }: { params: { slug: string }
 
         {/* Hero */}
         <section className="ws-hero">
-          <div className="ws-hero-bg" style={{ backgroundImage: `url(${TRADE_IMAGES[site.trade] || TRADE_IMAGES["default"]})` }} />
+          <div className="ws-hero-bg" style={{ backgroundImage: `url(${HERO_IMAGES[site.trade] || HERO_IMAGES["default"]})` }} />
           <div className="ws-container ws-hero-inner">
             <div>
               <div className="ws-hero-badge"><div className="ws-badge-dot" /> Available now</div>

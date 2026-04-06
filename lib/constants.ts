@@ -143,3 +143,8 @@ export const TRADE_IMAGES: Record<string, string> = {
   "Pest Control": "/cover-pest-control.png",
   "default": "/cover-default.png",
 };
+
+export const HERO_IMAGES: Record<string, string> = {
+  "HVAC": "/hero-hvac.jpg",
+  "default": "/hero-hvac.jpg",
+};
