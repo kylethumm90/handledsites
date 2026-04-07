@@ -14,7 +14,7 @@ export default async function ContractorDashboardPage() {
 
   const { data: currentSite } = await supabase
     .from("sites_full")
-    .select("business_id, business_name, logo_url")
+    .select("business_id, business_name, logo_url, google_rating, google_review_count")
     .eq("id", siteId)
     .single();
 
@@ -52,6 +52,8 @@ export default async function ContractorDashboardPage() {
       leads={(leads || []) as Lead[]}
       totalLeads={totalLeads || 0}
       newLeadsThisWeek={newLeadsThisWeek || 0}
+      googleRating={currentSite.google_rating || null}
+      googleReviewCount={currentSite.google_review_count || null}
       profileData={business ? {
         owner_name: business.owner_name,
         years_in_business: business.years_in_business,

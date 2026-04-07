@@ -23,6 +23,8 @@ type Props = {
   leads: Lead[];
   totalLeads: number;
   newLeadsThisWeek: number;
+  googleRating: number | null;
+  googleReviewCount: number | null;
   profileData: ProfileData | null;
 };
 
@@ -48,71 +50,98 @@ function serviceFromLead(lead: Lead): string | null {
   return null;
 }
 
+function Stars({ rating }: { rating: number }) {
+  return (
+    <span style={{ display: "inline-flex", gap: 1, marginLeft: 4, position: "relative", top: 1 }}>
+      {[1, 2, 3, 4, 5].map((i) => (
+        <svg key={i} width="11" height="11" viewBox="0 0 20 20" fill={i <= Math.round(rating) ? "#d99a1e" : "#ddd"}>
+          <path d="M10 1.5l2.47 5.01 5.53.8-4 3.9.94 5.49L10 14.27 5.06 16.7 6 11.21 2 7.31l5.53-.8z" />
+        </svg>
+      ))}
+    </span>
+  );
+}
+
 export default function DashboardClient({
   businessName,
   logoUrl,
   leads,
   totalLeads,
   newLeadsThisWeek,
+  googleRating,
+  googleReviewCount,
   profileData,
 }: Props) {
   const router = useRouter();
 
   return (
-    <div className="space-y-8">
-      {/* Profile completion chat */}
-      {profileData && (
-        <ProfileCompleter businessName={businessName} existing={profileData} />
-      )}
-
+    <div className="space-y-5">
       {/* Greeting header */}
       <div className="flex items-center gap-3">
         {logoUrl ? (
-          <img
-            src={logoUrl}
-            alt={businessName}
-            className="h-10 w-10 flex-shrink-0 rounded-full object-cover"
-          />
+          <img src={logoUrl} alt={businessName} className="h-10 w-10 flex-shrink-0 rounded-full object-cover" />
         ) : (
-          <div
-            className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white"
-            style={{ backgroundColor: avatarColor(businessName) }}
-          >
+          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white" style={{ backgroundColor: avatarColor(businessName) }}>
             {initials(businessName)}
           </div>
         )}
         <div>
-          <p className="text-sm text-gray-500">{getGreeting()}</p>
-          <h1 className="text-xl font-bold text-gray-900">
+          <p className="text-sm text-gray-400">{getGreeting()}</p>
+          <h1 className="text-xl font-bold text-gray-900" style={{ letterSpacing: "-0.02em" }}>
             {businessName}
           </h1>
         </div>
       </div>
 
-      {/* Stats bar */}
-      <div className="grid grid-cols-3 gap-4">
-        <div>
-          <p className="text-2xl font-bold text-gray-900">{newLeadsThisWeek}</p>
-          <p className="text-xs text-gray-500">New leads</p>
+      {/* Profile completion chat */}
+      {profileData && (
+        <ProfileCompleter businessName={businessName} existing={profileData} />
+      )}
+
+      {/* Stats row */}
+      <div style={{ display: "flex", border: "1px solid #eee", borderRadius: 10, overflow: "hidden" }}>
+        <div style={{ flex: 1, padding: "16px 14px", textAlign: "center" }}>
+          <div style={{ fontSize: 22, fontWeight: 700, color: "#111", letterSpacing: "-0.02em", lineHeight: 1.2 }}>{newLeadsThisWeek}</div>
+          <div style={{ fontSize: 11, color: "#999", fontWeight: 500, marginTop: 4, textTransform: "uppercase", letterSpacing: "0.03em" }}>New leads</div>
         </div>
-        <div>
-          <p className="text-2xl font-bold text-gray-900">{totalLeads}</p>
-          <p className="text-xs text-gray-500">Customers</p>
+        <div style={{ flex: 1, padding: "16px 14px", textAlign: "center", borderLeft: "1px solid #eee", borderRight: "1px solid #eee" }}>
+          <div style={{ fontSize: 22, fontWeight: 700, color: "#111", letterSpacing: "-0.02em", lineHeight: 1.2 }}>{totalLeads}</div>
+          <div style={{ fontSize: 11, color: "#999", fontWeight: 500, marginTop: 4, textTransform: "uppercase", letterSpacing: "0.03em" }}>Customers</div>
         </div>
-        <div>
-          <p className="text-2xl font-bold text-gray-300">&mdash;</p>
-          <p className="text-xs text-gray-400">Page views</p>
+        <div style={{ flex: 1, padding: "16px 14px", textAlign: "center", borderRight: "1px solid #eee" }}>
+          <div style={{ fontSize: 22, fontWeight: 700, color: "#ddd", letterSpacing: "-0.02em", lineHeight: 1.2 }}>&mdash;</div>
+          <div style={{ fontSize: 11, color: "#ccc", fontWeight: 500, marginTop: 4, textTransform: "uppercase", letterSpacing: "0.03em" }}>Page views</div>
+        </div>
+        <div style={{ flex: 1, padding: "16px 14px", textAlign: "center" }}>
+          <div style={{ fontSize: 22, fontWeight: 700, color: "#111", letterSpacing: "-0.02em", lineHeight: 1.2 }}>
+            {googleReviewCount ?? 0}
+            {googleRating ? <Stars rating={googleRating} /> : null}
+          </div>
+          <div style={{ fontSize: 11, color: "#999", fontWeight: 500, marginTop: 4, textTransform: "uppercase", letterSpacing: "0.03em" }}>Reviews</div>
         </div>
       </div>
 
+      {/* Review nudge */}
+      {totalLeads > 0 && (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 14px", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 10, fontSize: 13 }}>
+          <div>
+            <span style={{ fontWeight: 600, color: "#111" }}>{Math.min(totalLeads, 5)} customers</span>
+            <span style={{ color: "#666" }}> are ready to leave a review.</span>
+          </div>
+          <button style={{ background: "#111", color: "#fff", border: "none", fontSize: 12, fontWeight: 600, padding: "7px 14px", borderRadius: 6, cursor: "pointer", whiteSpace: "nowrap" }}>
+            Send reminder
+          </button>
+        </div>
+      )}
+
       {/* Recent leads */}
       <div>
-        <p className="mb-3 text-[10px] font-medium uppercase tracking-wider text-gray-400">
+        <p style={{ fontSize: 11, fontWeight: 600, color: "#bbb", letterSpacing: "0.05em", marginBottom: 8, textTransform: "uppercase" }}>
           Recent leads
         </p>
 
         {leads.length === 0 ? (
-          <div className="rounded-xl border border-gray-200 bg-white px-5 py-10 text-center">
+          <div style={{ border: "1px solid #eee", borderRadius: 10, padding: "40px 20px", textAlign: "center" }}>
             <p className="text-sm text-gray-400">No leads yet.</p>
             <p className="mt-1 text-xs text-gray-400">
               Share your site and quiz funnel to start collecting leads.
@@ -120,8 +149,8 @@ export default function DashboardClient({
           </div>
         ) : (
           <>
-            <div className="space-y-2">
-              {leads.map((lead) => {
+            <div style={{ border: "1px solid #eee", borderRadius: 10, overflow: "hidden" }}>
+              {leads.map((lead, i) => {
                 const service = serviceFromLead(lead);
                 const color = avatarColor(lead.name);
 
@@ -129,25 +158,32 @@ export default function DashboardClient({
                   <button
                     key={lead.id}
                     onClick={() => router.push(`/contractor/customers/${lead.id}`)}
-                    className="flex w-full items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 text-left transition-colors hover:bg-gray-50 active:bg-gray-100"
+                    className="flex w-full items-center gap-3 text-left hover:bg-gray-50"
+                    style={{
+                      padding: "12px 14px",
+                      border: "none",
+                      background: "none",
+                      cursor: "pointer",
+                      borderBottom: i < leads.length - 1 ? "1px solid #f2f2f2" : "none",
+                    }}
                   >
                     <div
-                      className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white"
+                      className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white"
                       style={{ backgroundColor: color }}
                     >
                       {initials(lead.name)}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-gray-900">
+                      <p style={{ fontSize: 14, fontWeight: 600, color: "#111" }} className="truncate">
                         {lead.name}
                       </p>
-                      <p className="truncate text-xs text-gray-500">
+                      <p style={{ fontSize: 12, color: "#aaa", marginTop: 1 }} className="truncate">
                         {service || "No service specified"}
-                        <span className="mx-1 text-gray-300">&middot;</span>
+                        <span style={{ margin: "0 4px", color: "#ddd" }}>&middot;</span>
                         {sourceLabel(lead.source)}
                       </p>
                     </div>
-                    <span className="flex-shrink-0 text-xs text-gray-400">
+                    <span style={{ fontSize: 12, color: "#ccc", fontWeight: 500, flexShrink: 0 }}>
                       {relativeTime(lead.created_at)}
                     </span>
                   </button>
@@ -158,7 +194,7 @@ export default function DashboardClient({
             {totalLeads > leads.length && (
               <Link
                 href="/contractor/customers"
-                className="mt-3 block text-center text-xs font-medium text-gray-500 hover:text-gray-700"
+                style={{ display: "block", textAlign: "center", padding: 14, fontSize: 13, color: "#888" }}
               >
                 View all {totalLeads} customers
               </Link>
@@ -168,7 +204,7 @@ export default function DashboardClient({
       </div>
 
       {/* Closing line */}
-      <p className="pt-4 text-center text-xs text-gray-300">
+      <p style={{ textAlign: "center", fontSize: 13, color: "#ddd", fontStyle: "italic", paddingTop: 8 }}>
         That&apos;s everything. Go do the work.
       </p>
     </div>
