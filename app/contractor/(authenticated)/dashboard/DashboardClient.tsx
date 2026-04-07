@@ -4,6 +4,18 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { Lead } from "@/lib/supabase";
 import { relativeTime, avatarColor, initials } from "@/lib/utils";
+import ProfileCompleter from "@/components/ProfileCompleter";
+
+type ProfileData = {
+  owner_name: string | null;
+  years_in_business: number | null;
+  service_areas: string[] | null;
+  license_number: string | null;
+  hero_tagline: string | null;
+  social_facebook: string | null;
+  social_instagram: string | null;
+  social_nextdoor: string | null;
+};
 
 type Props = {
   businessName: string;
@@ -11,6 +23,7 @@ type Props = {
   leads: Lead[];
   totalLeads: number;
   newLeadsThisWeek: number;
+  profileData: ProfileData | null;
 };
 
 function getGreeting(): string {
@@ -41,11 +54,17 @@ export default function DashboardClient({
   leads,
   totalLeads,
   newLeadsThisWeek,
+  profileData,
 }: Props) {
   const router = useRouter();
 
   return (
     <div className="space-y-8">
+      {/* Profile completion chat */}
+      {profileData && (
+        <ProfileCompleter businessName={businessName} existing={profileData} />
+      )}
+
       {/* Greeting header */}
       <div className="flex items-center gap-3">
         {logoUrl ? (

@@ -22,6 +22,13 @@ export default async function ContractorDashboardPage() {
 
   const businessId = currentSite.business_id;
 
+  // Fetch business profile for completion check
+  const { data: business } = await supabase
+    .from("businesses")
+    .select("owner_name, years_in_business, service_areas, license_number, hero_tagline, social_facebook, social_instagram, social_nextdoor")
+    .eq("id", businessId)
+    .single();
+
   // Recent leads (last 5)
   const { data: leads, count: totalLeads } = await supabase
     .from("leads")
@@ -45,6 +52,16 @@ export default async function ContractorDashboardPage() {
       leads={(leads || []) as Lead[]}
       totalLeads={totalLeads || 0}
       newLeadsThisWeek={newLeadsThisWeek || 0}
+      profileData={business ? {
+        owner_name: business.owner_name,
+        years_in_business: business.years_in_business,
+        service_areas: business.service_areas,
+        license_number: business.license_number,
+        hero_tagline: business.hero_tagline,
+        social_facebook: business.social_facebook,
+        social_instagram: business.social_instagram,
+        social_nextdoor: business.social_nextdoor,
+      } : null}
     />
   );
 }
