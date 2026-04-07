@@ -189,6 +189,14 @@ const LiveBadge = () => (
   </span>
 );
 
+/* ─── Chevron icon ─── */
+const ChevronDown = ({ expanded }: { expanded: boolean }) => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#aeaeb2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+    style={{ transition: `transform 0.3s ${EASE}`, transform: expanded ? "rotate(180deg)" : "rotate(0)" }}>
+    <path d="M6 9l6 6 6-6" />
+  </svg>
+);
+
 /* ─── Site Card wrapper ─── */
 function SiteCard({
   site,
@@ -201,6 +209,8 @@ function SiteCard({
 }) {
   const [hover, setHover] = useState(false);
   const [pressed, setPressed] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const expandable = !!children;
   const meta = SITE_META[site.type] || SITE_META.business_card;
   const baseUrl = typeof window !== "undefined" ? window.location.origin : "https://handledsites.com";
   const fullUrl = `${baseUrl}${siteUrl(site)}`;
@@ -209,22 +219,23 @@ function SiteCard({
     <div
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => { setHover(false); setPressed(false); }}
-      onMouseDown={() => setPressed(true)}
+      onMouseDown={() => !expanded && setPressed(true)}
       onMouseUp={() => setPressed(false)}
       style={{
-        background: hover ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.72)",
+        background: hover || expanded ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.72)",
         backdropFilter: "blur(40px) saturate(180%)",
         WebkitBackdropFilter: "blur(40px) saturate(180%)",
         borderRadius: 20,
-        border: hover ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(0,0,0,0.04)",
+        border: hover || expanded ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(0,0,0,0.04)",
         padding: "18px 20px",
         transition: `all 0.5s ${EASE}`,
-        transform: pressed ? "scale(0.985)" : hover ? "scale(1.005)" : "scale(1)",
-        boxShadow: hover ? "0 8px 40px rgba(0,0,0,0.06)" : "0 1px 4px rgba(0,0,0,0.02)",
-        cursor: "default",
+        transform: pressed ? "scale(0.985)" : hover && !expanded ? "scale(1.005)" : "scale(1)",
+        boxShadow: hover || expanded ? "0 8px 40px rgba(0,0,0,0.06)" : "0 1px 4px rgba(0,0,0,0.02)",
+        cursor: expandable && !expanded ? "pointer" : "default",
         animation: `hsCardIn 0.5s ${EASE} both`,
         animationDelay: `${index * 60}ms`,
       }}
+      onClick={() => { if (expandable && !expanded) setExpanded(true); }}
     >
       {/* Top row: icon + title + live + open */}
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
@@ -249,6 +260,20 @@ function SiteCard({
         </div>
         <LiveBadge />
         <OpenLink href={siteUrl(site)} />
+        {expandable && (
+          <button
+            onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
+            style={{
+              width: 28, height: 28, borderRadius: 7,
+              border: "none", background: expanded ? "rgba(0,0,0,0.04)" : "transparent",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              cursor: "pointer", flexShrink: 0,
+              transition: `all 0.2s ${EASE}`,
+            }}
+          >
+            <ChevronDown expanded={expanded} />
+          </button>
+        )}
       </div>
 
       {/* Bottom row: URL bar + stats */}
@@ -264,8 +289,17 @@ function SiteCard({
         )}
       </div>
 
-      {/* Expandable content (business card settings, etc.) */}
-      {children}
+      {/* Expandable content */}
+      {expandable && (
+        <div style={{
+          maxHeight: expanded ? 600 : 0,
+          opacity: expanded ? 1 : 0,
+          overflow: "hidden",
+          transition: `max-height 0.4s ${EASE}, opacity 0.3s ${EASE}`,
+        }}>
+          {children}
+        </div>
+      )}
     </div>
   );
 }
