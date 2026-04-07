@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
       service_needed: body.service_needed || null,
       notes: body.notes?.trim() || null,
       source: "manual",
-      status: "new",
+      status: "lead",
     })
     .select()
     .single();

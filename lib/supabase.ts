@@ -138,7 +138,8 @@ export type Lead = {
   email: string | null;
   answers: Record<string, string> | null;
   service_needed: string | null;
-  status: string;
+  status: "lead" | "booked" | "customer";
+  tags: string[];
   notes: string | null;
   created_at: string;
 };

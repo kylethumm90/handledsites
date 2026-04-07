@@ -11,12 +11,10 @@ type Props = {
   timeline: ActivityLogEntry[];
 };
 
-const STATUSES = [
-  { value: "new", label: "New", bg: "bg-blue-50", text: "text-blue-700", ring: "ring-blue-200" },
-  { value: "contacted", label: "Contacted", bg: "bg-gray-100", text: "text-gray-600", ring: "ring-gray-200" },
-  { value: "quoted", label: "Quoted", bg: "bg-amber-50", text: "text-amber-700", ring: "ring-amber-200" },
-  { value: "won", label: "Won", bg: "bg-green-50", text: "text-green-700", ring: "ring-green-200" },
-  { value: "lost", label: "Lost", bg: "bg-gray-50", text: "text-gray-400", ring: "ring-gray-200" },
+const STATUSES: { value: "lead" | "booked" | "customer"; label: string; bg: string; text: string; ring: string }[] = [
+  { value: "lead", label: "Lead", bg: "bg-gray-100", text: "text-gray-600", ring: "ring-gray-200" },
+  { value: "booked", label: "Booked", bg: "bg-blue-50", text: "text-blue-700", ring: "ring-blue-200" },
+  { value: "customer", label: "Customer", bg: "bg-green-50", text: "text-green-700", ring: "ring-green-200" },
 ];
 
 function sourceLabel(source: string): string {
@@ -45,7 +43,7 @@ export default function CustomerDetailClient({ lead, timeline: initialTimeline }
   const color = avatarColor(lead.name);
   const service = serviceFromLead(lead);
 
-  const handleStatusChange = async (newStatus: string) => {
+  const handleStatusChange = async (newStatus: "lead" | "booked" | "customer") => {
     const oldStatus = status;
     setStatus(newStatus); // Optimistic
 

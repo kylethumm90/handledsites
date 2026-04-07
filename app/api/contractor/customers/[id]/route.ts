@@ -37,7 +37,7 @@ export async function PUT(
 
   const body = await request.json();
 
-  const ALLOWED = new Set(["status", "service_needed", "notes"]);
+  const ALLOWED = new Set(["status", "service_needed", "notes", "tags"]);
   const updates: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(body)) {
     if (ALLOWED.has(key)) updates[key] = value;
