@@ -108,18 +108,18 @@ export default function DashboardClient({
       {/* Stats row */}
       <div style={{ display: "flex", border: "1px solid #eee", borderRadius: 10, overflow: "hidden" }}>
         <div style={{ flex: 1, padding: "16px 14px", textAlign: "center" }}>
-          <div style={{ fontSize: 22, fontWeight: 700, color: "#111", letterSpacing: "-0.02em", lineHeight: 1.2 }}>{newLeadsThisWeek}</div>
-          <div style={{ fontSize: 11, color: "#999", fontWeight: 500, marginTop: 4, textTransform: "uppercase", letterSpacing: "0.03em" }}>New leads</div>
-        </div>
-        <div style={{ flex: 1, padding: "16px 14px", textAlign: "center", borderLeft: "1px solid #eee", borderRight: "1px solid #eee" }}>
-          <div style={{ fontSize: 22, fontWeight: 700, color: "#111", letterSpacing: "-0.02em", lineHeight: 1.2 }}>{totalLeads}</div>
-          <div style={{ fontSize: 11, color: "#999", fontWeight: 500, marginTop: 4, textTransform: "uppercase", letterSpacing: "0.03em" }}>Customers</div>
-        </div>
-        <div style={{ flex: 1, padding: "16px 14px", textAlign: "center", borderRight: "1px solid #eee" }}>
           <div style={{ fontSize: 22, fontWeight: 700, color: "#111", letterSpacing: "-0.02em", lineHeight: 1.2 }}>{totalViews ?? 0}</div>
           <div style={{ fontSize: 11, color: "#999", fontWeight: 500, marginTop: 4, textTransform: "uppercase", letterSpacing: "0.03em" }}>Page views</div>
         </div>
-        <div style={{ flex: 1, padding: "16px 14px", textAlign: "center" }}>
+        <div style={{ flex: 1, padding: "16px 14px", textAlign: "center", borderLeft: "1px solid #eee" }}>
+          <div style={{ fontSize: 22, fontWeight: 700, color: "#111", letterSpacing: "-0.02em", lineHeight: 1.2 }}>{newLeadsThisWeek}</div>
+          <div style={{ fontSize: 11, color: "#999", fontWeight: 500, marginTop: 4, textTransform: "uppercase", letterSpacing: "0.03em" }}>New leads</div>
+        </div>
+        <div style={{ flex: 1, padding: "16px 14px", textAlign: "center", borderLeft: "1px solid #eee" }}>
+          <div style={{ fontSize: 22, fontWeight: 700, color: "#111", letterSpacing: "-0.02em", lineHeight: 1.2 }}>{totalLeads}</div>
+          <div style={{ fontSize: 11, color: "#999", fontWeight: 500, marginTop: 4, textTransform: "uppercase", letterSpacing: "0.03em" }}>Customers</div>
+        </div>
+        <div style={{ flex: 1, padding: "16px 14px", textAlign: "center", borderLeft: "1px solid #eee" }}>
           <div style={{ fontSize: 22, fontWeight: 700, color: "#111", letterSpacing: "-0.02em", lineHeight: 1.2 }}>
             {googleReviewCount ?? 0}
             {googleRating ? <Stars rating={googleRating} /> : null}
