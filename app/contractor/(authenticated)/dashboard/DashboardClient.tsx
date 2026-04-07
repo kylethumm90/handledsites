@@ -15,6 +15,11 @@ type ProfileData = {
   social_facebook: string | null;
   social_instagram: string | null;
   social_nextdoor: string | null;
+  trade: string | null;
+  services: string[] | null;
+  about_bio: string | null;
+  city: string | null;
+  state: string | null;
 };
 
 type Props = {

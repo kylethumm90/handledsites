@@ -25,7 +25,7 @@ export default async function ContractorDashboardPage() {
   // Fetch business profile for completion check
   const { data: business } = await supabase
     .from("businesses")
-    .select("owner_name, years_in_business, service_areas, license_number, hero_tagline, social_facebook, social_instagram, social_nextdoor")
+    .select("owner_name, years_in_business, service_areas, license_number, hero_tagline, social_facebook, social_instagram, social_nextdoor, trade, services, about_bio, city, state")
     .eq("id", businessId)
     .single();
 
@@ -92,6 +92,11 @@ export default async function ContractorDashboardPage() {
         social_facebook: business.social_facebook,
         social_instagram: business.social_instagram,
         social_nextdoor: business.social_nextdoor,
+        trade: business.trade,
+        services: business.services,
+        about_bio: business.about_bio,
+        city: business.city,
+        state: business.state,
       } : null}
     />
   );
