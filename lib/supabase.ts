@@ -88,6 +88,10 @@ export type Business = {
   google_rating: number | null;
   google_review_count: number | null;
   google_reviews: { text: string; author: string; rating: number }[] | null;
+  // Custom domain hosting
+  custom_domain: string | null;
+  domain_status: "none" | "pending" | "active" | "error";
+  domain_error: string | null;
   created_at: string;
 };
 

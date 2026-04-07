@@ -4,7 +4,7 @@ import { useState, useCallback } from "react";
 import type { ContractorSite } from "@/lib/supabase";
 import { QRCodeSVG } from "qrcode.react";
 
-type Props = { sites: ContractorSite[] };
+type Props = { sites: ContractorSite[]; customDomain?: string | null };
 
 /* ─── helpers ─── */
 const F = "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', sans-serif";
@@ -17,6 +17,14 @@ function siteUrl(site: ContractorSite): string {
   if (site.type === "website") return `/s/${site.slug}`;
   if (site.type === "review_wall") return `/reviews/${site.slug}`;
   return `/${site.slug}`;
+}
+
+function customDomainPath(type: string): string {
+  if (type === "quiz_funnel") return "/quiz";
+  if (type === "review_funnel") return "/review";
+  if (type === "website") return "/site";
+  if (type === "review_wall") return "/reviews";
+  return "";
 }
 
 function fmtNum(n: number): string {
@@ -206,10 +214,12 @@ const ChevronDown = ({ expanded }: { expanded: boolean }) => (
 function SiteCard({
   site,
   index,
+  customDomain,
   children,
 }: {
   site: ContractorSite;
   index: number;
+  customDomain?: string | null;
   children?: React.ReactNode;
 }) {
   const [hover, setHover] = useState(false);
@@ -218,7 +228,9 @@ function SiteCard({
   const expandable = !!children;
   const meta = SITE_META[site.type] || SITE_META.business_card;
   const baseUrl = typeof window !== "undefined" ? window.location.origin : "https://handledsites.com";
-  const fullUrl = `${baseUrl}${siteUrl(site)}`;
+  const fullUrl = customDomain
+    ? `https://${customDomain}${customDomainPath(site.type)}`
+    : `${baseUrl}${siteUrl(site)}`;
 
   return (
     <div
@@ -462,7 +474,7 @@ function BusinessCardSettings({ site }: { site: ContractorSite }) {
 }
 
 /* ─── Main export ─── */
-export default function ContractorSitesEditor({ sites }: Props) {
+export default function ContractorSitesEditor({ sites, customDomain }: Props) {
   const liveSites = sites.length;
 
   return (
@@ -513,7 +525,7 @@ export default function ContractorSitesEditor({ sites }: Props) {
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {sites.map((site, i) => (
-            <SiteCard key={site.id} site={site} index={i}>
+            <SiteCard key={site.id} site={site} index={i} customDomain={customDomain}>
               {site.type === "business_card" && <BusinessCardSettings site={site} />}
             </SiteCard>
           ))}

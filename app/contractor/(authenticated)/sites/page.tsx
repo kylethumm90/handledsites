@@ -20,6 +20,15 @@ export default async function ContractorSitesPage() {
 
   if (!currentSite) redirect("/contractor/login");
 
+  // Fetch business for custom domain info
+  const { data: business } = await supabase
+    .from("businesses")
+    .select("custom_domain, domain_status")
+    .eq("id", currentSite.business_id)
+    .single();
+
+  const customDomain = business?.domain_status === "active" ? business.custom_domain : null;
+
   // Fetch all sites for this business via the joined view
   const { data: allSites } = await supabase
     .from("sites_full")
@@ -62,5 +71,5 @@ export default async function ContractorSitesPage() {
     social_nextdoor: data.social_nextdoor ?? null,
   }));
 
-  return <ContractorSitesEditor sites={sites} />;
+  return <ContractorSitesEditor sites={sites} customDomain={customDomain} />;
 }

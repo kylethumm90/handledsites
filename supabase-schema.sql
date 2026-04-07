@@ -100,3 +100,19 @@ CREATE TABLE contractor_sessions (
 
 CREATE INDEX idx_contractor_sessions_hash ON contractor_sessions (session_hash);
 
+-- ============================================
+-- Custom domain hosting (per-business)
+-- ============================================
+
+-- 12. Add custom domain columns to businesses table
+-- Run this as a migration if businesses table already exists:
+--
+-- ALTER TABLE businesses ADD COLUMN custom_domain TEXT UNIQUE;
+-- ALTER TABLE businesses ADD COLUMN domain_status TEXT NOT NULL DEFAULT 'none'
+--   CHECK (domain_status IN ('none', 'pending', 'active', 'error'));
+-- ALTER TABLE businesses ADD COLUMN domain_error TEXT;
+-- CREATE INDEX idx_businesses_custom_domain ON businesses (custom_domain) WHERE custom_domain IS NOT NULL;
+--
+-- Update sites_full view to include domain fields:
+-- (Adjust your existing view definition to add custom_domain and domain_status from businesses)
+

@@ -59,6 +59,71 @@ export default function ContractorSettingsEditor({ business }: Props) {
   const [metaPixelId, setMetaPixelId] = useState(business.meta_pixel_id ?? "");
   const [zapierWebhookUrl, setZapierWebhookUrl] = useState(business.zapier_webhook_url ?? "");
 
+  // Custom domain
+  const [customDomain, setCustomDomain] = useState(business.custom_domain ?? "");
+  const [domainStatus, setDomainStatus] = useState(business.domain_status ?? "none");
+  const [domainError, setDomainError] = useState(business.domain_error ?? "");
+  const [domainInput, setDomainInput] = useState("");
+  const [domainSaving, setDomainSaving] = useState(false);
+  const [domainChecking, setDomainChecking] = useState(false);
+  const [domainDns, setDomainDns] = useState<{ type: string; name: string; value: string } | null>(null);
+
+  const handleAddDomain = async () => {
+    if (!domainInput.trim()) return;
+    setDomainSaving(true);
+    setDomainError("");
+    try {
+      const res = await fetch("/api/contractor/domain", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ domain: domainInput.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to add domain");
+      setCustomDomain(data.domain);
+      setDomainStatus("pending");
+      setDomainDns(data.dns);
+      setDomainInput("");
+    } catch (e: unknown) {
+      setDomainError(e instanceof Error ? e.message : "Failed to add domain");
+    } finally {
+      setDomainSaving(false);
+    }
+  };
+
+  const handleVerifyDomain = async () => {
+    setDomainChecking(true);
+    setDomainError("");
+    try {
+      const res = await fetch("/api/contractor/domain");
+      const data = await res.json();
+      setDomainStatus(data.status);
+      setDomainError(data.error || "");
+      if (data.dns) setDomainDns(data.dns);
+    } catch {
+      setDomainError("Failed to check domain status");
+    } finally {
+      setDomainChecking(false);
+    }
+  };
+
+  const handleRemoveDomain = async () => {
+    setDomainSaving(true);
+    setDomainError("");
+    try {
+      const res = await fetch("/api/contractor/domain", { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to remove domain");
+      setCustomDomain("");
+      setDomainStatus("none");
+      setDomainDns(null);
+    } catch (e: unknown) {
+      setDomainError(e instanceof Error ? e.message : "Failed to remove domain");
+    } finally {
+      setDomainSaving(false);
+    }
+  };
+
   const availableServices = business.trade
     ? TRADE_SERVICES[business.trade as Trade] || []
     : [];
@@ -364,6 +429,84 @@ export default function ContractorSettingsEditor({ business }: Props) {
             <p className="mt-1 text-xs text-gray-400">Quiz lead data will be POSTed here on each submission</p>
           </div>
         </div>
+      </div>
+
+      {/* Section 6: Custom Domain */}
+      <div className="mt-6 rounded-xl border border-gray-200 bg-white p-5">
+        <h2 className="mb-1 text-sm font-semibold text-gray-900">Custom Domain</h2>
+        <p className="mb-4 text-xs text-gray-400">Host your sites on your own domain instead of handledsites.com.</p>
+
+        {customDomain && domainStatus !== "none" ? (
+          <div>
+            {/* Domain configured */}
+            <div className={`rounded-lg border p-4 ${domainStatus === "active" ? "border-green-100 bg-green-50" : domainStatus === "error" ? "border-red-100 bg-red-50" : "border-amber-100 bg-amber-50"}`}>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <span className={`inline-block h-2 w-2 rounded-full ${domainStatus === "active" ? "bg-green-500" : domainStatus === "error" ? "bg-red-500" : "bg-amber-500"}`} />
+                  <span className="text-sm font-semibold text-gray-900">{customDomain}</span>
+                </div>
+                <button onClick={handleRemoveDomain} disabled={domainSaving} className="text-[11px] text-gray-500 underline hover:text-gray-800 disabled:opacity-50">
+                  Remove
+                </button>
+              </div>
+
+              <p className={`text-xs ${domainStatus === "active" ? "text-green-700" : domainStatus === "error" ? "text-red-700" : "text-amber-700"}`}>
+                {domainStatus === "active" && "Domain is active and serving your sites."}
+                {domainStatus === "pending" && "Waiting for DNS configuration..."}
+                {domainStatus === "error" && (domainError || "DNS configuration error.")}
+              </p>
+
+              {domainStatus !== "active" && (
+                <div className="mt-3">
+                  {domainDns && (
+                    <div className="rounded-md border border-gray-200 bg-white p-3 mb-3">
+                      <p className="text-xs font-medium text-gray-700 mb-2">Add this DNS record at your domain registrar:</p>
+                      <div className="grid grid-cols-3 gap-2 text-xs">
+                        <div>
+                          <span className="text-gray-400 block">Type</span>
+                          <span className="font-mono font-medium text-gray-900">{domainDns.type}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-400 block">Name</span>
+                          <span className="font-mono font-medium text-gray-900">{domainDns.name}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-400 block">Value</span>
+                          <span className="font-mono font-medium text-gray-900 break-all">{domainDns.value}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  <button onClick={handleVerifyDomain} disabled={domainChecking} className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50">
+                    {domainChecking ? "Checking..." : "Verify DNS"}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div>
+            {/* Add domain form */}
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={domainInput}
+                onChange={(e) => setDomainInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleAddDomain()}
+                placeholder="yourdomain.com"
+                className={`${inputClass} flex-1`}
+              />
+              <button onClick={handleAddDomain} disabled={domainSaving || !domainInput.trim()} className="rounded-lg bg-gray-900 px-4 py-2 text-xs font-semibold text-white hover:bg-gray-800 disabled:opacity-50 whitespace-nowrap">
+                {domainSaving ? "Adding..." : "Add domain"}
+              </button>
+            </div>
+            <p className="mt-2 text-xs text-gray-400">Enter a domain you own. You&apos;ll need to configure DNS records after adding it.</p>
+          </div>
+        )}
+
+        {domainError && domainStatus === "none" && (
+          <p className="mt-2 text-xs text-red-600">{domainError}</p>
+        )}
       </div>
 
       {/* Save */}
