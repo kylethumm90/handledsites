@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Check, Copy, ExternalLink } from "lucide-react";
 
 type Props = {
@@ -20,6 +20,13 @@ const EMOJIS = [
   { emoji: "😤", label: "Frustrated", value: 1 },
 ];
 
+const STEP_PROGRESS: Record<Step, number> = {
+  rating: 33,
+  questions: 66,
+  feedback: 100,
+  result: 100,
+};
+
 export default function ReviewClient({
   siteId,
   businessName,
@@ -28,6 +35,7 @@ export default function ReviewClient({
 }: Props) {
   const [step, setStep] = useState<Step>("rating");
   const [rating, setRating] = useState(0);
+  const [selectedEmoji, setSelectedEmoji] = useState<number | null>(null);
   const [professionalism, setProfessionalism] = useState("");
   const [communication, setCommunication] = useState("");
   const [feedback, setFeedback] = useState("");
@@ -36,10 +44,12 @@ export default function ReviewClient({
   const [isPositive, setIsPositive] = useState(false);
   const [copied, setCopied] = useState(false);
   const [done, setDone] = useState(false);
+  const emojiRowRef = useRef<HTMLDivElement>(null);
 
   const handleRating = (value: number) => {
+    setSelectedEmoji(value);
     setRating(value);
-    setStep("questions");
+    setTimeout(() => setStep("questions"), 200);
   };
 
   const handleSubmit = async () => {
@@ -63,13 +73,13 @@ export default function ReviewClient({
 
   if (done) {
     return (
-      <Shell businessName={businessName} logoUrl={logoUrl}>
+      <Shell businessName={businessName} logoUrl={logoUrl} step="result">
         <div className="py-16 text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-green-50">
-            <Check className="h-7 w-7 text-green-600" />
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full" style={{ backgroundColor: "#ECFDF5" }}>
+            <Check className="h-7 w-7" style={{ color: "#10B981" }} />
           </div>
-          <h2 className="text-lg font-semibold text-gray-900">Thank you!</h2>
-          <p className="mt-2 text-sm text-gray-500">
+          <h2 style={{ fontSize: 18, fontWeight: 500, color: "#111827" }}>Thank you!</h2>
+          <p className="mt-2" style={{ fontSize: 14, color: "#6B7280" }}>
             We appreciate you taking the time.
           </p>
         </div>
@@ -78,26 +88,68 @@ export default function ReviewClient({
   }
 
   return (
-    <Shell businessName={businessName} logoUrl={logoUrl}>
+    <Shell businessName={businessName} logoUrl={logoUrl} step={step}>
       {/* Step 1: Rating */}
       {step === "rating" && (
-        <div className="py-8">
-          <h2 className="mb-8 text-center text-lg font-semibold text-gray-900">
+        <div style={{ paddingTop: 28, paddingBottom: 24 }}>
+          <h2 className="text-center" style={{ fontSize: 18, fontWeight: 500, color: "#111827", marginBottom: 32 }}>
             How was your experience
             <br />
             with {businessName}?
           </h2>
-          <div className="flex justify-center gap-3">
+          <div
+            ref={emojiRowRef}
+            className="flex justify-center"
+            style={{ gap: 8 }}
+            role="radiogroup"
+            aria-label="Rate your experience"
+          >
             {EMOJIS.map((e) => (
               <button
                 key={e.value}
                 onClick={() => handleRating(e.value)}
-                className="flex flex-col items-center gap-1.5 rounded-xl p-3 transition-all hover:bg-gray-50 active:scale-95"
+                onKeyDown={(ev) => {
+                  const idx = EMOJIS.findIndex((em) => em.value === e.value);
+                  if (ev.key === "ArrowRight" && idx < EMOJIS.length - 1) {
+                    (emojiRowRef.current?.children[idx + 1] as HTMLElement)?.focus();
+                  } else if (ev.key === "ArrowLeft" && idx > 0) {
+                    (emojiRowRef.current?.children[idx - 1] as HTMLElement)?.focus();
+                  }
+                }}
+                role="radio"
+                aria-checked={selectedEmoji === e.value}
+                aria-label={e.label}
+                tabIndex={0}
+                className="flex flex-col items-center rounded-xl p-3"
+                style={{
+                  gap: 6,
+                  transition: "transform 150ms ease",
+                  transform: selectedEmoji === e.value ? "scale(1.15)" : "scale(1)",
+                  outline: "none",
+                }}
+                onMouseEnter={(ev) => { (ev.currentTarget as HTMLElement).style.transform = "scale(1.15)"; }}
+                onMouseLeave={(ev) => { (ev.currentTarget as HTMLElement).style.transform = selectedEmoji === e.value ? "scale(1.15)" : "scale(1)"; }}
+                onMouseDown={(ev) => { (ev.currentTarget as HTMLElement).style.transform = "scale(0.97)"; }}
+                onMouseUp={(ev) => { (ev.currentTarget as HTMLElement).style.transform = "scale(1.15)"; }}
+                onFocus={(ev) => { ev.currentTarget.style.outlineOffset = "2px"; ev.currentTarget.style.outline = "2px solid #10B981"; }}
+                onBlur={(ev) => { ev.currentTarget.style.outline = "none"; }}
               >
-                <span className="text-3xl">{e.emoji}</span>
-                <span className="text-[10px] font-medium text-gray-500">
+                <span style={{ fontSize: 30 }}>{e.emoji}</span>
+                <span style={{ fontSize: 13, fontWeight: 400, color: "#6B7280" }}>
                   {e.label}
                 </span>
+                {/* Selected underline bar */}
+                <span
+                  style={{
+                    display: "block",
+                    height: 3,
+                    width: 24,
+                    borderRadius: 2,
+                    backgroundColor: selectedEmoji === e.value ? "#10B981" : "transparent",
+                    transition: "background-color 150ms ease",
+                    marginTop: 2,
+                  }}
+                />
               </button>
             ))}
           </div>
@@ -106,79 +158,66 @@ export default function ReviewClient({
 
       {/* Step 2: Quick questions */}
       {step === "questions" && (
-        <div className="py-8">
+        <div style={{ paddingTop: 28, paddingBottom: 24 }}>
           <div className="mb-6 flex justify-center">
-            <span className="text-4xl">
+            <span style={{ fontSize: 36 }}>
               {EMOJIS.find((e) => e.value === rating)?.emoji}
             </span>
           </div>
 
-          <div className="space-y-6">
+          <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
             {/* Professionalism */}
             <div>
-              <p className="mb-3 text-center text-sm font-medium text-gray-900">
+              <p className="text-center" style={{ fontSize: 18, fontWeight: 500, color: "#111827", marginBottom: 12 }}>
                 How professional was the team?
               </p>
               <div className="flex justify-center gap-2">
                 {["Very", "Somewhat", "Not really"].map((option) => (
-                  <button
+                  <PillButton
                     key={option}
+                    label={option}
+                    selected={professionalism === option}
                     onClick={() => setProfessionalism(option)}
-                    className={`rounded-full px-4 py-2.5 text-sm font-medium transition-all ${
-                      professionalism === option
-                        ? "bg-gray-900 text-white"
-                        : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
-                    }`}
-                  >
-                    {option}
-                  </button>
+                  />
                 ))}
               </div>
             </div>
 
             {/* Communication */}
             <div>
-              <p className="mb-3 text-center text-sm font-medium text-gray-900">
+              <p className="text-center" style={{ fontSize: 18, fontWeight: 500, color: "#111827", marginBottom: 12 }}>
                 How was communication throughout?
               </p>
               <div className="flex justify-center gap-2">
                 {["Great", "Okay", "Poor"].map((option) => (
-                  <button
+                  <PillButton
                     key={option}
+                    label={option}
+                    selected={communication === option}
                     onClick={() => setCommunication(option)}
-                    className={`rounded-full px-4 py-2.5 text-sm font-medium transition-all ${
-                      communication === option
-                        ? "bg-gray-900 text-white"
-                        : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
-                    }`}
-                  >
-                    {option}
-                  </button>
+                  />
                 ))}
               </div>
             </div>
           </div>
 
           {professionalism && communication && (
-            <button
-              onClick={() => setStep("feedback")}
-              className="mt-6 w-full rounded-xl bg-gray-900 py-3 text-sm font-semibold text-white hover:bg-gray-800"
-            >
+            <CtaButton onClick={() => setStep("feedback")} style={{ marginTop: 24 }}>
               Continue
-            </button>
+            </CtaButton>
           )}
         </div>
       )}
 
       {/* Step 3: Feedback */}
       {step === "feedback" && (
-        <div className="py-8">
+        <div style={{ paddingTop: 28, paddingBottom: 24 }}>
           <div className="mb-6 flex justify-center">
-            <span className="text-4xl">
+            <span style={{ fontSize: 36 }}>
               {EMOJIS.find((e) => e.value === rating)?.emoji}
             </span>
           </div>
-          <h2 className="mb-4 text-center text-base font-semibold text-gray-900">
+          <h2 className="text-center" style={{ fontSize: 18, fontWeight: 500, color: "#111827", marginBottom: 16 }}>
             {rating >= 4
               ? `What did ${businessName} do that stood out?`
               : "What could we have done better?"}
@@ -192,47 +231,78 @@ export default function ReviewClient({
                 : "We'd love to know how we can improve..."
             }
             rows={4}
-            className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:outline-none"
+            className="w-full"
+            style={{
+              borderRadius: 12,
+              border: "1px solid #D1D5DB",
+              padding: "12px 16px",
+              fontSize: 14,
+              color: "#111827",
+              outline: "none",
+              transition: "border-color 200ms ease, box-shadow 200ms ease",
+            }}
+            onFocus={(e) => {
+              e.currentTarget.style.borderColor = "#10B981";
+              e.currentTarget.style.boxShadow = "0 0 0 3px #ECFDF5";
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.borderColor = "#D1D5DB";
+              e.currentTarget.style.boxShadow = "none";
+            }}
             autoFocus
           />
-          <button
-            onClick={handleSubmit}
-            disabled={submitting}
-            className="mt-4 w-full rounded-xl bg-gray-900 py-3 text-sm font-semibold text-white hover:bg-gray-800 disabled:opacity-50"
-          >
+          <CtaButton onClick={handleSubmit} disabled={submitting} style={{ marginTop: 12 }}>
             {submitting ? "Submitting..." : "Continue"}
-          </button>
+          </CtaButton>
         </div>
       )}
 
-      {/* Step 3: Result - Happy */}
+      {/* Result - Happy */}
       {step === "result" && isPositive && (
-        <div className="py-8">
+        <div style={{ paddingTop: 28, paddingBottom: 24 }}>
           <div className="mb-6 flex justify-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-green-50">
-              <Check className="h-7 w-7 text-green-600" />
+            <div className="flex h-14 w-14 items-center justify-center rounded-full" style={{ backgroundColor: "#ECFDF5" }}>
+              <Check className="h-7 w-7" style={{ color: "#10B981" }} />
             </div>
           </div>
-          <h2 className="mb-6 text-center text-base font-semibold text-gray-900">
+          <h2 className="text-center" style={{ fontSize: 18, fontWeight: 500, color: "#111827", marginBottom: 24 }}>
             Thanks for the kind words!
           </h2>
 
           {generatedReview && (
             <>
               {/* Review text */}
-              <div className="mb-3 rounded-xl border border-gray-200 bg-gray-50 p-4">
+              <div style={{ borderRadius: 12, border: "1px solid #D1D5DB", backgroundColor: "#F9FAFB", padding: 16, marginBottom: 12 }}>
                 <textarea
                   value={generatedReview}
                   onChange={(e) => setGeneratedReview(e.target.value)}
                   rows={4}
-                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-400 focus:outline-none"
+                  className="w-full"
+                  style={{
+                    borderRadius: 8,
+                    border: "1px solid #D1D5DB",
+                    backgroundColor: "#FFFFFF",
+                    padding: "8px 12px",
+                    fontSize: 14,
+                    color: "#111827",
+                    outline: "none",
+                    transition: "border-color 200ms ease, box-shadow 200ms ease",
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = "#10B981";
+                    e.currentTarget.style.boxShadow = "0 0 0 3px #ECFDF5";
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = "#D1D5DB";
+                    e.currentTarget.style.boxShadow = "none";
+                  }}
                 />
-                <p className="mt-2 text-[10px] text-gray-400 text-center">
+                <p className="mt-2 text-center" style={{ fontSize: 13, color: "#9CA3AF" }}>
                   Feel free to edit before posting
                 </p>
               </div>
 
-              {/* Step 1: Copy */}
+              {/* Copy button */}
               <button
                 onClick={async () => {
                   if (generatedReview) {
@@ -240,11 +310,23 @@ export default function ReviewClient({
                     setCopied(true);
                   }
                 }}
-                className={`flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition-colors ${
-                  copied
-                    ? "bg-green-50 text-green-700"
-                    : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
-                }`}
+                className="flex w-full items-center justify-center gap-2"
+                style={{
+                  borderRadius: 12,
+                  minHeight: 44,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  transition: "all 200ms ease",
+                  backgroundColor: copied ? "#ECFDF5" : "#FFFFFF",
+                  color: copied ? "#047857" : "#111827",
+                  border: copied ? "1px solid #10B981" : "1px solid #D1D5DB",
+                  outline: "none",
+                }}
+                onMouseDown={(e) => { e.currentTarget.style.transform = "scale(0.97)"; }}
+                onMouseUp={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+                onFocus={(e) => { e.currentTarget.style.outlineOffset = "2px"; e.currentTarget.style.outline = "2px solid #10B981"; }}
+                onBlur={(e) => { e.currentTarget.style.outline = "none"; }}
               >
                 {copied ? (
                   <>
@@ -259,24 +341,19 @@ export default function ReviewClient({
                 )}
               </button>
 
-              {/* Step 2: Go to Google */}
+              {/* Go to Google */}
               {googleReviewUrl ? (
                 <>
-                  <p className="my-3 text-center text-xs text-gray-400">
+                  <p className="text-center" style={{ fontSize: 13, color: "#9CA3AF", margin: "12px 0" }}>
                     Then paste it on Google
                   </p>
-                  <a
-                    href={googleReviewUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-gray-900 py-3 text-sm font-semibold text-white hover:bg-gray-800"
-                  >
+                  <CtaButton as="a" href={googleReviewUrl} target="_blank" rel="noopener noreferrer">
                     Leave a review on Google
                     <ExternalLink className="h-4 w-4" />
-                  </a>
+                  </CtaButton>
                 </>
               ) : (
-                <p className="mt-3 text-center text-xs text-gray-400">
+                <p className="text-center" style={{ fontSize: 13, color: "#9CA3AF", marginTop: 12 }}>
                   Share this review wherever {businessName} collects reviews.
                 </p>
               )}
@@ -284,20 +361,18 @@ export default function ReviewClient({
           )}
 
           {!generatedReview && googleReviewUrl && (
-            <a
-              href={googleReviewUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-gray-900 py-3 text-sm font-semibold text-white hover:bg-gray-800"
-            >
+            <CtaButton as="a" href={googleReviewUrl} target="_blank" rel="noopener noreferrer">
               Leave a review on Google
               <ExternalLink className="h-4 w-4" />
-            </a>
+            </CtaButton>
           )}
 
           <button
             onClick={() => setDone(true)}
-            className="mt-3 w-full py-2 text-center text-xs text-gray-400 hover:text-gray-600"
+            className="w-full text-center"
+            style={{ marginTop: 12, padding: 8, fontSize: 13, color: "#9CA3AF", background: "none", border: "none", cursor: "pointer", transition: "color 200ms ease" }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = "#6B7280"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = "#9CA3AF"; }}
           >
             No thanks
           </button>
@@ -305,16 +380,16 @@ export default function ReviewClient({
       )}
 
       {step === "result" && !isPositive && (
-        <div className="py-8">
+        <div style={{ paddingTop: 28, paddingBottom: 24 }}>
           <div className="mb-6 flex justify-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-50">
-              <Check className="h-7 w-7 text-blue-600" />
+            <div className="flex h-14 w-14 items-center justify-center rounded-full" style={{ backgroundColor: "#ECFDF5" }}>
+              <Check className="h-7 w-7" style={{ color: "#10B981" }} />
             </div>
           </div>
-          <h2 className="mb-2 text-center text-base font-semibold text-gray-900">
+          <h2 className="text-center" style={{ fontSize: 18, fontWeight: 500, color: "#111827", marginBottom: 8 }}>
             Thanks for sharing.
           </h2>
-          <p className="text-center text-sm text-gray-500">
+          <p className="text-center" style={{ fontSize: 14, color: "#6B7280" }}>
             Your feedback has been sent directly to {businessName}.
             <br />
             We take this seriously and will follow up.
@@ -325,38 +400,170 @@ export default function ReviewClient({
   );
 }
 
+/* ─── Shared Components ─── */
+
+function ProgressBar({ step }: { step: Step }) {
+  const pct = STEP_PROGRESS[step] || 33;
+  return (
+    <div style={{ height: 3, backgroundColor: "#E5E7EB", borderRadius: 0 }}>
+      <div
+        style={{
+          height: 3,
+          width: `${pct}%`,
+          backgroundColor: "#10B981",
+          borderRadius: 2,
+          transition: "width 300ms ease",
+        }}
+      />
+    </div>
+  );
+}
+
+function PillButton({ label, selected, onClick }: { label: string; selected: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        borderRadius: 9999,
+        minHeight: 40,
+        paddingLeft: 16,
+        paddingRight: 16,
+        fontSize: 14,
+        fontWeight: 500,
+        cursor: "pointer",
+        transition: "all 200ms ease",
+        backgroundColor: selected ? "#10B981" : "#FFFFFF",
+        color: selected ? "#FFFFFF" : "#111827",
+        border: selected ? "1px solid #10B981" : "1px solid #D1D5DB",
+        outline: "none",
+      }}
+      onMouseEnter={(e) => {
+        if (!selected) {
+          e.currentTarget.style.borderColor = "#10B981";
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (!selected) {
+          e.currentTarget.style.borderColor = "#D1D5DB";
+        }
+      }}
+      onMouseDown={(e) => { e.currentTarget.style.transform = "scale(0.97)"; }}
+      onMouseUp={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+      onFocus={(e) => { e.currentTarget.style.outlineOffset = "2px"; e.currentTarget.style.outline = "2px solid #10B981"; }}
+      onBlur={(e) => { e.currentTarget.style.outline = "none"; }}
+    >
+      {label}
+    </button>
+  );
+}
+
+function CtaButton({
+  children,
+  onClick,
+  disabled,
+  style,
+  as,
+  ...rest
+}: {
+  children: React.ReactNode;
+  onClick?: () => void;
+  disabled?: boolean;
+  style?: React.CSSProperties;
+  as?: "a";
+  [key: string]: unknown;
+}) {
+  const baseStyle: React.CSSProperties = {
+    display: "flex",
+    width: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderRadius: 12,
+    minHeight: 44,
+    fontSize: 14,
+    fontWeight: 600,
+    color: "#FFFFFF",
+    backgroundColor: "#10B981",
+    border: "none",
+    cursor: disabled ? "default" : "pointer",
+    opacity: disabled ? 0.5 : 1,
+    transition: "background-color 200ms ease, transform 150ms ease",
+    outline: "none",
+    textDecoration: "none",
+    ...style,
+  };
+
+  const handlers = {
+    onMouseEnter: (e: React.MouseEvent) => { if (!disabled) (e.currentTarget as HTMLElement).style.backgroundColor = "#059669"; },
+    onMouseLeave: (e: React.MouseEvent) => { (e.currentTarget as HTMLElement).style.backgroundColor = "#10B981"; (e.currentTarget as HTMLElement).style.transform = "scale(1)"; },
+    onMouseDown: (e: React.MouseEvent) => { if (!disabled) (e.currentTarget as HTMLElement).style.transform = "scale(0.97)"; },
+    onMouseUp: (e: React.MouseEvent) => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; },
+    onFocus: (e: React.FocusEvent) => { (e.currentTarget as HTMLElement).style.outlineOffset = "2px"; (e.currentTarget as HTMLElement).style.outline = "2px solid #10B981"; },
+    onBlur: (e: React.FocusEvent) => { (e.currentTarget as HTMLElement).style.outline = "none"; },
+  };
+
+  if (as === "a") {
+    return (
+      <a style={baseStyle} {...handlers} {...rest}>
+        {children}
+      </a>
+    );
+  }
+
+  return (
+    <button onClick={onClick} disabled={disabled} style={baseStyle} {...handlers}>
+      {children}
+    </button>
+  );
+}
+
 function Shell({
   businessName,
   logoUrl,
+  step,
   children,
 }: {
   businessName: string;
   logoUrl: string | null;
+  step: Step;
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="mx-auto max-w-md px-5 py-8">
+    <div style={{ minHeight: "100vh", backgroundColor: "#F9FAFB" }}>
+      <div className="mx-auto" style={{ maxWidth: 448, padding: "32px 20px" }}>
         {/* Logo / business name */}
-        <div className="mb-6 flex justify-center">
+        <div className="flex justify-center" style={{ marginBottom: 16 }}>
           {logoUrl ? (
             <img
               src={logoUrl}
               alt={businessName}
-              className="h-12 max-w-[180px] object-contain"
+              style={{ width: 64, objectFit: "contain" }}
             />
           ) : (
-            <span className="text-lg font-bold text-gray-900">{businessName}</span>
+            <span style={{ fontSize: 18, fontWeight: 700, color: "#111827" }}>{businessName}</span>
           )}
         </div>
 
         {/* Card */}
-        <div className="rounded-2xl border border-gray-200 bg-white px-6 shadow-sm">
-          {children}
+        <div
+          style={{
+            borderRadius: 16,
+            backgroundColor: "#FFFFFF",
+            boxShadow: "0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)",
+            overflow: "hidden",
+          }}
+        >
+          {/* Progress bar flush with top */}
+          <ProgressBar step={step} />
+
+          {/* Card content */}
+          <div style={{ padding: "28px 32px 24px" }}>
+            {children}
+          </div>
         </div>
 
         {/* Footer */}
-        <p className="mt-6 text-center text-[10px] text-gray-300">
+        <p className="text-center" style={{ fontSize: 13, color: "#9CA3AF", marginTop: 16 }}>
           Powered by handled.
         </p>
       </div>
