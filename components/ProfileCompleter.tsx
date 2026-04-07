@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 
 type ProfileData = {
   owner_name: string | null;
@@ -18,38 +18,41 @@ type Question = {
   field: keyof ProfileData;
   message: string;
   placeholder: string;
-  type: "text" | "number" | "areas";
+  inputType: "text" | "number" | "tel";
   skipLabel?: string;
+  parse?: (value: string) => string | number | string[];
 };
 
-const QUESTIONS: Question[] = [
+const ALL_QUESTIONS: Question[] = [
   {
     id: "owner_name",
     field: "owner_name",
     message: "First off — what's your name? We'll use this on your website's about section.",
     placeholder: "e.g. John Martinez",
-    type: "text",
+    inputType: "text",
   },
   {
     id: "years_in_business",
     field: "years_in_business",
     message: "How many years have you been in business? This builds trust with customers.",
-    placeholder: "e.g. 12",
-    type: "number",
+    placeholder: "Just a number is fine",
+    inputType: "number",
+    parse: (v) => parseInt(v, 10) || 0,
   },
   {
     id: "service_areas",
     field: "service_areas",
-    message: "What cities or areas do you serve? List as many as you want, separated by commas.",
+    message: "What cities or areas do you serve? Separate them with commas and we'll show them on your site.",
     placeholder: "e.g. Austin, Round Rock, Cedar Park",
-    type: "areas",
+    inputType: "text",
+    parse: (v) => v.split(",").map((s) => s.trim()).filter(Boolean),
   },
   {
     id: "hero_tagline",
     field: "hero_tagline",
-    message: "Got a tagline or slogan? This shows as the headline on your website.",
+    message: "Got a tagline or slogan? This shows as the main headline on your website.",
     placeholder: "e.g. Fast, reliable HVAC service you can trust",
-    type: "text",
+    inputType: "text",
     skipLabel: "Skip — I'll think of one later",
   },
   {
@@ -57,7 +60,7 @@ const QUESTIONS: Question[] = [
     field: "license_number",
     message: "Do you have a license number? We'll display it on your site for credibility.",
     placeholder: "e.g. TACLA12345C",
-    type: "text",
+    inputType: "text",
     skipLabel: "Skip — I don't have one",
   },
   {
@@ -65,7 +68,7 @@ const QUESTIONS: Question[] = [
     field: "social_instagram",
     message: "Got an Instagram? Drop your profile URL and we'll link it on your sites.",
     placeholder: "e.g. https://instagram.com/yourbusiness",
-    type: "text",
+    inputType: "text",
     skipLabel: "No Instagram",
   },
   {
@@ -73,15 +76,12 @@ const QUESTIONS: Question[] = [
     field: "social_facebook",
     message: "How about a Facebook page?",
     placeholder: "e.g. https://facebook.com/yourbusiness",
-    type: "text",
+    inputType: "text",
     skipLabel: "No Facebook",
   },
 ];
 
-type ChatEntry = {
-  type: "agent" | "user";
-  text: string;
-};
+type ChatMsg = { type: "bot" | "user"; text: string };
 
 export default function ProfileCompleter({
   businessName,
@@ -90,8 +90,7 @@ export default function ProfileCompleter({
   businessName: string;
   existing: ProfileData;
 }) {
-  // Filter out questions where data already exists
-  const pendingQuestions = QUESTIONS.filter((q) => {
+  const questions = ALL_QUESTIONS.filter((q) => {
     const val = existing[q.field];
     if (val === null || val === undefined) return true;
     if (Array.isArray(val) && val.length === 0) return true;
@@ -100,92 +99,107 @@ export default function ProfileCompleter({
   });
 
   const [dismissed, setDismissed] = useState(false);
-  const [currentIdx, setCurrentIdx] = useState(0);
+  const [step, setStep] = useState(0);
+  const [typing, setTyping] = useState(true);
+  const [inputReady, setInputReady] = useState(false);
   const [inputValue, setInputValue] = useState("");
-  const [chat, setChat] = useState<ChatEntry[]>([]);
-  const [saving, setSaving] = useState(false);
-  const [done, setDone] = useState(false);
+  const [chatLog, setChatLog] = useState<ChatMsg[]>([]);
   const [answers, setAnswers] = useState<Record<string, string | number | string[]>>({});
-  const chatEndRef = useRef<HTMLDivElement>(null);
+  const [phase, setPhase] = useState<"greeting" | "questions" | "saving" | "done">("greeting");
+  const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const initRef = useRef(false);
 
-  const currentQuestion = currentIdx < pendingQuestions.length ? pendingQuestions[currentIdx] : null;
+  const currentQ = step < questions.length ? questions[step] : null;
+  const totalSteps = questions.length;
+  const progress = totalSteps > 0 ? Math.min((step / totalSteps) * 100, 100) : 100;
 
-  // Initialize with greeting
+  const randomDelay = () => 1000 + Math.random() * 600;
+
+  // Auto-scroll
   useEffect(() => {
-    if (chat.length === 0 && pendingQuestions.length > 0) {
-      const greeting = `Hey! Let's finish setting up ${businessName}. Just a few quick questions to make your sites look even better.`;
-      setChat([
-        { type: "agent", text: greeting },
-        { type: "agent", text: pendingQuestions[0].message },
-      ]);
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
+  }, [chatLog, typing, inputReady]);
+
+  // Greeting → first question sequence
+  useEffect(() => {
+    if (initRef.current || questions.length === 0) return;
+    initRef.current = true;
+
+    // Show typing, then greeting
+    const t1 = setTimeout(() => {
+      setTyping(false);
+      setChatLog([{
+        type: "bot",
+        text: `Hey! Let's finish setting up ${businessName}. Just a few quick questions to make your site look great.`,
+      }]);
+      setPhase("questions");
+    }, 1400);
+
+    return () => clearTimeout(t1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Scroll to bottom on new messages
+  // After greeting, show typing then first question
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [chat]);
+    if (phase !== "questions" || chatLog.length !== 1 || step !== 0) return;
 
-  // Focus input when question changes
+    const t1 = setTimeout(() => setTyping(true), 600);
+    const t2 = setTimeout(() => {
+      setTyping(false);
+      setChatLog((prev) => [...prev, { type: "bot", text: questions[0].message }]);
+    }, 600 + randomDelay());
+    const t3 = setTimeout(() => {
+      setInputReady(true);
+      inputRef.current?.focus();
+    }, 600 + randomDelay() + 400);
+
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, chatLog.length]);
+
+  // Advance to next question after step changes (not for step 0)
+  const prevStepRef = useRef(0);
   useEffect(() => {
-    inputRef.current?.focus();
-  }, [currentIdx]);
+    if (step === 0 || step === prevStepRef.current) return;
+    prevStepRef.current = step;
 
-  // Nothing to ask
-  if (pendingQuestions.length === 0 || dismissed) return null;
+    if (step >= questions.length) {
+      // Done — show completion
+      setTyping(true);
+      setInputReady(false);
+      const delay = randomDelay();
+      const t = setTimeout(() => {
+        setTyping(false);
+        setChatLog((prev) => [...prev, {
+          type: "bot",
+          text: "You're all set! Your site is going to look great. Head over to Sites to check it out.",
+        }]);
+        setPhase("done");
+      }, delay);
+      return () => clearTimeout(t);
+    }
 
-  const advanceToNext = (nextIdx: number, newChat: ChatEntry[], currentAnswers: Record<string, string | number | string[]>) => {
-    if (nextIdx >= pendingQuestions.length) {
-      // All done — save everything
-      setChat([...newChat, { type: "agent", text: "That's everything. Your sites are being updated now." }]);
-      setDone(true);
-      saveAnswers(currentAnswers);
-    } else {
-      // Show next question after a brief delay
+    // Next question
+    setTyping(true);
+    setInputReady(false);
+    const delay = randomDelay();
+    const t = setTimeout(() => {
+      setTyping(false);
+      setChatLog((prev) => [...prev, { type: "bot", text: questions[step].message }]);
       setTimeout(() => {
-        setChat((prev) => [...prev, { type: "agent", text: pendingQuestions[nextIdx].message }]);
-        setCurrentIdx(nextIdx);
+        setInputReady(true);
+        inputRef.current?.focus();
       }, 400);
-    }
-  };
+    }, delay);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
 
-  const handleSubmit = () => {
-    if (!currentQuestion || !inputValue.trim()) return;
-
-    let value: string | number | string[] = inputValue.trim();
-    if (currentQuestion.type === "number") {
-      value = parseInt(inputValue, 10) || 0;
-    } else if (currentQuestion.type === "areas") {
-      value = inputValue.split(",").map((s) => s.trim()).filter(Boolean);
-    }
-
-    const newAnswers = { ...answers, [currentQuestion.field]: value };
-    setAnswers(newAnswers);
-
-    const displayText = Array.isArray(value) ? (value as string[]).join(", ") : String(value);
-    const newChat: ChatEntry[] = [...chat, { type: "user", text: displayText }];
-    setChat(newChat);
-    setInputValue("");
-
-    const nextIdx = currentIdx + 1;
-    advanceToNext(nextIdx, newChat, newAnswers);
-  };
-
-  const handleSkip = () => {
-    if (!currentQuestion) return;
-
-    const newChat: ChatEntry[] = [...chat, { type: "user", text: currentQuestion.skipLabel || "Skipped" }];
-    setChat(newChat);
-    setInputValue("");
-
-    const nextIdx = currentIdx + 1;
-    advanceToNext(nextIdx, newChat, answers);
-  };
-
-  const saveAnswers = async (finalAnswers: Record<string, string | number | string[]>) => {
-    setSaving(true);
+  const saveAnswers = useCallback(async (finalAnswers: Record<string, string | number | string[]>) => {
+    setPhase("saving");
     try {
       await fetch("/api/contractor/business", {
         method: "PUT",
@@ -193,10 +207,44 @@ export default function ProfileCompleter({
         body: JSON.stringify(finalAnswers),
       });
     } catch {
-      // Silent fail — data will be saved next time they visit settings
+      // Silent fail
     }
-    setSaving(false);
-  };
+    setPhase("done");
+  }, []);
+
+  const handleSubmit = useCallback(() => {
+    if (!currentQ || !inputValue.trim()) return;
+
+    const raw = inputValue.trim();
+    const value = currentQ.parse ? currentQ.parse(raw) : raw;
+    const displayText = Array.isArray(value) ? value.join(", ") : String(value);
+
+    const newAnswers = { ...answers, [currentQ.field]: value };
+    setAnswers(newAnswers);
+    setChatLog((prev) => [...prev, { type: "user", text: displayText }]);
+    setInputValue("");
+    setInputReady(false);
+
+    const nextStep = step + 1;
+    if (nextStep >= questions.length) {
+      saveAnswers(newAnswers);
+    }
+    setStep(nextStep);
+  }, [currentQ, inputValue, answers, step, questions.length, saveAnswers]);
+
+  const handleSkip = useCallback(() => {
+    if (!currentQ) return;
+
+    setChatLog((prev) => [...prev, { type: "user", text: currentQ.skipLabel || "Skipped" }]);
+    setInputValue("");
+    setInputReady(false);
+
+    const nextStep = step + 1;
+    if (nextStep >= questions.length) {
+      saveAnswers(answers);
+    }
+    setStep(nextStep);
+  }, [currentQ, step, questions.length, answers, saveAnswers]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
@@ -205,100 +253,220 @@ export default function ProfileCompleter({
     }
   };
 
-  if (done && !saving) {
-    return (
-      <div className="mb-8 rounded-2xl border border-green-100 bg-green-50 p-5">
-        <div className="flex items-center gap-2">
-          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-green-500">
-            <svg className="h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-          </div>
-          <p className="text-sm font-medium text-green-800">Profile updated. Your sites look even better now.</p>
-        </div>
-      </div>
-    );
-  }
+  // Nothing to ask or dismissed
+  if (questions.length === 0 || dismissed) return null;
 
   return (
-    <div className="mb-8 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-gray-100 px-5 py-3">
-        <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gray-900">
-            <svg className="h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01" /></svg>
-          </div>
-          <span className="text-sm font-semibold text-gray-900">Finish setting up your profile</span>
-        </div>
-        <button
-          onClick={() => setDismissed(true)}
-          className="text-xs text-gray-400 hover:text-gray-600"
-        >
-          Later
-        </button>
-      </div>
+    <>
+      <style>{`
+        @keyframes pc-dotBounce {
+          0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+          30% { transform: translateY(-5px); opacity: 1; }
+        }
+        @keyframes pc-msgSlideIn {
+          from { opacity: 0; transform: translateY(12px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes pc-inputFadeIn {
+          from { opacity: 0; transform: translateY(8px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .pc-msg-enter { animation: pc-msgSlideIn 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+        .pc-input-enter { animation: pc-inputFadeIn 0.3s ease forwards; }
+        .pc-dot {
+          width: 7px; height: 7px; border-radius: 50%;
+          background: #9ca3af; display: inline-block;
+          animation: pc-dotBounce 1.2s infinite ease-in-out;
+        }
+        .pc-progress-fill { transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1); }
+        .pc-input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.12); }
+        .pc-send:hover:not(:disabled) { background: #2563eb; transform: scale(1.05); }
+        .pc-send:active:not(:disabled) { transform: scale(0.97); }
+      `}</style>
 
-      {/* Chat messages */}
-      <div className="max-h-[320px] overflow-y-auto px-5 py-4">
-        <div className="space-y-3">
-          {chat.map((entry, i) => (
-            <div key={i} className={`flex ${entry.type === "user" ? "justify-end" : "justify-start"}`}>
-              <div
-                className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
-                  entry.type === "user"
-                    ? "bg-gray-900 text-white"
-                    : "bg-gray-100 text-gray-800"
-                }`}
-              >
-                {entry.text}
-              </div>
+      <div className="mb-8" style={{
+        background: "#ffffff",
+        borderRadius: 16,
+        boxShadow: "0 4px 24px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.04)",
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
+        border: "1px solid #e8ecf0",
+      }}>
+        {/* Header */}
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          padding: "16px 20px", borderBottom: "1px solid #f0f2f5",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{
+              width: 36, height: 36, borderRadius: 10,
+              background: "linear-gradient(135deg, #3b82f6, #1d4ed8)",
+              color: "white", display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 15, fontWeight: 600,
+            }}>H</div>
+            <div>
+              <div style={{ fontSize: 15, fontWeight: 600, color: "#111827", letterSpacing: "-0.01em" }}>handled.</div>
+              <div style={{ fontSize: 12, color: "#6b7280", marginTop: 1 }}>Setting up your profile</div>
             </div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{
+              fontSize: 12, fontWeight: 500, color: "#6b7280",
+              background: "#f3f4f6", padding: "4px 10px", borderRadius: 20,
+            }}>
+              {phase === "done" ? "Done" : `${Math.min(step + 1, totalSteps)} of ${totalSteps}`}
+            </span>
+            <button
+              onClick={() => setDismissed(true)}
+              style={{ fontSize: 12, color: "#9ca3af", background: "none", border: "none", cursor: "pointer" }}
+            >
+              Later
+            </button>
+          </div>
+        </div>
+
+        {/* Progress bar */}
+        <div style={{ height: 3, background: "#f0f2f5", width: "100%" }}>
+          <div className="pc-progress-fill" style={{
+            height: "100%",
+            background: "linear-gradient(90deg, #3b82f6, #2563eb)",
+            borderRadius: 3,
+            width: `${phase === "done" ? 100 : progress}%`,
+          }} />
+        </div>
+
+        {/* Chat area */}
+        <div ref={scrollRef} style={{
+          padding: "20px 20px 12px",
+          minHeight: 240, maxHeight: 360,
+          overflowY: "auto",
+          display: "flex", flexDirection: "column", gap: 6,
+        }}>
+          {chatLog.map((msg, i) => (
+            msg.type === "bot" ? (
+              <div key={i} className="pc-msg-enter" style={{ display: "flex", alignItems: "flex-start", gap: 8, maxWidth: "88%" }}>
+                <div style={{
+                  width: 28, height: 28, borderRadius: 8, flexShrink: 0, marginTop: 2,
+                  background: "linear-gradient(135deg, #3b82f6, #1d4ed8)",
+                  color: "white", display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 12, fontWeight: 600,
+                }}>H</div>
+                <div style={{
+                  background: "#f3f4f6", color: "#1f2937",
+                  padding: "10px 14px", borderRadius: "4px 14px 14px 14px",
+                  fontSize: 14, lineHeight: 1.5,
+                }}>{msg.text}</div>
+              </div>
+            ) : (
+              <div key={i} className="pc-msg-enter" style={{ display: "flex", justifyContent: "flex-end" }}>
+                <div style={{
+                  background: "linear-gradient(135deg, #3b82f6, #2563eb)", color: "#ffffff",
+                  padding: "10px 14px", borderRadius: "14px 14px 4px 14px",
+                  fontSize: 14, lineHeight: 1.5, maxWidth: "78%",
+                }}>{msg.text}</div>
+              </div>
+            )
           ))}
-          {saving && (
-            <div className="flex justify-start">
-              <div className="rounded-2xl bg-gray-100 px-4 py-2.5 text-sm text-gray-500">
-                <span className="inline-flex gap-1">
-                  <span className="animate-bounce" style={{ animationDelay: "0ms" }}>.</span>
-                  <span className="animate-bounce" style={{ animationDelay: "150ms" }}>.</span>
-                  <span className="animate-bounce" style={{ animationDelay: "300ms" }}>.</span>
-                </span>
+
+          {/* Typing indicator */}
+          {typing && (
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "4px 0" }}>
+              <div style={{
+                width: 28, height: 28, borderRadius: 8, flexShrink: 0, marginTop: 2,
+                background: "linear-gradient(135deg, #3b82f6, #1d4ed8)",
+                color: "white", display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 12, fontWeight: 600,
+              }}>H</div>
+              <div style={{
+                background: "#f3f4f6", padding: "12px 16px",
+                borderRadius: "4px 14px 14px 14px",
+                display: "flex", gap: 4, alignItems: "center",
+              }}>
+                <span className="pc-dot" style={{ animationDelay: "0ms" }} />
+                <span className="pc-dot" style={{ animationDelay: "160ms" }} />
+                <span className="pc-dot" style={{ animationDelay: "320ms" }} />
               </div>
             </div>
           )}
-          <div ref={chatEndRef} />
         </div>
-      </div>
 
-      {/* Input area */}
-      {currentQuestion && !done && (
-        <div className="border-t border-gray-100 px-4 py-3">
-          <div className="flex items-center gap-2">
-            <input
-              ref={inputRef}
-              type={currentQuestion.type === "number" ? "number" : "text"}
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={currentQuestion.placeholder}
-              className="min-w-0 flex-1 rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:outline-none"
-              autoFocus
-            />
-            <button
-              onClick={handleSubmit}
-              disabled={!inputValue.trim()}
-              className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-gray-900 text-white transition-opacity hover:bg-gray-800 disabled:opacity-30"
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" /></svg>
-            </button>
+        {/* Input area — only when ready */}
+        {inputReady && currentQ && phase === "questions" && (
+          <div className="pc-input-enter" style={{
+            padding: "12px 16px 16px", borderTop: "1px solid #f0f2f5",
+            display: "flex", flexDirection: "column", gap: 8,
+          }}>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <input
+                ref={inputRef}
+                type={currentQ.inputType}
+                placeholder={currentQ.placeholder}
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={handleKeyDown}
+                className="pc-input"
+                style={{
+                  flex: 1, padding: "10px 14px", borderRadius: 10,
+                  border: "1.5px solid #e5e7eb", fontSize: 14,
+                  color: "#111827", background: "#fafbfc",
+                  transition: "border-color 0.2s, box-shadow 0.2s",
+                }}
+                autoFocus
+              />
+              <button
+                onClick={handleSubmit}
+                disabled={!inputValue.trim()}
+                className="pc-send"
+                style={{
+                  width: 38, height: 38, borderRadius: 10,
+                  background: "#3b82f6", border: "none",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  flexShrink: 0, cursor: inputValue.trim() ? "pointer" : "default",
+                  opacity: inputValue.trim() ? 1 : 0.4,
+                  transition: "all 0.15s ease",
+                }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M5 12h14M12 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+            {currentQ.skipLabel && (
+              <button
+                onClick={handleSkip}
+                style={{
+                  background: "none", border: "none", fontSize: 12,
+                  color: "#9ca3af", cursor: "pointer", padding: "2px 0",
+                  textAlign: "center",
+                }}
+              >
+                {currentQ.skipLabel}
+              </button>
+            )}
           </div>
-          {currentQuestion.skipLabel && (
-            <button
-              onClick={handleSkip}
-              className="mt-2 w-full text-center text-xs text-gray-400 hover:text-gray-600"
+        )}
+
+        {/* Final state CTA */}
+        {phase === "done" && !typing && (
+          <div className="pc-input-enter" style={{
+            padding: "12px 16px 16px", borderTop: "1px solid #f0f2f5",
+          }}>
+            <a
+              href="/contractor/sites"
+              style={{
+                display: "block", width: "100%", padding: "12px 20px",
+                borderRadius: 10, textAlign: "center",
+                background: "linear-gradient(135deg, #3b82f6, #1d4ed8)",
+                color: "white", fontSize: 14, fontWeight: 600,
+                textDecoration: "none", letterSpacing: "-0.01em",
+              }}
             >
-              {currentQuestion.skipLabel}
-            </button>
-          )}
-        </div>
-      )}
-    </div>
+              View your site &rarr;
+            </a>
+          </div>
+        )}
+      </div>
+    </>
   );
 }
