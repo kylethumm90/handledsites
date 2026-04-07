@@ -99,6 +99,7 @@ export default function ProfileCompleter({
   });
 
   const [dismissed, setDismissed] = useState(false);
+  const [minimized, setMinimized] = useState(false);
   const [step, setStep] = useState(0);
   const [typing, setTyping] = useState(true);
   const [inputReady, setInputReady] = useState(false);
@@ -133,7 +134,7 @@ export default function ProfileCompleter({
       setTyping(false);
       setChatLog([{
         type: "bot",
-        text: `Hey! Let's finish setting up ${businessName}. Just a few quick questions to make your site look great.`,
+        text: `Hey! Let's finish setting up ${businessName}. Your website, business card, and quiz funnel all pull from your profile — the more you fill in, the better they work. Just a few quick ones.`,
       }]);
       setPhase("questions");
     }, 1400);
@@ -282,6 +283,11 @@ export default function ProfileCompleter({
         .pc-input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.12); }
         .pc-send:hover:not(:disabled) { background: #2563eb; transform: scale(1.05); }
         .pc-send:active:not(:disabled) { transform: scale(0.97); }
+        .pc-body { transition: max-height 0.35s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.25s ease; overflow: hidden; }
+        .pc-body.collapsed { max-height: 0 !important; opacity: 0; }
+        .pc-body.expanded { opacity: 1; }
+        .pc-chevron { transition: transform 0.25s ease; }
+        .pc-chevron.up { transform: rotate(180deg); }
       `}</style>
 
       <div className="mb-8" style={{
@@ -293,11 +299,15 @@ export default function ProfileCompleter({
         overflow: "hidden",
         border: "1px solid #e8ecf0",
       }}>
-        {/* Header */}
-        <div style={{
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "16px 20px", borderBottom: "1px solid #f0f2f5",
-        }}>
+        {/* Header — clickable to toggle minimize */}
+        <div
+          onClick={() => setMinimized((m) => !m)}
+          style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            padding: "16px 20px", borderBottom: minimized ? "none" : "1px solid #f0f2f5",
+            cursor: "pointer", userSelect: "none",
+          }}
+        >
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <div style={{
               width: 36, height: 36, borderRadius: 10,
@@ -307,10 +317,14 @@ export default function ProfileCompleter({
             }}>H</div>
             <div>
               <div style={{ fontSize: 15, fontWeight: 600, color: "#111827", letterSpacing: "-0.01em" }}>handled.</div>
-              <div style={{ fontSize: 12, color: "#6b7280", marginTop: 1 }}>Setting up your profile</div>
+              <div style={{ fontSize: 12, color: "#6b7280", marginTop: 1 }}>
+                {phase === "done"
+                  ? "Profile complete"
+                  : "Complete your profile to activate all your sites"}
+              </div>
             </div>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <span style={{
               fontSize: 12, fontWeight: 500, color: "#6b7280",
               background: "#f3f4f6", padding: "4px 10px", borderRadius: 20,
@@ -318,13 +332,19 @@ export default function ProfileCompleter({
               {phase === "done" ? "Done" : `${Math.min(step + 1, totalSteps)} of ${totalSteps}`}
             </span>
             <button
-              onClick={() => setDismissed(true)}
+              onClick={(e) => { e.stopPropagation(); setDismissed(true); }}
               style={{ fontSize: 12, color: "#9ca3af", background: "none", border: "none", cursor: "pointer" }}
             >
               Later
             </button>
+            <svg className={`pc-chevron ${minimized ? "" : "up"}`} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M6 9l6 6 6-6" />
+            </svg>
           </div>
         </div>
+
+        {/* Collapsible body */}
+        <div className={`pc-body ${minimized ? "collapsed" : "expanded"}`} style={{ maxHeight: minimized ? 0 : 600 }}>
 
         {/* Progress bar */}
         <div style={{ height: 3, background: "#f0f2f5", width: "100%" }}>
@@ -466,6 +486,8 @@ export default function ProfileCompleter({
             </a>
           </div>
         )}
+
+        </div>{/* end collapsible body */}
       </div>
     </>
   );
