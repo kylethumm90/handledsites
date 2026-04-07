@@ -98,6 +98,8 @@ export default function ProfileCompleter({
   businessName: string;
   existing: ProfileData;
 }) {
+  const ownerFirst = existing.owner_name?.split(" ")[0] || null;
+
   const questions = ALL_QUESTIONS.filter((q) => {
     const val = existing[q.field];
     if (val === null || val === undefined) return true;
@@ -142,10 +144,10 @@ export default function ProfileCompleter({
     setTyping(true);
     setTimeout(() => {
       setTyping(false);
-      setLog([{
-        from: "bot",
-        text: `Hey! Let's finish setting up ${businessName}. These answers fill in your site so it's ready for customers.`,
-      }]);
+      const greeting = ownerFirst
+        ? `Hey ${ownerFirst}! Let's finish setting up ${businessName}. These answers fill in your site so it's ready for customers.`
+        : `Hey! Let's finish setting up ${businessName}. These answers fill in your site so it's ready for customers.`;
+      setLog([{ from: "bot", text: greeting }]);
       setStep(0);
     }, 1300);
     // eslint-disable-next-line react-hooks/exhaustive-deps

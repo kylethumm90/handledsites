@@ -38,6 +38,7 @@ export default function OnboardingWizard() {
   const [state, setState] = useState("");
   const [services, setServices] = useState<string[]>([]);
   const [aboutText, setAboutText] = useState("");
+  const [ownerName, setOwnerName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -154,7 +155,7 @@ export default function OnboardingWizard() {
     }
 
     const { data: bizData, error: bizError } = await supabase.from("businesses").insert({
-      name: businessName, owner_name: businessName, phone: phoneDigits,
+      name: businessName, owner_name: ownerName.trim() || businessName, phone: phoneDigits,
       email: email || null, city, state, trade, services, logo_url: logoUrl, about_bio: aboutBio,
       google_place_id: googlePlaceId || null,
       street_address: streetAddress || null,
@@ -471,20 +472,21 @@ export default function OnboardingWizard() {
 
         {step === 6 && (
           <div>
-            <h2 className="mb-2 text-2xl font-bold text-gray-900">How can customers reach you?</h2>
-            <p className="mb-6 text-sm text-gray-500">Your phone number shows on all your sites. Your email is how you&apos;ll log in.</p>
+            <h2 className="mb-2 text-2xl font-bold text-gray-900">Your contact info</h2>
+            <p className="mb-6 text-sm text-gray-500">Your name and phone show on your sites. Your email is how you&apos;ll log in.</p>
             <div className="space-y-3">
+              <input type="text" value={ownerName} onChange={(e) => setOwnerName(e.target.value)} placeholder="Your name" className={inputClass} autoFocus />
               {phoneDigits.length !== 10 && (
-                <input type="tel" value={phone} onChange={(e) => setPhone(formatPhoneInput(e.target.value))} placeholder="(555) 123-4567" className={inputClass} autoFocus />
+                <input type="tel" value={phone} onChange={(e) => setPhone(formatPhoneInput(e.target.value))} placeholder="(555) 123-4567" className={inputClass} />
               )}
               {phoneDigits.length === 10 && (
                 <div className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 text-sm text-gray-500">
                   {formatPhoneInput(phone)}
                 </div>
               )}
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" className={inputClass} autoFocus={phoneDigits.length === 10} />
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" className={inputClass} />
             </div>
-            <button onClick={() => setStep(7)} disabled={phoneDigits.length !== 10 || !email.trim()} className={btnNext}>Next</button>
+            <button onClick={() => setStep(7)} disabled={!ownerName.trim() || phoneDigits.length !== 10 || !email.trim()} className={btnNext}>Next</button>
           </div>
         )}
 
