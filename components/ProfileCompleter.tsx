@@ -260,12 +260,12 @@ export default function ProfileCompleter({
           to { opacity: 1; transform: translateY(0) scale(1); }
         }
         @keyframes pcSheetUp {
-          from { transform: translateY(100%); }
-          to { transform: translateY(0); }
+          from { opacity: 0; transform: scale(0.95) translateY(20px); }
+          to { opacity: 1; transform: scale(1) translateY(0); }
         }
         @keyframes pcSheetDown {
-          from { transform: translateY(0); }
-          to { transform: translateY(100%); }
+          from { opacity: 1; transform: scale(1) translateY(0); }
+          to { opacity: 0; transform: scale(0.95) translateY(20px); }
         }
         @keyframes pcBgIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes pcBgOut { from { opacity: 1; } to { opacity: 0; } }
@@ -325,26 +325,20 @@ export default function ProfileCompleter({
           style={{
             position: "fixed", inset: 0, zIndex: 9999,
             background: "rgba(0,0,0,0.32)",
-            display: "flex", alignItems: "flex-end", justifyContent: "center",
+            display: "flex", alignItems: "center", justifyContent: "center",
           }}
         >
           <div
             className={closing ? "pc-sheet-close" : "pc-sheet-open"}
             onClick={(e) => e.stopPropagation()}
             style={{
-              width: "100%", maxWidth: 480, maxHeight: "72vh",
+              width: "calc(100% - 24px)", maxWidth: 480, maxHeight: "70vh",
               background: "#fff", borderRadius: 16,
               display: "flex", flexDirection: "column", overflow: "hidden",
-              marginBottom: 16,
             }}
           >
-            {/* Handle bar */}
-            <div onClick={closeModal} style={{ display: "flex", justifyContent: "center", padding: "8px 0 4px", cursor: "pointer" }}>
-              <div style={{ width: 36, height: 4, borderRadius: 2, background: "#d1d1d6" }} />
-            </div>
-
             {/* Header */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "4px 16px 10px", borderBottom: "1px solid #f2f2f7" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 16px 10px", borderBottom: "1px solid #f2f2f7" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <StellaAvatar size={36} />
                 <div>
