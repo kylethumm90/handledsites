@@ -152,18 +152,23 @@ export default function ProfileCompleter({
   }, [open, started]);
 
   // First question after greeting
+  const greetingFiredRef = useRef(false);
   useEffect(() => {
-    if (step !== 0 || log.length !== 1 || !open) return;
+    if (step !== 0 || !open || greetingFiredRef.current) return;
+    if (log.length !== 1) return;
+    greetingFiredRef.current = true;
+
     const t1 = setTimeout(() => setTyping(true), 500);
     const t2 = setTimeout(() => {
       setTyping(false);
       setLog((p) => [...p, { from: "bot", text: questions[0].message }]);
+      // Chain inputReady inside this callback so cleanup can't kill it
+      setTimeout(() => {
+        setInputReady(true);
+        inputRef.current?.focus();
+      }, 400);
     }, 1600);
-    const t3 = setTimeout(() => {
-      setInputReady(true);
-      inputRef.current?.focus();
-    }, 2000);
-    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+    return () => { clearTimeout(t1); clearTimeout(t2); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, log.length, open]);
 
