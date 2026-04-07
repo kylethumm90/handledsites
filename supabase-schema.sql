@@ -116,3 +116,13 @@ CREATE INDEX idx_contractor_sessions_hash ON contractor_sessions (session_hash);
 -- Update sites_full view to include domain fields:
 -- (Adjust your existing view definition to add custom_domain and domain_status from businesses)
 
+-- ============================================
+-- Demo seed leads support
+-- ============================================
+
+-- Add is_demo flag to leads table so seed data can be identified and bulk-deleted
+-- Run as migration:
+--
+-- ALTER TABLE leads ADD COLUMN is_demo BOOLEAN NOT NULL DEFAULT false;
+-- CREATE INDEX idx_leads_is_demo ON leads (business_id) WHERE is_demo = true;
+

@@ -3,6 +3,7 @@ import { validateSessionFromCookie } from "@/lib/contractor-auth";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import type { Lead } from "@/lib/supabase";
 import DashboardClient from "./DashboardClient";
+import DemoBanner from "@/components/DemoBanner";
 
 export const dynamic = "force-dynamic";
 
@@ -73,7 +74,18 @@ export default async function ContractorDashboardPage() {
     totalViews += todayViews || 0;
   }
 
+  // Check for demo leads
+  const { count: demoLeadCount } = await supabase
+    .from("leads")
+    .select("id", { count: "exact", head: true })
+    .eq("business_id", businessId)
+    .eq("is_demo", true);
+
+  const hasDemoLeads = (demoLeadCount ?? 0) > 0;
+
   return (
+    <>
+    {hasDemoLeads && <DemoBanner />}
     <DashboardClient
       businessName={currentSite.business_name}
       logoUrl={currentSite.logo_url}
@@ -99,5 +111,6 @@ export default async function ContractorDashboardPage() {
         state: business.state,
       } : null}
     />
+    </>
   );
 }

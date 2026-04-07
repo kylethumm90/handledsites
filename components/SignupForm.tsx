@@ -224,6 +224,13 @@ export default function SignupForm() {
         throw new Error(siteError.message);
       }
 
+      // Seed demo leads (fire-and-forget — don't block signup on failure)
+      fetch("/api/seed-demo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ business_id: bizData.id }),
+      }).catch(() => {});
+
       setSuccessSlug(slug);
     } catch (err) {
       setError(
