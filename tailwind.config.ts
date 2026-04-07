@@ -11,6 +11,11 @@ const config: Config = {
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",
+        paper: "#F6F1EB",
+        ink: "#1A1A1A",
+        muted: "#8A8070",
+        "border-dark": "#D6CCBC",
+        "border-light": "#E8E0D4",
         card: {
           bg: "#12151f",
           surface: "#1a1e2e",
@@ -23,9 +28,11 @@ const config: Config = {
         },
       },
       fontFamily: {
-        serif: ["'DM Serif Display'", "serif"],
-        sans: ["'DM Sans'", "sans-serif"],
-        inter: ["'Inter'", "sans-serif"],
+        display: ["'Newsreader'", "serif"],
+        mono: ["'IBM Plex Mono'", "monospace"],
+        body: ["'Libre Franklin'", "sans-serif"],
+        serif: ["'Newsreader'", "serif"],
+        sans: ["'Libre Franklin'", "sans-serif"],
       },
     },
   },

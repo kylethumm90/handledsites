@@ -31,89 +31,92 @@ async function getStats() {
   const tradeBreakdown = Object.entries(byTrade)
     .sort((a, b) => b[1] - a[1]);
 
-  // State breakdown (top 10)
+  // State breakdown (all states)
   const byState: Record<string, number> = {};
   businesses.forEach((b) => {
     byState[b.state] = (byState[b.state] || 0) + 1;
   });
   const stateBreakdown = Object.entries(byState)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 10);
+    .sort((a, b) => b[1] - a[1]);
 
   // Recent signups
   const recent = [...businesses]
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     .slice(0, 10);
 
-  return { total, today, thisWeek, tradeBreakdown, stateBreakdown, recent };
+  return { total, today, thisWeek, tradeBreakdown, stateBreakdown, recent, todayStart };
 }
 
 export default async function AdminDashboard() {
   if (!isAdminAuthenticated()) redirect("/admin/login");
 
   const stats = await getStats();
+  const maxTradeCount = stats.tradeBreakdown.length > 0 ? stats.tradeBreakdown[0][1] : 1;
+  const maxStateCount = stats.stateBreakdown.length > 0 ? stats.stateBreakdown[0][1] : 1;
+  const topState = stats.stateBreakdown.length > 0 ? stats.stateBreakdown[0] : null;
+  const uniqueStates = stats.stateBreakdown.length;
+  const uniqueTrades = stats.tradeBreakdown.length;
 
   return (
     <AdminShell active="dashboard">
-      <h1 className="mb-6 text-xl font-semibold text-gray-900">Dashboard</h1>
-
-      {/* Stats cards */}
-      <div className="mb-8 grid gap-4 sm:grid-cols-3">
-        <div className="rounded-xl border border-gray-200 bg-white p-5">
-          <p className="text-xs font-medium text-gray-500">Total businesses</p>
-          <p className="mt-1 text-3xl font-bold text-gray-900">{stats.total}</p>
+      {/* Stat columns */}
+      <div
+        className="animate-newsroom-in mb-10 grid grid-cols-3"
+        style={{ animationDelay: "0.05s" }}
+      >
+        <div className="py-4 pr-6">
+          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-muted">
+            Total businesses
+          </p>
+          <p className="mt-1 font-display text-[64px] leading-none text-ink">
+            {stats.total}
+          </p>
         </div>
-        <div className="rounded-xl border border-gray-200 bg-white p-5">
-          <p className="text-xs font-medium text-gray-500">Created today</p>
-          <p className="mt-1 text-3xl font-bold text-gray-900">{stats.today}</p>
+        <div className="border-l border-border-dark py-4 px-6">
+          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-muted">
+            Created today
+          </p>
+          <p className="mt-1 font-display text-[64px] leading-none text-ink">
+            {stats.today}
+          </p>
         </div>
-        <div className="rounded-xl border border-gray-200 bg-white p-5">
-          <p className="text-xs font-medium text-gray-500">This week</p>
-          <p className="mt-1 text-3xl font-bold text-gray-900">{stats.thisWeek}</p>
+        <div className="border-l border-border-dark py-4 pl-6">
+          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-muted">
+            This week
+          </p>
+          <p className="mt-1 font-display text-[64px] leading-none text-ink">
+            {stats.thisWeek}
+          </p>
         </div>
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-2">
-        {/* By trade */}
-        <div className="rounded-xl border border-gray-200 bg-white p-5">
-          <h2 className="mb-4 text-sm font-semibold text-gray-900">By trade</h2>
+      {/* By Trade & Geography */}
+      <div className="mb-10 grid grid-cols-1 lg:grid-cols-2">
+        {/* By Trade */}
+        <div
+          className="animate-newsroom-in pr-8 pb-8 lg:pb-0"
+          style={{ animationDelay: "0.1s" }}
+        >
+          <h2 className="mb-5 font-display text-lg italic text-ink">By Trade</h2>
           {stats.tradeBreakdown.length === 0 ? (
-            <p className="text-sm text-gray-400">No data yet</p>
+            <p className="font-body text-sm text-muted">No data yet</p>
           ) : (
-            <div className="space-y-2">
-              {stats.tradeBreakdown.map(([trade, count]) => (
-                <div key={trade} className="flex items-center justify-between">
-                  <span className="text-sm text-gray-700">{trade}</span>
-                  <div className="flex items-center gap-2">
+            <div className="space-y-2.5">
+              {stats.tradeBreakdown.map(([trade, count], i) => (
+                <div key={trade} className="flex items-center gap-3">
+                  <span className="w-[140px] shrink-0 font-body text-[13px] font-medium text-ink">
+                    {trade}
+                  </span>
+                  <div className="relative flex-1 h-3 bg-border-light">
                     <div
-                      className="h-2 rounded-full bg-gray-900"
+                      className="animate-bar-in absolute inset-y-0 left-0 bg-ink"
                       style={{
-                        width: `${Math.max(16, (count / stats.total) * 160)}px`,
+                        width: `${Math.max(3, (count / maxTradeCount) * 100)}%`,
+                        animationDelay: `${0.15 + i * 0.05}s`,
                       }}
                     />
-                    <span className="text-xs font-medium text-gray-500 w-6 text-right">
-                      {count}
-                    </span>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* By state */}
-        <div className="rounded-xl border border-gray-200 bg-white p-5">
-          <h2 className="mb-4 text-sm font-semibold text-gray-900">
-            Top states
-          </h2>
-          {stats.stateBreakdown.length === 0 ? (
-            <p className="text-sm text-gray-400">No data yet</p>
-          ) : (
-            <div className="space-y-2">
-              {stats.stateBreakdown.map(([state, count]) => (
-                <div key={state} className="flex items-center justify-between">
-                  <span className="text-sm text-gray-700">{state}</span>
-                  <span className="text-xs font-medium text-gray-500">
+                  <span className="w-8 text-right font-mono text-[13px] text-muted">
                     {count}
                   </span>
                 </div>
@@ -121,53 +124,123 @@ export default async function AdminDashboard() {
             </div>
           )}
         </div>
+
+        {/* Geography */}
+        <div
+          className="animate-newsroom-in border-t border-border-dark pt-8 lg:border-t-0 lg:border-l lg:pl-8 lg:pt-0"
+          style={{ animationDelay: "0.15s" }}
+        >
+          <h2 className="mb-5 font-display text-lg italic text-ink">Geography</h2>
+          {stats.stateBreakdown.length === 0 ? (
+            <p className="font-body text-sm text-muted">No data yet</p>
+          ) : (
+            <>
+              <div className="grid grid-cols-5 gap-px bg-border-light">
+                {stats.stateBreakdown.map(([state, count]) => {
+                  const opacity = Math.max(0.15, count / maxStateCount);
+                  return (
+                    <div
+                      key={state}
+                      className="flex aspect-square flex-col items-center justify-center bg-paper"
+                      style={{ backgroundColor: `rgba(26, 26, 26, ${opacity * 0.12})` }}
+                    >
+                      <span className="font-mono text-sm font-semibold text-ink">
+                        {state}
+                      </span>
+                      <span className="font-display text-[22px] leading-tight text-ink">
+                        {count}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="mt-4 flex gap-6 border-t border-border-light pt-3">
+                <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted">
+                  {uniqueStates} states
+                </span>
+                <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted">
+                  {uniqueTrades} trades
+                </span>
+                {topState && (
+                  <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted">
+                    Top: {topState[0]} ({topState[1]})
+                  </span>
+                )}
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Recent signups */}
-      <div className="mt-8 rounded-xl border border-gray-200 bg-white p-5">
-        <h2 className="mb-4 text-sm font-semibold text-gray-900">
-          Recent signups
-        </h2>
+      <div
+        className="animate-newsroom-in"
+        style={{ animationDelay: "0.2s" }}
+      >
+        <h2 className="mb-5 font-display text-lg italic text-ink">Recent Signups</h2>
         {stats.recent.length === 0 ? (
-          <p className="text-sm text-gray-400">No businesses yet</p>
+          <p className="font-body text-sm text-muted">No businesses yet</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
+            <table className="w-full text-left">
               <thead>
-                <tr className="border-b border-gray-100 text-xs text-gray-500">
-                  <th className="pb-2 pr-4 font-medium">Business</th>
-                  <th className="pb-2 pr-4 font-medium">Owner</th>
-                  <th className="pb-2 pr-4 font-medium">Trade</th>
-                  <th className="pb-2 pr-4 font-medium">Location</th>
-                  <th className="pb-2 pr-4 font-medium">Created</th>
+                <tr className="border-t-2 border-ink border-b border-b-border-dark">
+                  <th className="py-2 pr-4 font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-muted">
+                    Business
+                  </th>
+                  <th className="py-2 pr-4 font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-muted">
+                    Owner
+                  </th>
+                  <th className="py-2 pr-4 font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-muted">
+                    Trade
+                  </th>
+                  <th className="py-2 pr-4 font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-muted">
+                    Location
+                  </th>
+                  <th className="py-2 font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-muted">
+                    Created
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                {stats.recent.map((biz) => (
-                  <tr
-                    key={biz.id}
-                    className="border-b border-gray-50 last:border-0"
-                  >
-                    <td className="py-2.5 pr-4">
-                      <Link
-                        href={`/admin/businesses/${biz.id}`}
-                        className="font-medium text-gray-900 hover:text-blue-600"
-                      >
-                        {biz.name}
-                      </Link>
-                    </td>
-                    <td className="py-2.5 pr-4 text-gray-600">
-                      {biz.owner_name}
-                    </td>
-                    <td className="py-2.5 pr-4 text-gray-600">{biz.trade}</td>
-                    <td className="py-2.5 pr-4 text-gray-600">
-                      {biz.city}, {biz.state}
-                    </td>
-                    <td className="py-2.5 pr-4 text-gray-400">
-                      {new Date(biz.created_at).toLocaleDateString()}
-                    </td>
-                  </tr>
-                ))}
+                {stats.recent.map((biz, i) => {
+                  const isToday = biz.created_at >= stats.todayStart;
+                  return (
+                    <tr
+                      key={biz.id}
+                      className="animate-row-in border-b border-border-light last:border-0"
+                      style={{ animationDelay: `${0.25 + i * 0.03}s` }}
+                    >
+                      <td className="py-2.5 pr-4">
+                        <Link
+                          href={`/admin/businesses/${biz.id}`}
+                          className="font-body text-sm font-medium text-ink hover:underline"
+                        >
+                          {biz.name}
+                        </Link>
+                      </td>
+                      <td className="py-2.5 pr-4 font-body text-sm text-muted">
+                        {biz.owner_name}
+                      </td>
+                      <td className="py-2.5 pr-4 font-body text-sm text-ink">
+                        {biz.trade}
+                      </td>
+                      <td className="py-2.5 pr-4 font-body text-sm text-muted">
+                        {biz.city}, {biz.state}
+                      </td>
+                      <td className="py-2.5 font-mono text-xs text-muted">
+                        <span className="flex items-center gap-2">
+                          {new Date(biz.created_at).toLocaleDateString()}
+                          {isToday && (
+                            <span className="inline-block bg-ink px-1.5 py-0.5 font-mono text-[9px] font-medium uppercase tracking-wider text-paper">
+                              today
+                            </span>
+                          )}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
