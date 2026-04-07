@@ -282,7 +282,7 @@ function SiteCard({
             lineHeight: 1.3, marginTop: 2,
           }}>{meta.desc}</div>
         </div>
-        <OpenLink href={siteUrl(site)} />
+        <OpenLink href={fullUrl} />
         {expandable && (
           <button
             onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
