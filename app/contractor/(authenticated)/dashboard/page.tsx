@@ -25,7 +25,7 @@ export default async function ContractorDashboardPage() {
   // Fetch business profile for completion check
   const { data: business } = await supabase
     .from("businesses")
-    .select("owner_name, years_in_business, service_areas, license_number, hero_tagline, social_facebook, social_instagram, social_nextdoor")
+    .select("owner_name, years_in_business, service_areas, license_number, hero_tagline, social_facebook, social_instagram, social_nextdoor, trade, services, about_bio, city, state")
     .eq("id", businessId)
     .single();
 
@@ -45,6 +45,34 @@ export default async function ContractorDashboardPage() {
     .eq("business_id", businessId)
     .gte("created_at", weekAgo);
 
+  // Page views (last 7 days from rollup + today's live events)
+  const weekAgoDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+  const { data: allSites } = await supabase
+    .from("sites")
+    .select("id")
+    .eq("business_id", businessId);
+  const siteIds = (allSites || []).map((s: { id: string }) => s.id);
+
+  let totalViews = 0;
+  if (siteIds.length > 0) {
+    const { data: statsRows } = await supabase
+      .from("site_stats_daily")
+      .select("total_views")
+      .in("site_id", siteIds)
+      .gte("stat_date", weekAgoDate);
+    totalViews = (statsRows || []).reduce((sum: number, r: { total_views: number }) => sum + (r.total_views || 0), 0);
+
+    // Add today's live page_view events
+    const todayStr = new Date().toISOString().split("T")[0];
+    const { count: todayViews } = await supabase
+      .from("site_events")
+      .select("id", { count: "exact", head: true })
+      .in("site_id", siteIds)
+      .eq("event_type", "page_view")
+      .gte("created_at", `${todayStr}T00:00:00.000Z`);
+    totalViews += todayViews || 0;
+  }
+
   return (
     <DashboardClient
       businessName={currentSite.business_name}
@@ -52,6 +80,7 @@ export default async function ContractorDashboardPage() {
       leads={(leads || []) as Lead[]}
       totalLeads={totalLeads || 0}
       newLeadsThisWeek={newLeadsThisWeek || 0}
+      totalViews={totalViews}
       googleRating={currentSite.google_rating || null}
       googleReviewCount={currentSite.google_review_count || null}
       profileData={business ? {
@@ -63,6 +92,11 @@ export default async function ContractorDashboardPage() {
         social_facebook: business.social_facebook,
         social_instagram: business.social_instagram,
         social_nextdoor: business.social_nextdoor,
+        trade: business.trade,
+        services: business.services,
+        about_bio: business.about_bio,
+        city: business.city,
+        state: business.state,
       } : null}
     />
   );

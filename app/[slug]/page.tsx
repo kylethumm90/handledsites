@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { Metadata } from "next";
 import { getSupabaseAdmin, ContractorSite } from "@/lib/supabase";
 import ContractorCard from "@/components/ContractorCard";
+import PulsePageView from "@/components/PulsePageView";
 
 export const revalidate = 60;
 
@@ -109,6 +110,7 @@ export default async function CardPage({ params }: Props) {
 
   return (
     <div className="min-h-screen bg-card-bg font-inter">
+      <PulsePageView siteId={contractor.id} />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

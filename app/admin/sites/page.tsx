@@ -4,7 +4,7 @@ import { getSupabaseAdmin, SiteFull } from "@/lib/supabase";
 import { TRADES } from "@/lib/constants";
 import AdminShell from "@/components/AdminShell";
 import Link from "next/link";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, BarChart2 } from "lucide-react";
 import AdminCreateSiteButton from "@/components/AdminCreateSiteButton";
 
 export const dynamic = "force-dynamic";
@@ -97,6 +97,7 @@ export default async function AdminSitesPage({ searchParams }: Props) {
               <th className="px-4 py-3 font-medium">Trade</th>
               <th className="px-4 py-3 font-medium">Location</th>
               <th className="px-4 py-3 font-medium">Created</th>
+              <th className="px-4 py-3 font-medium">Pulse</th>
               <th className="px-4 py-3 font-medium">View</th>
             </tr>
           </thead>
@@ -104,7 +105,7 @@ export default async function AdminSitesPage({ searchParams }: Props) {
             {sites.length === 0 ? (
               <tr>
                 <td
-                  colSpan={7}
+                  colSpan={8}
                   className="px-4 py-8 text-center text-sm text-gray-400"
                 >
                   No sites found
@@ -150,6 +151,15 @@ export default async function AdminSitesPage({ searchParams }: Props) {
                   </td>
                   <td className="px-4 py-3 text-gray-400">
                     {new Date(site.created_at).toLocaleDateString()}
+                  </td>
+                  <td className="px-4 py-3">
+                    <Link
+                      href={`/admin/pulse/${site.id}`}
+                      className="text-gray-400 hover:text-blue-600"
+                      title="View Pulse analytics"
+                    >
+                      <BarChart2 className="h-3.5 w-3.5" />
+                    </Link>
                   </td>
                   <td className="px-4 py-3">
                     <a

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ContractorSite } from "@/lib/supabase";
-import { ExternalLink, Trash2, Copy, Check, Eye } from "lucide-react";
+import { ExternalLink, Trash2, Copy, Check, Eye, BarChart2 } from "lucide-react";
 import Link from "next/link";
 import { QRCodeSVG } from "qrcode.react";
 import ImageUpload from "./ImageUpload";
@@ -144,6 +144,13 @@ export default function AdminSiteEditor({ site }: Props) {
             View site
             <ExternalLink className="h-3 w-3" />
           </a>
+          <Link
+            href={`/admin/pulse/${site.id}`}
+            className="flex items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100"
+          >
+            <BarChart2 className="h-3 w-3" />
+            Pulse
+          </Link>
         </div>
       </div>
 

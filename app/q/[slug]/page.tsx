@@ -1,6 +1,7 @@
 import { getSupabaseAdmin } from "@/lib/supabase";
 import { notFound } from "next/navigation";
 import QuizClient from "./QuizClient";
+import PulsePageView from "@/components/PulsePageView";
 
 export const revalidate = 60;
 
@@ -174,6 +175,8 @@ export default async function QuizFunnelPage({
   const copy = TRADE_COPY[site.trade] || DEFAULT_COPY;
 
   return (
+    <>
+    <PulsePageView siteId={site.id} />
     <QuizClient
       funnel={{
         id: site.id,
@@ -204,5 +207,6 @@ export default async function QuizFunnelPage({
       }}
       questions={questions}
     />
+    </>
   );
 }

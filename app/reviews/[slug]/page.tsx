@@ -3,6 +3,7 @@ import { Metadata } from "next";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import type { Review } from "@/lib/supabase";
 import ReviewWallClient from "./ReviewWallClient";
+import PulsePageView from "@/components/PulsePageView";
 
 export const revalidate = 60;
 
@@ -131,6 +132,7 @@ export default async function ReviewWallPage({ params }: { params: { slug: strin
 
   return (
     <>
+      <PulsePageView siteId={site.id} />
       <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700;800&display=swap" rel="stylesheet" />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <style dangerouslySetInnerHTML={{ __html: REVIEW_WALL_CSS }} />

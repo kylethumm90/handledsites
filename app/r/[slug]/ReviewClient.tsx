@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import { Check, Copy, ExternalLink } from "lucide-react";
+import { trackReviewClick, trackReviewComplete } from "@/lib/pulse";
 
 type Props = {
   siteId: string;
@@ -49,6 +50,7 @@ export default function ReviewClient({
   const handleRating = (value: number) => {
     setSelectedEmoji(value);
     setRating(value);
+    trackReviewClick(siteId);
     setTimeout(() => setStep("questions"), 200);
   };
 
@@ -65,6 +67,7 @@ export default function ReviewClient({
       if (data.generated_review) {
         setGeneratedReview(data.generated_review);
       }
+      trackReviewComplete(siteId);
       setStep("result");
     } catch {
       setSubmitting(false);

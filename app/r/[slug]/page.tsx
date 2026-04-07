@@ -1,6 +1,7 @@
 import { getSupabaseAdmin } from "@/lib/supabase";
 import { notFound } from "next/navigation";
 import ReviewClient from "./ReviewClient";
+import PulsePageView from "@/components/PulsePageView";
 import type { Metadata } from "next";
 
 export const revalidate = 60;
@@ -45,11 +46,14 @@ export default async function ReviewFunnelPage({
   if (!site) notFound();
 
   return (
+    <>
+    <PulsePageView siteId={site.id} />
     <ReviewClient
       siteId={site.id}
       businessName={site.business_name}
       logoUrl={site.logo_url}
       googleReviewUrl={site.google_review_url}
     />
+    </>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { trackFormSubmit } from "@/lib/pulse";
 
 type Props = {
   siteId: string;
@@ -31,7 +32,10 @@ export default function WebsiteContactForm({ siteId, services }: Props) {
           message: zip ? `ZIP: ${zip}` : null,
         }),
       });
-      if (res.ok) setSubmitted(true);
+      if (res.ok) {
+        setSubmitted(true);
+        trackFormSubmit(siteId);
+      }
     } catch {
       // silently fail
     } finally {
