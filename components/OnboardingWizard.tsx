@@ -4,14 +4,13 @@ import { useState, useRef, useEffect } from "react";
 import { ArrowLeft, Upload, Check, Copy, ExternalLink } from "lucide-react";
 import { getSupabaseClient } from "@/lib/supabase";
 import { generateUniqueSlug, checkDuplicateContact } from "@/lib/slug";
-import { TRADE_SERVICES, Trade } from "@/lib/constants";
 import { TRADE_ICONS } from "@/lib/icons";
 import PhonePreview from "./PhonePreview";
 import QuizPreview from "./QuizPreview";
 import WebsitePreview from "./WebsitePreview";
 
 const TRADES_LIST = ["HVAC", "Plumbing", "Solar", "Pest Control", "Landscaping"] as const;
-type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7;
+type Step = 1 | 2 | 3 | 4 | 5;
 type Phase = "form" | "transitioning" | "pause" | "url" | "fan" | "statement" | "actions" | "exit";
 
 function formatPhoneInput(value: string): string {
@@ -36,8 +35,6 @@ export default function OnboardingWizard() {
   const [businessName, setBusinessName] = useState("");
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
-  const [services, setServices] = useState<string[]>([]);
-  const [aboutText, setAboutText] = useState("");
   const [ownerName, setOwnerName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -64,8 +61,7 @@ export default function OnboardingWizard() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const workDoneRef = useRef(false);
   const phoneDigits = phone.replace(/\D/g, "");
-  const progress = (step / 7) * 100;
-  const availableServices = trade ? TRADE_SERVICES[trade as Trade] || [] : [];
+  const progress = (step / 5) * 100;
 
   const handlePlaceSearch = (value: string) => {
     setPlaceQuery(value);
@@ -106,7 +102,7 @@ export default function OnboardingWizard() {
     setPlaceQuery("");
     setPlaceResults([]);
     setShowDropdown(false);
-    // Skip to step 4 (services) after a brief delay
+    // Skip to step 4 (contact info) after a brief delay
     setTimeout(() => setStep(4), 300);
   };
 
@@ -117,10 +113,6 @@ export default function OnboardingWizard() {
     setLogoFile(file);
     setLogoPreview(URL.createObjectURL(file));
     setError("");
-  };
-
-  const handleServiceToggle = (s: string) => {
-    setServices((prev) => prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]);
   };
 
   const doBackgroundWork = async (): Promise<string> => {
@@ -142,21 +134,9 @@ export default function OnboardingWizard() {
       setUploadedLogoUrl(logoUrl);
     }
 
-    let aboutBio: string | null = null;
-    if (aboutText.trim()) {
-      try {
-        const bioRes = await fetch("/api/generate-bio", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ businessName, trade, city, state, services, differentiator: aboutText }),
-        });
-        if (bioRes.ok) { const d = await bioRes.json(); aboutBio = d.bio; }
-      } catch { aboutBio = aboutText; }
-    }
-
     const { data: bizData, error: bizError } = await supabase.from("businesses").insert({
       name: businessName, owner_name: ownerName.trim() || businessName, phone: phoneDigits,
-      email: email || null, city, state, trade, services, logo_url: logoUrl, about_bio: aboutBio,
+      email: email || null, city, state, trade, services: [], logo_url: logoUrl, about_bio: null,
       google_place_id: googlePlaceId || null,
       street_address: streetAddress || null,
       google_rating: googleRating,
@@ -256,7 +236,7 @@ export default function OnboardingWizard() {
             }}
           >
             <div className="pointer-events-none" style={{ transform: "scale(0.5)", transformOrigin: "top center", width: 280, height: 580 }}>
-              <WebsitePreview businessName={businessName} trade={trade} city={city} state={state} services={services} />
+              <WebsitePreview businessName={businessName} trade={trade} city={city} state={state} services={[]} />
             </div>
             {showFan && (
               <p className="mt-1 text-center text-xs font-medium text-gray-400 transition-opacity duration-300" style={{ opacity: showStatement ? 1 : 0 }}>Website</p>
@@ -352,7 +332,7 @@ export default function OnboardingWizard() {
               <ArrowLeft className="h-4 w-4" />
             </button>
           )}
-          <span className="text-xs font-medium text-gray-400">Step {step} of 7</span>
+          <span className="text-xs font-medium text-gray-400">Step {step} of 5</span>
         </div>
 
         {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
@@ -365,7 +345,7 @@ export default function OnboardingWizard() {
               {TRADES_LIST.map((t) => {
                 const Icon = TRADE_ICONS[t];
                 return (
-                  <button key={t} onClick={() => { setTrade(t); setServices([]); setTimeout(() => setStep(2), 300); }}
+                  <button key={t} onClick={() => { setTrade(t); setTimeout(() => setStep(2), 300); }}
                     className={`flex w-full items-center gap-3 rounded-xl border-2 px-5 py-4 text-left text-base font-semibold transition-all ${trade === t ? "border-gray-900 bg-gray-900 text-white" : "border-gray-200 text-gray-900 hover:border-gray-400 hover:bg-gray-50"}`}>
                     {Icon && <Icon className="h-5 w-5 flex-shrink-0 opacity-60" />}
                     {t}
@@ -446,32 +426,6 @@ export default function OnboardingWizard() {
 
         {step === 4 && (
           <div>
-            <h2 className="mb-2 text-2xl font-bold text-gray-900">What services do you offer?</h2>
-            <p className="mb-6 text-sm text-gray-500">Select all that apply.</p>
-            <div className="grid grid-cols-2 gap-2">
-              {availableServices.map((s) => (
-                <button key={s} onClick={() => handleServiceToggle(s)}
-                  className={`rounded-xl border px-3 py-2.5 text-left text-sm font-medium transition-all ${services.includes(s) ? "border-gray-900 bg-gray-900 text-white" : "border-gray-200 text-gray-700 hover:border-gray-400"}`}>
-                  {s}
-                </button>
-              ))}
-            </div>
-            <button onClick={() => setStep(5)} disabled={services.length === 0} className={btnNext}>Next</button>
-          </div>
-        )}
-
-        {step === 5 && (
-          <div>
-            <h2 className="mb-2 text-2xl font-bold text-gray-900">What makes your business different?</h2>
-            <p className="mb-6 text-sm text-gray-500">We&apos;ll use this to write your website&apos;s about section.</p>
-            <textarea value={aboutText} onChange={(e) => setAboutText(e.target.value)} placeholder="e.g. Family owned for 12 years, licensed and insured, free estimates on every job" rows={3} className={inputClass} autoFocus />
-            <button onClick={() => setStep(6)} className={btnNext}>Next</button>
-            <button onClick={() => { setAboutText(""); setStep(6); }} className="mt-2 w-full py-2 text-center text-xs text-gray-400 hover:text-gray-600">Skip for now</button>
-          </div>
-        )}
-
-        {step === 6 && (
-          <div>
             <h2 className="mb-2 text-2xl font-bold text-gray-900">Your contact info</h2>
             <p className="mb-6 text-sm text-gray-500">Your name and phone show on your sites. Your email is how you&apos;ll log in.</p>
             <div className="space-y-3">
@@ -486,11 +440,11 @@ export default function OnboardingWizard() {
               )}
               <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" className={inputClass} />
             </div>
-            <button onClick={() => setStep(7)} disabled={!ownerName.trim() || phoneDigits.length !== 10 || !email.trim()} className={btnNext}>Next</button>
+            <button onClick={() => setStep(5)} disabled={!ownerName.trim() || phoneDigits.length !== 10 || !email.trim()} className={btnNext}>Next</button>
           </div>
         )}
 
-        {step === 7 && (
+        {step === 5 && (
           <div>
             <h2 className="mb-2 text-2xl font-bold text-gray-900">Got a logo?</h2>
             <p className="mb-6 text-sm text-gray-500">Upload it now or skip — you can always update it later in Settings.</p>
