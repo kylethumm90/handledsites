@@ -2,6 +2,7 @@
 
 import { Phone, MessageSquare, UserPlus } from "lucide-react";
 import { generateVCard, downloadVCard } from "@/lib/vcard";
+import { trackPhoneClick, trackTextClick } from "@/lib/pulse";
 
 type Props = {
   phone: string;
@@ -9,6 +10,7 @@ type Props = {
   city: string;
   state: string;
   slug: string;
+  siteId?: string;
 };
 
 export default function CTAButtons({
@@ -17,6 +19,7 @@ export default function CTAButtons({
   city,
   state,
   slug,
+  siteId,
 }: Props) {
   const formattedPhone = `+1${phone}`;
   const displayPhone = `(${phone.slice(0, 3)}) ${phone.slice(3, 6)}-${phone.slice(6)}`;
@@ -57,6 +60,7 @@ export default function CTAButtons({
     <div className="space-y-3">
       <a
         href={`tel:${formattedPhone}`}
+        onClick={() => siteId && trackPhoneClick(siteId)}
         className="flex items-center justify-center gap-2 rounded-xl bg-card-call py-3.5 text-sm font-bold text-white transition-opacity hover:opacity-90"
       >
         <Phone className="h-4 w-4" />
@@ -65,6 +69,7 @@ export default function CTAButtons({
 
       <a
         href={`sms:${formattedPhone}?body=${encodeURIComponent("Hi, I need a quote")}`}
+        onClick={() => siteId && trackTextClick(siteId)}
         className="flex items-center justify-center gap-2 rounded-xl bg-card-text-bg py-3.5 text-sm font-bold text-card-text-fg transition-opacity hover:opacity-90"
       >
         <MessageSquare className="h-4 w-4" />

@@ -116,6 +116,7 @@ export default function ContractorCard({ contractor }: Props) {
         city={contractor.city}
         state={contractor.state}
         slug={contractor.slug}
+        siteId={contractor.id}
       />
 
       {/* Services Grid */}

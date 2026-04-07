@@ -23,6 +23,7 @@ type Props = {
   leads: Lead[];
   totalLeads: number;
   newLeadsThisWeek: number;
+  totalViews?: number;
   googleRating: number | null;
   googleReviewCount: number | null;
   profileData: ProfileData | null;
@@ -68,6 +69,7 @@ export default function DashboardClient({
   leads,
   totalLeads,
   newLeadsThisWeek,
+  totalViews,
   googleRating,
   googleReviewCount,
   profileData,
@@ -109,8 +111,8 @@ export default function DashboardClient({
           <div style={{ fontSize: 11, color: "#999", fontWeight: 500, marginTop: 4, textTransform: "uppercase", letterSpacing: "0.03em" }}>Customers</div>
         </div>
         <div style={{ flex: 1, padding: "16px 14px", textAlign: "center", borderRight: "1px solid #eee" }}>
-          <div style={{ fontSize: 22, fontWeight: 700, color: "#ddd", letterSpacing: "-0.02em", lineHeight: 1.2 }}>&mdash;</div>
-          <div style={{ fontSize: 11, color: "#ccc", fontWeight: 500, marginTop: 4, textTransform: "uppercase", letterSpacing: "0.03em" }}>Page views</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: "#111", letterSpacing: "-0.02em", lineHeight: 1.2 }}>{totalViews ?? 0}</div>
+          <div style={{ fontSize: 11, color: "#999", fontWeight: 500, marginTop: 4, textTransform: "uppercase", letterSpacing: "0.03em" }}>Page views</div>
         </div>
         <div style={{ flex: 1, padding: "16px 14px", textAlign: "center" }}>
           <div style={{ fontSize: 22, fontWeight: 700, color: "#111", letterSpacing: "-0.02em", lineHeight: 1.2 }}>

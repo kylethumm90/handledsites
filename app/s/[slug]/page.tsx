@@ -3,6 +3,7 @@ import { Metadata } from "next";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import { SERVICE_DESCRIPTIONS, HERO_IMAGES } from "@/lib/constants";
 import WebsiteContactForm from "./WebsiteContactForm";
+import PulsePageView from "@/components/PulsePageView";
 
 export const revalidate = 60;
 
@@ -156,6 +157,7 @@ export default async function WebsitePage({ params }: { params: { slug: string }
 
   return (
     <>
+      <PulsePageView siteId={site.id} />
       <style dangerouslySetInnerHTML={{ __html: WEBSITE_CSS }} />
       <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
