@@ -332,9 +332,10 @@ export default function ProfileCompleter({
             className={closing ? "pc-sheet-close" : "pc-sheet-open"}
             onClick={(e) => e.stopPropagation()}
             style={{
-              width: "100%", maxWidth: 480, height: "88vh",
-              background: "#fff", borderRadius: "16px 16px 0 0",
+              width: "100%", maxWidth: 480, maxHeight: "72vh",
+              background: "#fff", borderRadius: 16,
               display: "flex", flexDirection: "column", overflow: "hidden",
+              marginBottom: 16,
             }}
           >
             {/* Handle bar */}
@@ -416,7 +417,7 @@ export default function ProfileCompleter({
 
             {/* Input bar */}
             {inputReady && q?.inputType && !isDone && (
-              <div className="pc-ma" style={{ padding: "8px 10px 14px", borderTop: "1px solid #f2f2f7", background: "#fff" }}>
+              <div className="pc-ma" style={{ padding: "8px 10px 14px", borderTop: "1px solid #f2f2f7", background: "#fff", flexShrink: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#f2f2f7", borderRadius: 22, padding: "4px 4px 4px 16px" }}>
                   <input
                     ref={inputRef}
@@ -451,7 +452,7 @@ export default function ProfileCompleter({
 
             {/* Done CTA */}
             {isDone && (
-              <div className="pc-ma" style={{ padding: "8px 10px 14px", borderTop: "1px solid #f2f2f7", background: "#fff" }}>
+              <div className="pc-ma" style={{ padding: "8px 10px 14px", borderTop: "1px solid #f2f2f7", background: "#fff", flexShrink: 0 }}>
                 <button
                   onClick={() => { closeModal(); window.location.href = "/contractor/sites"; }}
                   style={{
