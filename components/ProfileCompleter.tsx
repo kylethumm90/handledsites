@@ -83,12 +83,12 @@ const ALL_QUESTIONS: Question[] = [
 
 type ChatMsg = { from: "bot" | "user"; text: string };
 
-const BotAvatar = () => (
-  <img src="/handled-favicon.png" alt="" style={{ width: 22, height: 22, borderRadius: 6, flexShrink: 0, marginTop: 1 }} />
-);
-
-const HeaderAvatar = () => (
-  <img src="/handled-favicon.png" alt="" style={{ width: 28, height: 28, borderRadius: 7 }} />
+const StellaAvatar = ({ size = 26 }: { size?: number }) => (
+  <div style={{
+    width: size, height: size, borderRadius: size / 2, background: "#3574d1", color: "#fff",
+    display: "flex", alignItems: "center", justifyContent: "center",
+    fontSize: size * 0.42, fontWeight: 700, flexShrink: 0,
+  }}>S</div>
 );
 
 export default function ProfileCompleter({
@@ -106,33 +106,39 @@ export default function ProfileCompleter({
     return false;
   });
 
-  const [hidden, setHidden] = useState(false);
-  const [minimized, setMinimized] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [closing, setClosing] = useState(false);
   const [step, setStep] = useState(-1);
   const [typing, setTyping] = useState(false);
   const [log, setLog] = useState<ChatMsg[]>([]);
   const [inputVal, setInputVal] = useState("");
   const [inputReady, setInputReady] = useState(false);
   const [answers, setAnswers] = useState<Record<string, string | number | string[]>>({});
+  const [started, setStarted] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const greetingDone = useRef(false);
-  const firstQuestionDone = useRef(false);
 
   const q = step >= 0 && step < questions.length ? questions[step] : null;
   const totalSteps = questions.length;
   const progress = totalSteps > 0 ? Math.min((Math.max(step, 0) / totalSteps) * 100, 100) : 100;
   const isDone = step >= questions.length && !typing;
 
-  // Auto-scroll
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    document.body.style.overflow = open ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [open]);
+
+  // Auto-scroll chat
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [log, typing, inputReady]);
 
-  // Greeting sequence
+  // Start greeting sequence when modal first opens
   useEffect(() => {
-    if (questions.length === 0 || minimized || greetingDone.current) return;
-    greetingDone.current = true;
+    if (!open || started) return;
+    setStarted(true);
     setTyping(true);
     setTimeout(() => {
       setTyping(false);
@@ -141,32 +147,33 @@ export default function ProfileCompleter({
         text: `Hey! Let's finish setting up ${businessName}. These answers fill in your site so it's ready for customers.`,
       }]);
       setStep(0);
-
-      // Chain: pause → typing → first question → input
-      setTimeout(() => {
-        setTyping(true);
-        setTimeout(() => {
-          setTyping(false);
-          setLog((p) => [...p, { from: "bot", text: questions[0].message }]);
-          setTimeout(() => {
-            setInputReady(true);
-            firstQuestionDone.current = true;
-            inputRef.current?.focus();
-          }, 350);
-        }, 1100);
-      }, 400);
     }, 1300);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [minimized]);
+  }, [open, started]);
 
-  // Subsequent questions (step > 0)
+  // First question after greeting
+  useEffect(() => {
+    if (step !== 0 || log.length !== 1 || !open) return;
+    const t1 = setTimeout(() => setTyping(true), 500);
+    const t2 = setTimeout(() => {
+      setTyping(false);
+      setLog((p) => [...p, { from: "bot", text: questions[0].message }]);
+    }, 1600);
+    const t3 = setTimeout(() => {
+      setInputReady(true);
+      inputRef.current?.focus();
+    }, 2000);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, log.length, open]);
+
+  // Subsequent questions
   const prevStepRef = useRef(-1);
   useEffect(() => {
     if (step <= 0 || step === prevStepRef.current) return;
     prevStepRef.current = step;
 
     if (step >= questions.length) {
-      // Done
       setTyping(true);
       setInputReady(false);
       setTimeout(() => {
@@ -178,14 +185,14 @@ export default function ProfileCompleter({
 
     setTyping(true);
     setInputReady(false);
-    const delay = 800 + Math.random() * 600;
+    const delay = 900 + Math.random() * 500;
     setTimeout(() => {
       setTyping(false);
       setLog((p) => [...p, { from: "bot", text: questions[step].message }]);
       setTimeout(() => {
         setInputReady(true);
         inputRef.current?.focus();
-      }, 350);
+      }, 400);
     }, delay);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
@@ -234,94 +241,183 @@ export default function ProfileCompleter({
     setStep(nextStep);
   }, [q, step, questions.length, answers, saveAnswers]);
 
-  if (questions.length === 0 || hidden) return null;
+  const closeModal = useCallback(() => {
+    setClosing(true);
+    setTimeout(() => { setOpen(false); setClosing(false); }, 280);
+  }, []);
+
+  if (questions.length === 0 || dismissed) return null;
 
   return (
     <>
       <style>{`
-        @keyframes pcDotUp {
-          0%, 60%, 100% { transform: translateY(0); opacity: 0.3; }
-          30% { transform: translateY(-4px); opacity: 0.85; }
+        @keyframes pcDotPulse {
+          0%, 60%, 100% { transform: translateY(0); opacity: 0.25; }
+          30% { transform: translateY(-5px); opacity: 1; }
         }
-        @keyframes pcSlideUp {
-          from { opacity: 0; transform: translateY(8px); }
-          to { opacity: 1; transform: translateY(0); }
+        @keyframes pcMsgUp {
+          from { opacity: 0; transform: translateY(10px) scale(0.97); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
         }
-        .pc-dot { width: 5px; height: 5px; border-radius: 50%; background: #999; display: inline-block; animation: pcDotUp 1.2s infinite ease-in-out; }
-        .pc-msg { animation: pcSlideUp 0.28s ease both; }
-        .pc-ci:focus { outline: none; border-color: #bbb; }
+        @keyframes pcSheetUp {
+          from { transform: translateY(100%); }
+          to { transform: translateY(0); }
+        }
+        @keyframes pcSheetDown {
+          from { transform: translateY(0); }
+          to { transform: translateY(100%); }
+        }
+        @keyframes pcBgIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes pcBgOut { from { opacity: 1; } to { opacity: 0; } }
+        .pc-td { width: 6px; height: 6px; border-radius: 50%; background: #8e8e93; display: inline-block; animation: pcDotPulse 1.3s infinite ease-in-out; }
+        .pc-ma { animation: pcMsgUp 0.25s cubic-bezier(0.25, 1, 0.5, 1) both; }
+        .pc-sheet-open { animation: pcSheetUp 0.34s cubic-bezier(0.32, 0.72, 0, 1) both; }
+        .pc-sheet-close { animation: pcSheetDown 0.28s cubic-bezier(0.32, 0.72, 0, 1) both; }
+        .pc-bg-open { animation: pcBgIn 0.28s ease both; }
+        .pc-bg-close { animation: pcBgOut 0.28s ease both; }
+        .pc-ci:focus { outline: none; }
+        .pc-ci::placeholder { color: #8e8e93; }
+        .pc-sb:active { transform: scale(0.9); }
       `}</style>
 
-      <div style={{ border: "1px solid #e5e5e5", borderRadius: 10, overflow: "hidden", background: "#fff", marginBottom: 20 }}>
-        {/* Header */}
-        <div
-          onClick={() => setMinimized((m) => !m)}
-          style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", cursor: "pointer", userSelect: "none" }}
-        >
+      {/* Collapsed card on Dashboard */}
+      <div
+        onClick={() => setOpen(true)}
+        style={{
+          border: "1px solid #e5e5ea", borderRadius: 12, overflow: "hidden",
+          cursor: "pointer", background: "#fff", marginBottom: 16,
+          WebkitTapHighlightColor: "transparent",
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "11px 14px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <HeaderAvatar />
+            <StellaAvatar size={30} />
             <div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: "#111", lineHeight: 1.2 }}>handled.</div>
-              <div style={{ fontSize: 11, color: "#999", lineHeight: 1.2, marginTop: 1 }}>{isDone ? "Profile complete" : "Setting up your profile"}</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "#1c1c1e", lineHeight: 1.2 }}>Stella from handled.</div>
+              <div style={{ fontSize: 11, color: "#8e8e93", lineHeight: 1.2, marginTop: 1 }}>
+                {isDone ? "Profile complete" : "Setting up your profile"}
+              </div>
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <span style={{ fontSize: 11, color: "#3574d1", fontWeight: 600 }}>
               {isDone ? "Done" : `${Math.max(step, 0) + 1} of ${totalSteps}`}
             </span>
-            <button onClick={(e) => { e.stopPropagation(); setHidden(true); }} style={{ background: "none", border: "none", fontSize: 12, color: "#ccc", cursor: "pointer", padding: 0 }}>Later</button>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#bbb" strokeWidth="2" strokeLinecap="round"
-              style={{ transform: minimized ? "rotate(0deg)" : "rotate(180deg)", transition: "transform 0.2s ease" }}>
-              <path d="M6 9l6 6 6-6" />
-            </svg>
+            <button
+              onClick={(e) => { e.stopPropagation(); setDismissed(true); }}
+              style={{ background: "none", border: "none", fontSize: 12, color: "#c7c7cc", cursor: "pointer", padding: 0 }}
+            >
+              Later
+            </button>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#c7c7cc" strokeWidth="2.5" strokeLinecap="round"><path d="M9 18l6-6-6-6" /></svg>
           </div>
         </div>
-
-        {/* Progress bar */}
-        <div style={{ height: 2, background: "#f0f0f0" }}>
+        <div style={{ height: 2, background: "#f2f2f7" }}>
           <div style={{ height: "100%", background: "#3574d1", width: `${isDone ? 100 : progress}%`, transition: "width 0.5s ease" }} />
         </div>
+      </div>
 
-        {/* Collapsible body */}
-        {!minimized && (
-          <>
+      {/* Modal overlay */}
+      {open && (
+        <div
+          className={closing ? "pc-bg-close" : "pc-bg-open"}
+          onClick={closeModal}
+          style={{
+            position: "fixed", inset: 0, zIndex: 9999,
+            background: "rgba(0,0,0,0.32)",
+            display: "flex", alignItems: "flex-end", justifyContent: "center",
+          }}
+        >
+          <div
+            className={closing ? "pc-sheet-close" : "pc-sheet-open"}
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "100%", maxWidth: 480, height: "88vh",
+              background: "#fff", borderRadius: "16px 16px 0 0",
+              display: "flex", flexDirection: "column", overflow: "hidden",
+            }}
+          >
+            {/* Handle bar */}
+            <div onClick={closeModal} style={{ display: "flex", justifyContent: "center", padding: "8px 0 4px", cursor: "pointer" }}>
+              <div style={{ width: 36, height: 4, borderRadius: 2, background: "#d1d1d6" }} />
+            </div>
+
+            {/* Header */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "4px 16px 10px", borderBottom: "1px solid #f2f2f7" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <StellaAvatar size={36} />
+                <div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: "#1c1c1e", lineHeight: 1.2 }}>Stella from handled.</div>
+                  <div style={{ fontSize: 12, color: "#8e8e93", lineHeight: 1.2, marginTop: 1 }}>
+                    {isDone ? "Profile complete" : "Setting up your profile"}
+                  </div>
+                </div>
+              </div>
+              <button onClick={closeModal} style={{
+                width: 30, height: 30, borderRadius: 15, background: "#f2f2f7", border: "none",
+                display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
+              }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8e8e93" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
+              </button>
+            </div>
+
+            {/* Progress bar */}
+            <div style={{ height: 2, background: "#f2f2f7" }}>
+              <div style={{ height: "100%", background: "#3574d1", width: `${isDone ? 100 : progress}%`, transition: "width 0.5s ease" }} />
+            </div>
+
             {/* Context banner */}
-            {!isDone && (
-              <div style={{ padding: "9px 14px", fontSize: 12, color: "#888", background: "#fafafa", borderBottom: "1px solid #f0f0f0", lineHeight: 1.45 }}>
+            {step >= 0 && step < questions.length && !isDone && (
+              <div style={{ padding: "10px 16px", fontSize: 12, color: "#8e8e93", lineHeight: 1.4, background: "#fafafa", borderBottom: "1px solid #f2f2f7" }}>
                 Your site needs this info to work properly. Without it, pages show placeholder content and your contact info won&apos;t be visible to customers.
               </div>
             )}
 
-            {/* Chat area */}
-            <div ref={scrollRef} style={{ padding: "14px 14px 6px", maxHeight: 280, overflowY: "auto", display: "flex", flexDirection: "column", gap: 6 }}>
-              {log.map((m, i) => (
-                m.from === "bot" ? (
-                  <div key={i} className="pc-msg" style={{ display: "flex", alignItems: "flex-start", gap: 7, maxWidth: "88%" }}>
-                    <BotAvatar />
-                    <div style={{ background: "#f3f3f3", color: "#333", padding: "8px 11px", borderRadius: "3px 10px 10px 10px", fontSize: 13, lineHeight: 1.5 }}>{m.text}</div>
+            {/* Chat body */}
+            <div ref={scrollRef} style={{
+              flex: 1, overflowY: "auto", padding: "16px 12px 8px",
+              display: "flex", flexDirection: "column", gap: 3,
+              WebkitOverflowScrolling: "touch",
+            }}>
+              {log.map((m, i) => {
+                const isBot = m.from === "bot";
+                const isLast = i === log.length - 1 || log[i + 1]?.from !== m.from;
+                return isBot ? (
+                  <div key={i} className="pc-ma" style={{ display: "flex", alignItems: "flex-end", gap: 6, maxWidth: "82%", marginBottom: 2 }}>
+                    <StellaAvatar size={26} />
+                    <div style={{
+                      background: "#f2f2f7", color: "#1c1c1e", padding: "10px 14px",
+                      borderRadius: 18, fontSize: 15, lineHeight: 1.45,
+                      ...(isLast ? { borderBottomLeftRadius: 4 } : {}),
+                    }}>{m.text}</div>
                   </div>
                 ) : (
-                  <div key={i} className="pc-msg" style={{ display: "flex", justifyContent: "flex-end" }}>
-                    <div style={{ background: "#111", color: "#fff", padding: "8px 11px", borderRadius: "10px 10px 3px 10px", fontSize: 13, lineHeight: 1.5, maxWidth: "80%" }}>{m.text}</div>
+                  <div key={i} className="pc-ma" style={{ display: "flex", justifyContent: "flex-end", marginBottom: 2 }}>
+                    <div style={{
+                      background: "#3574d1", color: "#fff", padding: "10px 14px",
+                      borderRadius: 18, fontSize: 15, lineHeight: 1.45, maxWidth: "78%",
+                      ...(isLast ? { borderBottomRightRadius: 4 } : {}),
+                    }}>{m.text}</div>
                   </div>
-                )
-              ))}
+                );
+              })}
               {typing && (
-                <div style={{ display: "flex", alignItems: "flex-start", gap: 7, padding: "4px 0" }}>
-                  <BotAvatar />
-                  <div style={{ background: "#f3f3f3", padding: "9px 13px", borderRadius: "3px 10px 10px 10px", display: "flex", gap: 4 }}>
-                    <span className="pc-dot" style={{ animationDelay: "0ms" }} />
-                    <span className="pc-dot" style={{ animationDelay: "150ms" }} />
-                    <span className="pc-dot" style={{ animationDelay: "300ms" }} />
+                <div style={{ display: "flex", alignItems: "flex-end", gap: 6, marginBottom: 2 }}>
+                  <StellaAvatar size={26} />
+                  <div style={{ background: "#f2f2f7", padding: "12px 16px", borderRadius: 18, display: "flex", gap: 5, alignItems: "center" }}>
+                    <span className="pc-td" style={{ animationDelay: "0ms" }} />
+                    <span className="pc-td" style={{ animationDelay: "160ms" }} />
+                    <span className="pc-td" style={{ animationDelay: "320ms" }} />
                   </div>
                 </div>
               )}
+              <div style={{ height: 1 }} />
             </div>
 
-            {/* Input */}
+            {/* Input bar */}
             {inputReady && q?.inputType && !isDone && (
-              <div className="pc-msg" style={{ padding: "6px 12px 12px", borderTop: "1px solid #f2f2f2", display: "flex", flexDirection: "column", gap: 6 }}>
-                <div style={{ display: "flex", gap: 8 }}>
+              <div className="pc-ma" style={{ padding: "8px 10px 14px", borderTop: "1px solid #f2f2f7", background: "#fff" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#f2f2f7", borderRadius: 22, padding: "4px 4px 4px 16px" }}>
                   <input
                     ref={inputRef}
                     type={q.inputType}
@@ -330,34 +426,46 @@ export default function ProfileCompleter({
                     onChange={(e) => setInputVal(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && send()}
                     className="pc-ci"
-                    style={{ flex: 1, padding: "8px 11px", borderRadius: 7, border: "1px solid #e0e0e0", fontSize: 13, color: "#111", background: "#fafafa", transition: "border-color 0.15s ease" }}
+                    style={{ flex: 1, border: "none", background: "transparent", fontSize: 16, color: "#1c1c1e", padding: "8px 0" }}
                     autoFocus
                   />
                   <button
                     onClick={send}
                     disabled={!inputVal.trim()}
-                    style={{ width: 32, height: 32, borderRadius: 7, background: "#111", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: inputVal.trim() ? "pointer" : "default", flexShrink: 0, opacity: inputVal.trim() ? 1 : 0.3 }}
+                    className="pc-sb"
+                    style={{
+                      width: 34, height: 34, borderRadius: 17, background: "#3574d1", border: "none",
+                      display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                      cursor: "pointer", opacity: inputVal.trim() ? 1 : 0.25,
+                      transition: "transform 0.1s ease",
+                    }}
                   >
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" /></svg>
                   </button>
                 </div>
                 {q.skipLabel && (
-                  <button onClick={handleSkip} style={{ background: "none", border: "none", fontSize: 11, color: "#bbb", cursor: "pointer", padding: 0, textAlign: "center" }}>{q.skipLabel}</button>
+                  <button onClick={handleSkip} style={{ background: "none", border: "none", fontSize: 12, color: "#c7c7cc", cursor: "pointer", padding: "6px 0 0", textAlign: "center", width: "100%" }}>{q.skipLabel}</button>
                 )}
               </div>
             )}
 
             {/* Done CTA */}
             {isDone && (
-              <div className="pc-msg" style={{ padding: "6px 12px 12px", borderTop: "1px solid #f2f2f2" }}>
-                <a href="/contractor/sites" style={{ display: "block", width: "100%", padding: "9px", borderRadius: 7, background: "#111", color: "#fff", border: "none", fontSize: 13, fontWeight: 600, textAlign: "center", textDecoration: "none" }}>
+              <div className="pc-ma" style={{ padding: "8px 10px 14px", borderTop: "1px solid #f2f2f7", background: "#fff" }}>
+                <button
+                  onClick={() => { closeModal(); window.location.href = "/contractor/sites"; }}
+                  style={{
+                    width: "100%", padding: "14px", borderRadius: 12, background: "#3574d1",
+                    color: "#fff", border: "none", fontSize: 16, fontWeight: 600, cursor: "pointer",
+                  }}
+                >
                   View your site
-                </a>
+                </button>
               </div>
             )}
-          </>
-        )}
-      </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
