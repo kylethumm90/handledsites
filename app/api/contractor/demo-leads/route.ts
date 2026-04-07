@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import { validateSessionFromRequest } from "@/lib/contractor-auth";
-import { generateSeedLeads } from "@/lib/seed-leads";
 
 /**
  * DELETE /api/contractor/demo-leads
