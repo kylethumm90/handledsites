@@ -145,6 +145,7 @@ export type Lead = {
   status: "lead" | "booked" | "customer";
   tags: string[];
   notes: string | null;
+  is_demo: boolean;
   created_at: string;
 };
 
