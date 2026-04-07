@@ -136,12 +136,12 @@ export default function ProfileCompleter({
   // Nothing to ask
   if (pendingQuestions.length === 0 || dismissed) return null;
 
-  const advanceToNext = (nextIdx: number, newChat: ChatEntry[]) => {
+  const advanceToNext = (nextIdx: number, newChat: ChatEntry[], currentAnswers: Record<string, string | number | string[]>) => {
     if (nextIdx >= pendingQuestions.length) {
       // All done — save everything
       setChat([...newChat, { type: "agent", text: "That's everything. Your sites are being updated now." }]);
       setDone(true);
-      saveAnswers({ ...answers });
+      saveAnswers(currentAnswers);
     } else {
       // Show next question after a brief delay
       setTimeout(() => {
@@ -170,7 +170,7 @@ export default function ProfileCompleter({
     setInputValue("");
 
     const nextIdx = currentIdx + 1;
-    advanceToNext(nextIdx, newChat);
+    advanceToNext(nextIdx, newChat, newAnswers);
   };
 
   const handleSkip = () => {
@@ -181,7 +181,7 @@ export default function ProfileCompleter({
     setInputValue("");
 
     const nextIdx = currentIdx + 1;
-    advanceToNext(nextIdx, newChat);
+    advanceToNext(nextIdx, newChat, answers);
   };
 
   const saveAnswers = async (finalAnswers: Record<string, string | number | string[]>) => {
