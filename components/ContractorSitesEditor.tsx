@@ -24,9 +24,10 @@ function fmtNum(n: number): string {
   return String(n);
 }
 
-const SITE_META: Record<string, { label: string; icon: JSX.Element }> = {
+const SITE_META: Record<string, { label: string; desc: string; icon: JSX.Element }> = {
   business_card: {
     label: "Business Card",
+    desc: "Digital business card with contact info, hours & QR code",
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1d1d1f" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
         <rect x="2" y="4" width="20" height="16" rx="3" />
@@ -36,6 +37,7 @@ const SITE_META: Record<string, { label: string; icon: JSX.Element }> = {
   },
   quiz_funnel: {
     label: "Quiz Funnel",
+    desc: "Lead qualification quiz for homeowner capture",
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1d1d1f" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
         <path d="M9 11l3 3L22 4" />
@@ -45,6 +47,7 @@ const SITE_META: Record<string, { label: string; icon: JSX.Element }> = {
   },
   review_funnel: {
     label: "Review Funnel",
+    desc: "Guided review collection for happy customers",
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1d1d1f" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
         <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
@@ -53,6 +56,7 @@ const SITE_META: Record<string, { label: string; icon: JSX.Element }> = {
   },
   review_wall: {
     label: "Review Wall",
+    desc: "Public showcase of your best reviews",
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1d1d1f" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
         <rect x="3" y="3" width="7" height="9" rx="1.5" />
@@ -64,6 +68,7 @@ const SITE_META: Record<string, { label: string; icon: JSX.Element }> = {
   },
   website: {
     label: "Website",
+    desc: "Full company site with services & CTAs",
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1d1d1f" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="12" cy="12" r="10" />
@@ -253,12 +258,18 @@ function SiteCard({
           {meta.icon}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{
+              fontSize: 15, fontWeight: 600, color: "#1d1d1f",
+              letterSpacing: "-0.02em", lineHeight: 1.2,
+            }}>{meta.label}</span>
+            <LiveBadge />
+          </div>
           <div style={{
-            fontSize: 15, fontWeight: 600, color: "#1d1d1f",
-            letterSpacing: "-0.02em", lineHeight: 1.2,
-          }}>{meta.label}</div>
+            fontSize: 13, fontWeight: 400, color: "#86868b",
+            lineHeight: 1.3, marginTop: 2,
+          }}>{meta.desc}</div>
         </div>
-        <LiveBadge />
         <OpenLink href={siteUrl(site)} />
         {expandable && (
           <button
