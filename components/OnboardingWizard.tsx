@@ -10,7 +10,7 @@ import PhonePreview from "./PhonePreview";
 import QuizPreview from "./QuizPreview";
 import WebsitePreview from "./WebsitePreview";
 
-const TRADES_LIST = ["HVAC", "Plumbing", "Solar", "Pest Control"] as const;
+const TRADES_LIST = ["HVAC", "Plumbing", "Solar", "Pest Control", "Landscaping"] as const;
 type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 type Phase = "form" | "transitioning" | "pause" | "url" | "fan" | "statement" | "actions" | "exit";
 
