@@ -164,7 +164,7 @@ export default function AdminShell({
             <Users className="h-3 w-3" />
             Businesses
           </Link>
-          <Link href="/admin/sites" className={navLinkClass("pulse")}>
+          <Link href="/admin/pulse" className={navLinkClass("pulse")}>
             <BarChart2 className="h-3 w-3" />
             Pulse
           </Link>
