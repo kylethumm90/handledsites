@@ -128,6 +128,12 @@ export type SiteFull = Site & {
   logo_url: string | null;
 };
 
+export type LeadMessage = {
+  from: "ava" | "stella" | "contact";
+  text: string;
+  time: string;
+};
+
 export type Lead = {
   id: string;
   business_id: string;
@@ -136,12 +142,21 @@ export type Lead = {
   name: string;
   phone: string;
   email: string | null;
+  address: string | null;
   answers: Record<string, string> | null;
   service_needed: string | null;
   status: "lead" | "booked" | "customer";
   tags: string[];
   notes: string | null;
   created_at: string;
+  dates: {
+    created: string;
+    booked?: string;
+    appointment?: string;
+    completed?: string;
+  } | null;
+  messages: LeadMessage[] | null;
+  tag_details: Record<string, string> | null;
 };
 
 export type ActivityLogEntry = {
