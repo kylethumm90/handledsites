@@ -144,20 +144,22 @@ export default function ProfileCompleter({
   }, []);
 
   // After greeting, show typing then first question
+  const greetingShownRef = useRef(false);
   useEffect(() => {
-    if (phase !== "questions" || chatLog.length !== 1 || step !== 0) return;
+    if (phase !== "questions" || greetingShownRef.current || step !== 0) return;
+    if (chatLog.length < 1) return;
+    greetingShownRef.current = true;
 
-    const t1 = setTimeout(() => setTyping(true), 600);
-    const t2 = setTimeout(() => {
+    const delay = randomDelay();
+    setTimeout(() => setTyping(true), 600);
+    setTimeout(() => {
       setTyping(false);
       setChatLog((prev) => [...prev, { type: "bot", text: questions[0].message }]);
-    }, 600 + randomDelay());
-    const t3 = setTimeout(() => {
-      setInputReady(true);
-      inputRef.current?.focus();
-    }, 600 + randomDelay() + 400);
-
-    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+      setTimeout(() => {
+        setInputReady(true);
+        inputRef.current?.focus();
+      }, 400);
+    }, 600 + delay);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, chatLog.length]);
 
