@@ -104,19 +104,20 @@ export default function PreviewGenerator() {
           {/* QR Code */}
           <div className="flex flex-col items-center gap-1">
             <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-              <div className="relative">
+              <div>
                 <QRCodeSVG
                   value={`https://handledsites.com/${displayName.toLowerCase().replace(/\s+/g, "-")}`}
                   size={160}
-                  level="M"
+                  level="H"
                   bgColor="#ffffff"
                   fgColor="#0C1A2E"
+                  imageSettings={logoUrl ? {
+                    src: logoUrl,
+                    height: 48,
+                    width: 48,
+                    excavate: true,
+                  } : undefined}
                 />
-                {logoUrl && (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <img src={logoUrl} alt="" className="h-16 w-16 rounded-full border-2 border-white bg-white object-cover shadow-md" />
-                  </div>
-                )}
               </div>
               <p className="mt-2 text-center text-[8px] font-mono text-gray-400">
                 handledsites.com/{displayName.toLowerCase().replace(/\s+/g, "-")}
