@@ -452,8 +452,8 @@ export default function ContractorSettingsEditor({ business }: Props) {
 
               <p className={`text-xs ${domainStatus === "active" ? "text-green-700" : domainStatus === "error" ? "text-red-700" : "text-amber-700"}`}>
                 {domainStatus === "active" && "Domain is active and serving your sites."}
-                {domainStatus === "pending" && "Waiting for DNS configuration..."}
-                {domainStatus === "error" && (domainError || "DNS configuration error.")}
+                {domainStatus === "pending" && "Waiting for DNS configuration. This can take a few minutes to propagate."}
+                {domainStatus === "error" && (domainError || "DNS configuration error. If you just updated your DNS records, it may take a few minutes to propagate — try verifying again shortly.")}
               </p>
 
               {domainStatus !== "active" && (
