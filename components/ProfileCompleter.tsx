@@ -83,6 +83,14 @@ const ALL_QUESTIONS: Question[] = [
 
 type ChatMsg = { from: "bot" | "user"; text: string };
 
+const BotAvatar = () => (
+  <img src="/handled-favicon.png" alt="" style={{ width: 22, height: 22, borderRadius: 6, flexShrink: 0, marginTop: 1 }} />
+);
+
+const HeaderAvatar = () => (
+  <img src="/handled-favicon.png" alt="" style={{ width: 28, height: 28, borderRadius: 7 }} />
+);
+
 export default function ProfileCompleter({
   businessName,
   existing,
@@ -108,6 +116,8 @@ export default function ProfileCompleter({
   const [answers, setAnswers] = useState<Record<string, string | number | string[]>>({});
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const greetingDone = useRef(false);
+  const firstQuestionDone = useRef(false);
 
   const q = step >= 0 && step < questions.length ? questions[step] : null;
   const totalSteps = questions.length;
@@ -121,65 +131,62 @@ export default function ProfileCompleter({
 
   // Greeting sequence
   useEffect(() => {
-    if (questions.length === 0 || minimized || step !== -1) return;
+    if (questions.length === 0 || minimized || greetingDone.current) return;
+    greetingDone.current = true;
     setTyping(true);
-    const t = setTimeout(() => {
+    setTimeout(() => {
       setTyping(false);
       setLog([{
         from: "bot",
         text: `Hey! Let's finish setting up ${businessName}. These answers fill in your site so it's ready for customers.`,
       }]);
       setStep(0);
+
+      // Chain: pause → typing → first question → input
+      setTimeout(() => {
+        setTyping(true);
+        setTimeout(() => {
+          setTyping(false);
+          setLog((p) => [...p, { from: "bot", text: questions[0].message }]);
+          setTimeout(() => {
+            setInputReady(true);
+            firstQuestionDone.current = true;
+            inputRef.current?.focus();
+          }, 350);
+        }, 1100);
+      }, 400);
     }, 1300);
-    return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [minimized]);
 
-  // First question after greeting
+  // Subsequent questions (step > 0)
+  const prevStepRef = useRef(-1);
   useEffect(() => {
-    if (step !== 0 || log.length !== 1 || minimized || questions.length === 0) return;
-    const t1 = setTimeout(() => setTyping(true), 400);
-    const t2 = setTimeout(() => {
-      setTyping(false);
-      setLog((p) => [...p, { from: "bot", text: questions[0].message }]);
-    }, 1500);
-    const t3 = setTimeout(() => {
-      setInputReady(true);
-      inputRef.current?.focus();
-    }, 1900);
-    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, log.length, minimized]);
-
-  // Subsequent questions
-  useEffect(() => {
-    if (step <= 0 || step > questions.length || log.length === 0 || log[log.length - 1].from !== "user") return;
+    if (step <= 0 || step === prevStepRef.current) return;
+    prevStepRef.current = step;
 
     if (step >= questions.length) {
       // Done
       setTyping(true);
       setInputReady(false);
-      const t = setTimeout(() => {
+      setTimeout(() => {
         setTyping(false);
         setLog((p) => [...p, { from: "bot", text: "That's everything. Your site is ready to go." }]);
       }, 800 + Math.random() * 600);
-      return () => clearTimeout(t);
+      return;
     }
 
     setTyping(true);
     setInputReady(false);
     const delay = 800 + Math.random() * 600;
-    const t = setTimeout(() => {
+    setTimeout(() => {
       setTyping(false);
       setLog((p) => [...p, { from: "bot", text: questions[step].message }]);
-      if (questions[step].inputType) {
-        setTimeout(() => {
-          setInputReady(true);
-          inputRef.current?.focus();
-        }, 350);
-      }
+      setTimeout(() => {
+        setInputReady(true);
+        inputRef.current?.focus();
+      }, 350);
     }, delay);
-    return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
@@ -245,14 +252,14 @@ export default function ProfileCompleter({
         .pc-ci:focus { outline: none; border-color: #bbb; }
       `}</style>
 
-      <div style={{ border: "1px solid #e5e5e5", borderRadius: 10, overflow: "hidden", background: "#fff", marginBottom: 20, fontFamily: "'DM Sans', -apple-system, sans-serif" }}>
+      <div style={{ border: "1px solid #e5e5e5", borderRadius: 10, overflow: "hidden", background: "#fff", marginBottom: 20 }}>
         {/* Header */}
         <div
           onClick={() => setMinimized((m) => !m)}
           style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", cursor: "pointer", userSelect: "none" }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ width: 28, height: 28, borderRadius: 7, background: "#3574d1", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700 }}>h</div>
+            <HeaderAvatar />
             <div>
               <div style={{ fontSize: 14, fontWeight: 700, color: "#111", lineHeight: 1.2 }}>handled.</div>
               <div style={{ fontSize: 11, color: "#999", lineHeight: 1.2, marginTop: 1 }}>{isDone ? "Profile complete" : "Setting up your profile"}</div>
@@ -290,7 +297,7 @@ export default function ProfileCompleter({
               {log.map((m, i) => (
                 m.from === "bot" ? (
                   <div key={i} className="pc-msg" style={{ display: "flex", alignItems: "flex-start", gap: 7, maxWidth: "88%" }}>
-                    <div style={{ width: 22, height: 22, borderRadius: 6, background: "#3574d1", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, flexShrink: 0, marginTop: 1 }}>h</div>
+                    <BotAvatar />
                     <div style={{ background: "#f3f3f3", color: "#333", padding: "8px 11px", borderRadius: "3px 10px 10px 10px", fontSize: 13, lineHeight: 1.5 }}>{m.text}</div>
                   </div>
                 ) : (
@@ -301,7 +308,7 @@ export default function ProfileCompleter({
               ))}
               {typing && (
                 <div style={{ display: "flex", alignItems: "flex-start", gap: 7, padding: "4px 0" }}>
-                  <div style={{ width: 22, height: 22, borderRadius: 6, background: "#3574d1", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, flexShrink: 0, marginTop: 1 }}>h</div>
+                  <BotAvatar />
                   <div style={{ background: "#f3f3f3", padding: "9px 13px", borderRadius: "3px 10px 10px 10px", display: "flex", gap: 4 }}>
                     <span className="pc-dot" style={{ animationDelay: "0ms" }} />
                     <span className="pc-dot" style={{ animationDelay: "150ms" }} />
@@ -312,7 +319,7 @@ export default function ProfileCompleter({
             </div>
 
             {/* Input */}
-            {inputReady && q?.inputType && (
+            {inputReady && q?.inputType && !isDone && (
               <div className="pc-msg" style={{ padding: "6px 12px 12px", borderTop: "1px solid #f2f2f2", display: "flex", flexDirection: "column", gap: 6 }}>
                 <div style={{ display: "flex", gap: 8 }}>
                   <input
