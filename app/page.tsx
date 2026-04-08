@@ -1,8 +1,18 @@
 import OnboardingWizard from "@/components/OnboardingWizard";
 import FeatureCards from "@/components/FeatureCards";
 import IncludedChecklist from "@/components/IncludedChecklist";
+import { getSupabaseAdmin } from "@/lib/supabase";
 
-export default function Home() {
+export const dynamic = "force-dynamic";
+
+export default async function Home() {
+  const supabase = getSupabaseAdmin();
+  const { count } = await supabase
+    .from("sites")
+    .select("id", { count: "exact", head: true })
+    .eq("is_active", true);
+
+  const siteCount = count ?? 0;
   return (
     <main className="min-h-screen bg-white">
       {/* Nav */}
@@ -57,7 +67,7 @@ export default function Home() {
                   <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-green-100 text-[10px] font-bold text-green-600 ring-2 ring-white">MT</span>
                   <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-amber-100 text-[10px] font-bold text-amber-600 ring-2 ring-white">KS</span>
                 </span>
-                Trusted by contractors nationwide
+                <strong className="text-gray-900">{siteCount}</strong> sites built for contractors
               </span>
             </div>
           </div>
