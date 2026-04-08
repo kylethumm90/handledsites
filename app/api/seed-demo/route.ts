@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import { generateSeedLeads } from "@/lib/seed-leads";
+import { fireEmailTrigger } from "@/lib/email-automation";
 
 /**
  * POST /api/seed-demo
@@ -61,6 +62,13 @@ export async function POST(request: NextRequest) {
       .insert({ business_id: businessId, plan: "free", status: "active" });
   }
 
+
+  // Fire signup email trigger (non-blocking)
+  try {
+    await fireEmailTrigger("signup", businessId);
+  } catch (e) {
+    console.error("Email trigger failed:", e);
+  }
 
   return NextResponse.json({ seeded: rows.length });
 }
