@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import SiteFooter from "@/components/SiteFooter";
 
 const TONES = ["Professional", "Friendly", "Firm"] as const;
 const MAX_CHARS = 4096;
@@ -345,10 +346,7 @@ export default function ReviewResponseGenerator() {
           <p className="cta-small">Free forever. No credit card required.</p>
         </div>
 
-        {/* Footer */}
-        <footer className="footer">
-          &copy; 2026 handled. | Free tools for contractors who run lean.
-        </footer>
+        <SiteFooter />
       </div>
 
       {/* Waitlist Modal */}

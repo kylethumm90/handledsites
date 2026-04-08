@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import SiteFooter from "@/components/SiteFooter";
 
 type PlaceResult = {
   placeId: string;
@@ -343,9 +344,7 @@ export default function ReviewLinkGenerator() {
           <p className="cta-small">Free forever. No credit card required.</p>
         </div>
 
-        <footer className="footer">
-          &copy; 2026 handled. | Free tools for contractors who run lean.
-        </footer>
+        <SiteFooter />
       </div>
 
       {/* Waitlist Modal */}

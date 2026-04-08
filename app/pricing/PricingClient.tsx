@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import SiteNav from "@/components/SiteNav";
+import SiteFooter from "@/components/SiteFooter";
 
 /* ── SVG Icons ── */
 const CheckDot = () => (
@@ -259,6 +260,7 @@ export default function PricingClient() {
           </div>
 
         </div>
+        <SiteFooter />
       </div>
     </>
   );
