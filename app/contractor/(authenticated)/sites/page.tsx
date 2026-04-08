@@ -71,5 +71,66 @@ export default async function ContractorSitesPage() {
     social_nextdoor: data.social_nextdoor ?? null,
   }));
 
-  return <ContractorSitesEditor sites={sites} customDomain={customDomain} />;
+  // Fetch per-site metrics
+  const siteIds = sites.map((s) => s.id);
+  const businessId = currentSite.business_id;
+
+  const [leadCounts, responseCounts, reviewCount] = await Promise.all([
+    supabase
+      .from("leads")
+      .select("site_id", { count: "exact", head: false })
+      .in("site_id", siteIds)
+      .eq("is_demo", false)
+      .then(({ data }) => {
+        const counts: Record<string, number> = {};
+        (data || []).forEach((r: { site_id: string }) => {
+          counts[r.site_id] = (counts[r.site_id] || 0) + 1;
+        });
+        return counts;
+      }),
+    supabase
+      .from("review_responses")
+      .select("site_id", { count: "exact", head: false })
+      .in("site_id", siteIds)
+      .then(({ data }) => {
+        const counts: Record<string, number> = {};
+        (data || []).forEach((r: { site_id: string }) => {
+          counts[r.site_id] = (counts[r.site_id] || 0) + 1;
+        });
+        return counts;
+      }),
+    supabase
+      .from("reviews")
+      .select("id", { count: "exact", head: true })
+      .eq("business_id", businessId)
+      .then(({ count }) => count ?? 0),
+  ]);
+
+  const siteMetrics: Record<string, { label: string; value: number }[]> = {};
+  for (const site of sites) {
+    switch (site.type) {
+      case "business_card":
+        if (site.review_count != null && site.review_count > 0) {
+          siteMetrics[site.id] = [
+            { label: "Reviews", value: site.review_count },
+            ...(site.avg_rating != null ? [{ label: "Rating", value: site.avg_rating }] : []),
+          ];
+        }
+        break;
+      case "quiz_funnel":
+        siteMetrics[site.id] = [{ label: "Leads", value: leadCounts[site.id] || 0 }];
+        break;
+      case "review_funnel":
+        siteMetrics[site.id] = [{ label: "Responses", value: responseCounts[site.id] || 0 }];
+        break;
+      case "review_wall":
+        siteMetrics[site.id] = [{ label: "Reviews", value: reviewCount }];
+        break;
+      case "website":
+        siteMetrics[site.id] = [{ label: "Leads", value: leadCounts[site.id] || 0 }];
+        break;
+    }
+  }
+
+  return <ContractorSitesEditor sites={sites} customDomain={customDomain} siteMetrics={siteMetrics} />;
 }

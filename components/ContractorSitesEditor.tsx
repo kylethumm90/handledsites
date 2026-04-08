@@ -4,7 +4,8 @@ import { useState, useCallback } from "react";
 import type { ContractorSite } from "@/lib/supabase";
 import { QRCodeSVG } from "qrcode.react";
 
-type Props = { sites: ContractorSite[]; customDomain?: string | null };
+type SiteMetric = { label: string; value: number };
+type Props = { sites: ContractorSite[]; customDomain?: string | null; siteMetrics?: Record<string, SiteMetric[]> };
 
 /* ─── helpers ─── */
 const F = "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', sans-serif";
@@ -215,11 +216,13 @@ function SiteCard({
   site,
   index,
   customDomain,
+  metrics,
   children,
 }: {
   site: ContractorSite;
   index: number;
   customDomain?: string | null;
+  metrics?: SiteMetric[];
   children?: React.ReactNode;
 }) {
   const [hover, setHover] = useState(false);
@@ -302,12 +305,15 @@ function SiteCard({
       {/* Bottom row: URL bar + stats */}
       <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
         <UrlBar url={fullUrl} />
-        {site.review_count != null && site.review_count > 0 && (
+        {metrics && metrics.length > 0 && (
           <div style={{ display: "flex", gap: 16, flexShrink: 0 }}>
-            <Stat value={fmtNum(site.review_count)} label="Reviews" />
-            {site.avg_rating != null && (
-              <Stat value={site.avg_rating.toFixed(1)} label="Rating" />
-            )}
+            {metrics.map((m) => (
+              <Stat
+                key={m.label}
+                value={m.label === "Rating" ? m.value.toFixed(1) : fmtNum(m.value)}
+                label={m.label}
+              />
+            ))}
           </div>
         )}
       </div>
@@ -474,7 +480,7 @@ function BusinessCardSettings({ site }: { site: ContractorSite }) {
 }
 
 /* ─── Main export ─── */
-export default function ContractorSitesEditor({ sites, customDomain }: Props) {
+export default function ContractorSitesEditor({ sites, customDomain, siteMetrics }: Props) {
   const liveSites = sites.length;
 
   return (
@@ -525,7 +531,7 @@ export default function ContractorSitesEditor({ sites, customDomain }: Props) {
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {sites.map((site, i) => (
-            <SiteCard key={site.id} site={site} index={i} customDomain={customDomain}>
+            <SiteCard key={site.id} site={site} index={i} customDomain={customDomain} metrics={siteMetrics?.[site.id]}>
               {site.type === "business_card" && <BusinessCardSettings site={site} />}
             </SiteCard>
           ))}
