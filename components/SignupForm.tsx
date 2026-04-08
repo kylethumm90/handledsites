@@ -231,12 +231,6 @@ export default function SignupForm() {
         body: JSON.stringify({ business_id: bizData.id }),
       }).catch(() => {});
 
-      // Send signup email (fire-and-forget)
-      fetch("/api/send-trigger-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ trigger_type: "signup", business_id: bizData.id }),
-      }).catch(() => {});
 
       setSuccessSlug(slug);
     } catch (err) {

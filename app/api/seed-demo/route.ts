@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import { generateSeedLeads } from "@/lib/seed-leads";
-import { fireEmailTrigger } from "@/lib/email-automation";
+import { addContactToResend } from "@/lib/resend-contacts";
 
 /**
  * POST /api/seed-demo
@@ -31,11 +31,19 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Business not found" }, { status: 404 });
   }
 
-  // Fire signup email trigger (non-blocking, always runs)
+  // Add contact to Resend (non-blocking)
   try {
-    await fireEmailTrigger("signup", businessId);
+    const { data: bizFull } = await supabase
+      .from("businesses")
+      .select("name, owner_name, email, phone, city, state, trade")
+      .eq("id", businessId)
+      .single();
+
+    if (bizFull?.email) {
+      await addContactToResend(bizFull);
+    }
   } catch (e) {
-    console.error("Email trigger failed:", e);
+    console.error("Resend contact sync failed:", e);
   }
 
   // Idempotency check — skip if demo leads already exist
