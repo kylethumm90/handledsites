@@ -41,13 +41,13 @@ export default async function ContractorSettingsPage() {
 
   return (
     <div className="space-y-6">
+      <ContractorSettingsEditor business={business as Business} />
       <div>
         <h2 style={{ fontSize: 20, fontWeight: 700, color: "#1c1c1e", letterSpacing: "-0.02em", marginBottom: 12 }}>
           Plan &amp; Billing
         </h2>
         <PlanSection plan={plan} status={status} hasStripeCustomer={hasStripeCustomer} />
       </div>
-      <ContractorSettingsEditor business={business as Business} />
     </div>
   );
 }
