@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import SiteNav from "@/components/SiteNav";
 
 /* ── SVG Icons ── */
 const CheckDot = () => (
@@ -69,8 +70,6 @@ export default function PricingClient() {
         .pc-card.pc-pop:hover { box-shadow: 0 14px 40px rgba(28,27,24,0.13); }
         .pc-cta-light:hover { background: #E4E0D6 !important; }
         .pc-cta-amber:hover { background: #C47518 !important; }
-        .pc-nav-link:hover { color: #1C1B18 !important; }
-        .pc-nav-cta:hover { background: #2E2D29 !important; }
         .pc-final-btn:hover { background: #C47518 !important; }
         .pc-ut-btn:hover { background: #353B4D !important; }
         @media (max-width: 820px) {
@@ -80,8 +79,6 @@ export default function PricingClient() {
           .pc-proof-item:last-child { border-bottom: none !important; }
           .pc-upgrade { flex-direction: column !important; text-align: center !important; padding: 28px 24px !important; }
           .pc-hero-h1 { font-size: 34px !important; }
-          .pc-nav { padding: 16px 20px !important; }
-          .pc-nav-hide { display: none !important; }
           .pc-feat-grid { grid-template-columns: 1fr !important; }
         }
       `}</style>
@@ -91,15 +88,7 @@ export default function PricingClient() {
 
       <div style={{ position: "relative", zIndex: 1, fontFamily: "'Plus Jakarta Sans', -apple-system, sans-serif", color: "#1C1B18", background: "#FAF8F4", minHeight: "100vh" }}>
 
-        {/* Nav */}
-        <nav className="pc-nav" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 40px", maxWidth: 1080, margin: "0 auto" }}>
-          <a href="/" style={{ fontSize: 24, fontWeight: 800, color: "#1C1B18", letterSpacing: "-0.8px", textDecoration: "none" }}>handled<span style={{ color: "#E08A1E" }}>.</span></a>
-          <div style={{ display: "flex", gap: 28, alignItems: "center" }}>
-            <a className="pc-nav-link pc-nav-hide" href="/" style={{ fontSize: 14, color: "#6D6A60", textDecoration: "none", fontWeight: 500, transition: "color 0.2s" }}>How it works</a>
-            <a className="pc-nav-link pc-nav-hide" href="/pricing" style={{ fontSize: 14, color: "#6D6A60", textDecoration: "none", fontWeight: 500, transition: "color 0.2s" }}>Pricing</a>
-            <a className="pc-nav-cta" href="/" style={{ background: "#252A3A", color: "#fff", padding: "10px 22px", borderRadius: 100, fontSize: 13, fontWeight: 600, textDecoration: "none", transition: "background 0.2s" }}>Get started free</a>
-          </div>
-        </nav>
+        <SiteNav />
 
         {/* Hero */}
         <section className="pc-fade" style={{ textAlign: "center", padding: "72px 24px 12px", maxWidth: 600, margin: "0 auto" }}>

@@ -1,6 +1,7 @@
 import OnboardingWizard from "@/components/OnboardingWizard";
 import FeatureCards from "@/components/FeatureCards";
 import IncludedChecklist from "@/components/IncludedChecklist";
+import SiteNav from "@/components/SiteNav";
 import { getSupabaseAdmin } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
@@ -15,26 +16,7 @@ export default async function Home() {
   const siteCount = count ?? 0;
   return (
     <main className="min-h-screen bg-white">
-      {/* Nav */}
-      <nav className="px-6 pt-6">
-        <div className="mx-auto flex max-w-5xl items-center justify-between">
-          <img src="/logo-dark.png" alt="handled." className="h-7 w-auto" />
-          <div className="flex items-center gap-4">
-            <a
-              href="/contractor/login"
-              className="text-sm font-medium text-gray-500 hover:text-gray-900"
-            >
-              Sign in
-            </a>
-            <a
-              href="#get-started"
-              className="hidden rounded-full bg-gray-900 px-5 py-2 text-sm font-semibold text-white hover:bg-gray-800 sm:inline-block"
-            >
-              Create Free Page
-            </a>
-          </div>
-        </div>
-      </nav>
+      <SiteNav />
 
       {/* Hero section */}
       <section className="px-6 pb-16 pt-12 md:pt-20">
