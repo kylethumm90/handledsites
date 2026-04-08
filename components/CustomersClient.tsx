@@ -358,10 +358,11 @@ export default function CustomersClient({ leads: initialLeads, trade }: Props) {
             className="ct-pipe"
             onClick={() => setFilter("all")}
             style={{
-              width: "100%", padding: "10px 14px", borderRadius: 8, fontSize: 14, fontWeight: 600,
+              width: "100%", padding: "10px 14px", borderRadius: 8, fontSize: 13, fontWeight: 600,
               marginBottom: 8, textAlign: "left",
-              background: filter === "all" ? "#3574d1" : "#f3f3f3",
-              color: filter === "all" ? "#fff" : "#666",
+              background: filter === "all" ? "#f5f5f5" : "#f5f5f5",
+              color: filter === "all" ? "#111" : "#666",
+              border: "1.5px solid #eee",
             }}
           >
             All {counts.all}
