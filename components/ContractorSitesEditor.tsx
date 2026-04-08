@@ -305,17 +305,15 @@ function SiteCard({
       {/* Bottom row: URL bar + stats */}
       <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
         <UrlBar url={fullUrl} />
-        {metrics && metrics.length > 0 && (
-          <div style={{ display: "flex", gap: 16, flexShrink: 0 }}>
-            {metrics.map((m) => (
-              <Stat
-                key={m.label}
-                value={m.label === "Rating" ? m.value.toFixed(1) : fmtNum(m.value)}
-                label={m.label}
-              />
-            ))}
-          </div>
-        )}
+        <div style={{ display: "flex", gap: 16, flexShrink: 0, width: 120, justifyContent: "flex-end" }}>
+          {metrics && metrics.length > 0 && metrics.map((m) => (
+            <Stat
+              key={m.label}
+              value={m.label === "Rating" ? m.value.toFixed(1) : fmtNum(m.value)}
+              label={m.label}
+            />
+          ))}
+        </div>
       </div>
 
       {/* Expandable content */}
