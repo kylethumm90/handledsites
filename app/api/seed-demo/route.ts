@@ -31,6 +31,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Business not found" }, { status: 404 });
   }
 
+  // Fire signup email trigger (non-blocking, always runs)
+  try {
+    await fireEmailTrigger("signup", businessId);
+  } catch (e) {
+    console.error("Email trigger failed:", e);
+  }
+
   // Idempotency check — skip if demo leads already exist
   const { count } = await supabase
     .from("leads")
@@ -62,13 +69,6 @@ export async function POST(request: NextRequest) {
       .insert({ business_id: businessId, plan: "free", status: "active" });
   }
 
-
-  // Fire signup email trigger (non-blocking)
-  try {
-    await fireEmailTrigger("signup", businessId);
-  } catch (e) {
-    console.error("Email trigger failed:", e);
-  }
 
   return NextResponse.json({ seeded: rows.length });
 }
