@@ -2,11 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import { validateSessionFromRequest } from "@/lib/contractor-auth";
 
-/**
- * DELETE /api/contractor/demo-leads
- * Removes all demo leads for the authenticated contractor's business.
- */
-export async function DELETE(request: NextRequest) {
+export async function GET(request: NextRequest) {
   const siteId = await validateSessionFromRequest(request);
   if (!siteId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -24,15 +20,15 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: "Site not found" }, { status: 404 });
   }
 
-  const { error, count } = await supabase
-    .from("leads")
-    .delete({ count: "exact" })
+  const { data: sub } = await supabase
+    .from("subscriptions")
+    .select("plan, status, stripe_customer_id, current_period_end")
     .eq("business_id", site.business_id)
-    .eq("is_demo", true);
+    .single();
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  if (!sub) {
+    return NextResponse.json({ plan: "free", status: "active", stripe_customer_id: null, current_period_end: null });
   }
 
-  return NextResponse.json({ deleted: count ?? 0 });
+  return NextResponse.json(sub);
 }

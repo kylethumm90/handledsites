@@ -95,6 +95,7 @@ export default async function ContractorDashboardPage() {
       totalViews={totalViews}
       googleRating={currentSite.google_rating || null}
       googleReviewCount={currentSite.google_review_count || null}
+      hasDemoLeads={hasDemoLeads}
       profileData={business ? {
         owner_name: business.owner_name,
         years_in_business: business.years_in_business,

@@ -126,3 +126,30 @@ CREATE INDEX idx_contractor_sessions_hash ON contractor_sessions (session_hash);
 -- ALTER TABLE leads ADD COLUMN is_demo BOOLEAN NOT NULL DEFAULT false;
 -- CREATE INDEX idx_leads_is_demo ON leads (business_id) WHERE is_demo = true;
 
+-- ============================================
+-- Subscription billing
+-- ============================================
+
+-- Run as migration:
+--
+-- CREATE TABLE subscriptions (
+--   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+--   business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+--   plan TEXT NOT NULL DEFAULT 'free' CHECK (plan IN ('free', 'sites_pro', 'tools', 'ai')),
+--   status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'canceled', 'past_due', 'trialing')),
+--   stripe_customer_id TEXT,
+--   stripe_subscription_id TEXT,
+--   stripe_price_id TEXT,
+--   current_period_end TIMESTAMPTZ,
+--   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+-- );
+--
+-- CREATE UNIQUE INDEX idx_subscriptions_business ON subscriptions (business_id);
+-- CREATE INDEX idx_subscriptions_stripe_customer ON subscriptions (stripe_customer_id) WHERE stripe_customer_id IS NOT NULL;
+-- CREATE INDEX idx_subscriptions_stripe_sub ON subscriptions (stripe_subscription_id) WHERE stripe_subscription_id IS NOT NULL;
+--
+-- Backfill existing businesses with free plan:
+-- INSERT INTO subscriptions (business_id, plan, status)
+-- SELECT id, 'free', 'active' FROM businesses
+-- WHERE id NOT IN (SELECT business_id FROM subscriptions);
+

@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { Lead } from "@/lib/supabase";
 import { relativeTime, avatarColor, initials } from "@/lib/utils";
 import ProfileCompleter from "@/components/ProfileCompleter";
+import DemoBanner from "@/components/DemoBanner";
 
 type ProfileData = {
   owner_name: string | null;
@@ -31,6 +32,7 @@ type Props = {
   totalViews?: number;
   googleRating: number | null;
   googleReviewCount: number | null;
+  hasDemoLeads?: boolean;
   profileData: ProfileData | null;
 };
 
@@ -77,6 +79,7 @@ export default function DashboardClient({
   totalViews,
   googleRating,
   googleReviewCount,
+  hasDemoLeads,
   profileData,
 }: Props) {
   const router = useRouter();
@@ -209,6 +212,9 @@ export default function DashboardClient({
           </>
         )}
       </div>
+
+      {/* Demo data banner */}
+      {hasDemoLeads && <DemoBanner />}
 
       {/* Closing line */}
       <p style={{ textAlign: "center", fontSize: 13, color: "#ddd", fontStyle: "italic", paddingTop: 8 }}>

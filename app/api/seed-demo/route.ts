@@ -49,5 +49,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  // Also create a free subscription if one doesn't exist
+  const { count: subCount } = await supabase
+    .from("subscriptions")
+    .select("id", { count: "exact", head: true })
+    .eq("business_id", businessId);
+
+  if (!subCount || subCount === 0) {
+    await supabase
+      .from("subscriptions")
+      .insert({ business_id: businessId, plan: "free", status: "active" });
+  }
+
+
   return NextResponse.json({ seeded: rows.length });
 }
