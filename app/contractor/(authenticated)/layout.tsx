@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import LogoutButton from "@/components/LogoutButton";
+import { PlanProvider } from "@/lib/plans";
 
 const TABS = [
   { label: "Dashboard", href: "/contractor/dashboard" },
@@ -94,7 +95,9 @@ export default function ContractorAuthLayout({
         maxWidth: 680, margin: "0 auto",
         padding: "24px 16px 48px",
       }}>
-        {children}
+        <PlanProvider>
+          {children}
+        </PlanProvider>
       </main>
     </div>
   );
