@@ -15,6 +15,12 @@ export default function SiteNav() {
             Pricing
           </Link>
           <Link
+            href="/tools/review-link-generator"
+            className="hidden text-sm font-medium text-gray-500 hover:text-gray-900 sm:inline-block"
+          >
+            Tools
+          </Link>
+          <Link
             href="/contractor/login"
             className="text-sm font-medium text-gray-500 hover:text-gray-900"
           >
