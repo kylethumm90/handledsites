@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
             stripe_price_id: priceId,
             plan,
             status: "active",
-            current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
+            current_period_end: new Date(sub.items.data[0].current_period_end * 1000).toISOString(),
           },
           { onConflict: "business_id" }
         );
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
           plan,
           status,
           stripe_price_id: priceId,
-          current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
+          current_period_end: new Date(sub.items.data[0].current_period_end * 1000).toISOString(),
         })
         .eq("stripe_subscription_id", sub.id);
       break;
