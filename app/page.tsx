@@ -40,7 +40,7 @@ export default async function Home() {
             <div className="mt-6 flex flex-col items-center gap-4 sm:flex-row md:items-start">
               <a
                 href="#get-started"
-                className="inline-block rounded-full bg-gray-900 px-8 py-3.5 text-sm font-bold text-white shadow-lg shadow-gray-900/20 hover:bg-gray-800 transition-all hover:shadow-xl hover:shadow-gray-900/25"
+                className="inline-block rounded-full bg-[#E08A1E] px-8 py-3.5 text-sm font-bold text-white shadow-lg shadow-[#E08A1E]/20 hover:bg-[#C47518] transition-all hover:shadow-xl hover:shadow-[#E08A1E]/25"
               >
                 Create Your Free Page &rarr;
               </a>
