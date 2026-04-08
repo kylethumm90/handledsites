@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { LayoutDashboard, List, Users, FileText, Layers, Wrench, ChevronDown, ExternalLink, BarChart2 } from "lucide-react";
+import { LayoutDashboard, List, Users, FileText, Wrench, ChevronDown, ExternalLink, BarChart2 } from "lucide-react";
 
 const LANDING_PAGES = [
   {
@@ -19,93 +19,22 @@ const LANDING_PAGES = [
   },
 ];
 
-const TEMPLATES: { trade: string; items: { name: string; path: string | null }[] }[] = [
-  {
-    trade: "Solar",
-    items: [
-      { name: "Business Card", path: "/rooftop-power" },
-      { name: "Quiz Funnel", path: "/q/rooftop-power" },
-    ],
-  },
-  {
-    trade: "Electrical",
-    items: [
-      { name: "Business Card", path: "/thumm-electric" },
-      { name: "Quiz Funnel", path: "/q/thumm-electric" },
-    ],
-  },
-  {
-    trade: "Landscaping",
-    items: [
-      { name: "Business Card", path: "/bros-lawncare" },
-      { name: "Quiz Funnel", path: "/q/bros-lawncare" },
-    ],
-  },
-  {
-    trade: "HVAC",
-    items: [
-      { name: "Business Card", path: "/summit-air-solutions" },
-      { name: "Quiz Funnel", path: "/q/summit-air-solutions" },
-    ],
-  },
-  {
-    trade: "Roofing",
-    items: [
-      { name: "Business Card", path: "/apex-roofing" },
-      { name: "Quiz Funnel", path: "/q/apex-roofing" },
-    ],
-  },
-  {
-    trade: "Plumbing",
-    items: [
-      { name: "Business Card", path: "/flowright-plumbing" },
-      { name: "Quiz Funnel", path: "/q/flowright-plumbing" },
-    ],
-  },
-  {
-    trade: "Painting",
-    items: [
-      { name: "Business Card", path: "/colorcraft-painters" },
-      { name: "Quiz Funnel", path: "/q/colorcraft-painters" },
-    ],
-  },
-  {
-    trade: "General Contractor",
-    items: [
-      { name: "Business Card", path: "/buildright-construction" },
-      { name: "Quiz Funnel", path: "/q/buildright-construction" },
-    ],
-  },
-  {
-    trade: "Pest Control",
-    items: [
-      { name: "Business Card", path: null },
-      { name: "Quiz Funnel", path: null },
-    ],
-  },
-];
-
 export default function AdminShell({
   children,
   active,
 }: {
   children: React.ReactNode;
-  active: "dashboard" | "sites" | "businesses" | "pulse" | "templates" | "landing-pages" | "tools";
+  active: "dashboard" | "sites" | "businesses" | "pulse" | "landing-pages" | "tools";
 }) {
   const [lpOpen, setLpOpen] = useState(false);
-  const [tplOpen, setTplOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
   const lpRef = useRef<HTMLDivElement>(null);
-  const tplRef = useRef<HTMLDivElement>(null);
   const toolsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (lpRef.current && !lpRef.current.contains(e.target as Node)) {
         setLpOpen(false);
-      }
-      if (tplRef.current && !tplRef.current.contains(e.target as Node)) {
-        setTplOpen(false);
       }
       if (toolsRef.current && !toolsRef.current.contains(e.target as Node)) {
         setToolsOpen(false);
@@ -169,55 +98,10 @@ export default function AdminShell({
             Pulse
           </Link>
 
-          {/* Templates dropdown */}
-          <div className="relative" ref={tplRef}>
-            <button
-              onClick={() => { setTplOpen(!tplOpen); setLpOpen(false); setToolsOpen(false); }}
-              className={`${navLinkClass("templates")} cursor-pointer`}
-            >
-              <Layers className="h-3 w-3" />
-              Templates
-              <ChevronDown className={`h-2.5 w-2.5 transition-transform ${tplOpen ? "rotate-180" : ""}`} />
-            </button>
-            {tplOpen && (
-              <div className="absolute left-0 top-full z-50 mt-0.5 min-w-[240px] border border-border-dark bg-paper py-1 max-h-[70vh] overflow-y-auto">
-                {TEMPLATES.map((group) => (
-                  <div key={group.trade}>
-                    <div className="px-3 pb-1 pt-2.5 font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-muted">
-                      {group.trade}
-                    </div>
-                    {group.items.map((item) =>
-                      item.path ? (
-                        <a
-                          key={`${group.trade}-${item.name}`}
-                          href={item.path}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center justify-between px-3 py-1.5 font-body text-xs text-ink hover:bg-border-light"
-                        >
-                          {item.name}
-                          <ExternalLink className="h-3 w-3 text-muted" />
-                        </a>
-                      ) : (
-                        <div
-                          key={`${group.trade}-${item.name}`}
-                          className="flex items-center justify-between px-3 py-1.5 font-body text-xs text-muted"
-                        >
-                          {item.name}
-                          <span className="font-mono text-[9px]">N/A</span>
-                        </div>
-                      )
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
           {/* Landing Pages dropdown */}
           <div className="relative" ref={lpRef}>
             <button
-              onClick={() => { setLpOpen(!lpOpen); setTplOpen(false); setToolsOpen(false); }}
+              onClick={() => { setLpOpen(!lpOpen); setToolsOpen(false); }}
               className={`${navLinkClass("landing-pages")} cursor-pointer`}
             >
               <FileText className="h-3 w-3" />
@@ -245,7 +129,7 @@ export default function AdminShell({
           {/* Tools dropdown */}
           <div className="relative" ref={toolsRef}>
             <button
-              onClick={() => { setToolsOpen(!toolsOpen); setLpOpen(false); setTplOpen(false); }}
+              onClick={() => { setToolsOpen(!toolsOpen); setLpOpen(false); }}
               className={`${navLinkClass("tools")} cursor-pointer`}
             >
               <Wrench className="h-3 w-3" />
