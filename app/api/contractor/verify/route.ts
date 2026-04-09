@@ -15,17 +15,17 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const siteId = await verifyMagicLinkToken(token);
-  if (!siteId) {
+  const auth = await verifyMagicLinkToken(token);
+  if (!auth) {
     return NextResponse.json(
       { error: "Invalid or expired link. Please request a new one." },
       { status: 401 }
     );
   }
 
-  const sessionToken = await createSession(siteId);
+  const sessionToken = await createSession(auth);
 
-  const response = NextResponse.json({ success: true, siteId });
+  const response = NextResponse.json({ success: true, siteId: auth.siteId });
   response.cookies.set(CONTRACTOR_COOKIE_NAME, sessionToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",

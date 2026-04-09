@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Business not found" }, { status: 404 });
   }
 
-  // Add contact to Resend (non-blocking)
+  // Add contact to Resend + create user record (non-blocking)
   try {
     const { data: bizFull } = await supabase
       .from("businesses")
@@ -41,9 +41,28 @@ export async function POST(request: NextRequest) {
 
     if (bizFull?.email) {
       await addContactToResend(bizFull);
+
+      // Create user + role link
+      const { data: user } = await supabase
+        .from("users")
+        .upsert(
+          { email: bizFull.email.toLowerCase(), name: bizFull.owner_name },
+          { onConflict: "email" }
+        )
+        .select("id")
+        .single();
+
+      if (user) {
+        await supabase
+          .from("user_business_roles")
+          .upsert(
+            { user_id: user.id, business_id: businessId, role: "owner" },
+            { onConflict: "user_id,business_id" }
+          );
+      }
     }
   } catch (e) {
-    console.error("Resend contact sync failed:", e);
+    console.error("Post-signup sync failed:", e);
   }
 
   // Idempotency check — skip if demo leads already exist

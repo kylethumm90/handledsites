@@ -12,23 +12,12 @@ import {
 
 /** Helper: get business_id from contractor session */
 async function getBusinessId(request: NextRequest): Promise<{ businessId: string } | NextResponse> {
-  const siteId = await validateSessionFromRequest(request);
-  if (!siteId) {
+  const auth = await validateSessionFromRequest(request);
+  if (!auth) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const supabase = getSupabaseAdmin();
-  const { data: site } = await supabase
-    .from("sites")
-    .select("business_id")
-    .eq("id", siteId)
-    .single();
-
-  if (!site) {
-    return NextResponse.json({ error: "Site not found" }, { status: 404 });
-  }
-
-  return { businessId: site.business_id };
+  return { businessId: auth.businessId };
 }
 
 /** POST - Add a custom domain to the business */

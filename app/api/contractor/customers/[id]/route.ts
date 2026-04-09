@@ -6,29 +6,20 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const siteId = await validateSessionFromRequest(request);
-  if (!siteId) {
+  const auth = await validateSessionFromRequest(request);
+  if (!auth) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const { businessId } = auth;
 
   const supabase = getSupabaseAdmin();
-
-  const { data: site } = await supabase
-    .from("sites")
-    .select("business_id")
-    .eq("id", siteId)
-    .single();
-
-  if (!site) {
-    return NextResponse.json({ error: "Site not found" }, { status: 404 });
-  }
 
   // Verify lead belongs to this business
   const { data: lead } = await supabase
     .from("leads")
     .select("id, status, business_id")
     .eq("id", params.id)
-    .eq("business_id", site.business_id)
+    .eq("business_id", businessId)
     .single();
 
   if (!lead) {
@@ -59,7 +50,7 @@ export async function PUT(
   // Log status change
   if (updates.status && updates.status !== lead.status) {
     await supabase.from("activity_log").insert({
-      business_id: site.business_id,
+      business_id: businessId,
       lead_id: params.id,
       type: "status_change",
       summary: `Status changed to ${updates.status}`,

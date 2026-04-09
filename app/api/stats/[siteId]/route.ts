@@ -44,24 +44,18 @@ export async function GET(
   { params }: { params: { siteId: string } }
 ) {
   // Auth: contractor session or admin
-  const siteId = await validateSessionFromRequest(request);
+  const auth = await validateSessionFromRequest(request);
   const supabase = getSupabaseAdmin();
 
-  if (siteId) {
-    // Verify contractor owns this site
-    const { data: ownedSite } = await supabase
-      .from("sites")
-      .select("business_id")
-      .eq("id", siteId)
-      .single();
-
+  if (auth) {
+    // Verify contractor owns the target site
     const { data: targetSite } = await supabase
       .from("sites")
       .select("business_id")
       .eq("id", params.siteId)
       .single();
 
-    if (!ownedSite || !targetSite || ownedSite.business_id !== targetSite.business_id) {
+    if (!targetSite || targetSite.business_id !== auth.businessId) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
   } else {

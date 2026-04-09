@@ -7,20 +7,19 @@ import DashboardClient from "./DashboardClient";
 export const dynamic = "force-dynamic";
 
 export default async function ContractorDashboardPage() {
-  const siteId = await validateSessionFromCookie();
-  if (!siteId) redirect("/contractor/login");
+  const auth = await validateSessionFromCookie();
+  if (!auth) redirect("/contractor/login");
 
+  const { businessId, siteId } = auth;
   const supabase = getSupabaseAdmin();
 
   const { data: currentSite } = await supabase
     .from("sites_full")
-    .select("business_id, business_name, logo_url, google_rating, google_review_count")
+    .select("business_name, logo_url, google_rating, google_review_count")
     .eq("id", siteId)
     .single();
 
   if (!currentSite) redirect("/contractor/login");
-
-  const businessId = currentSite.business_id;
 
   // Fetch business profile for completion check
   const { data: business } = await supabase

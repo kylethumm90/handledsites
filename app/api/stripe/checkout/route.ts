@@ -4,10 +4,11 @@ import { validateSessionFromRequest } from "@/lib/contractor-auth";
 import { getStripe, PLAN_PRICE_MAP } from "@/lib/stripe";
 
 export async function POST(request: NextRequest) {
-  const siteId = await validateSessionFromRequest(request);
-  if (!siteId) {
+  const auth = await validateSessionFromRequest(request);
+  if (!auth) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const { businessId } = auth;
 
   const body = await request.json();
   const plan = body.plan as string;
@@ -23,19 +24,6 @@ export async function POST(request: NextRequest) {
 
   const supabase = getSupabaseAdmin();
   const stripe = getStripe();
-
-  // Get business info
-  const { data: site } = await supabase
-    .from("sites")
-    .select("business_id")
-    .eq("id", siteId)
-    .single();
-
-  if (!site) {
-    return NextResponse.json({ error: "Site not found" }, { status: 404 });
-  }
-
-  const businessId = site.business_id;
 
   const { data: business } = await supabase
     .from("businesses")

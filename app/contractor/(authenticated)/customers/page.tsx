@@ -8,14 +8,15 @@ import DemoBanner from "@/components/DemoBanner";
 export const dynamic = "force-dynamic";
 
 export default async function CustomersPage() {
-  const siteId = await validateSessionFromCookie();
-  if (!siteId) redirect("/contractor/login");
+  const auth = await validateSessionFromCookie();
+  if (!auth) redirect("/contractor/login");
 
+  const { businessId, siteId } = auth;
   const supabase = getSupabaseAdmin();
 
   const { data: site } = await supabase
     .from("sites_full")
-    .select("business_id, trade")
+    .select("trade")
     .eq("id", siteId)
     .single();
 
@@ -24,14 +25,14 @@ export default async function CustomersPage() {
   const { data: leads } = await supabase
     .from("leads")
     .select("*")
-    .eq("business_id", site.business_id)
+    .eq("business_id", businessId)
     .order("created_at", { ascending: false });
 
   // Check for demo leads
   const { count: demoLeadCount } = await supabase
     .from("leads")
     .select("id", { count: "exact", head: true })
-    .eq("business_id", site.business_id)
+    .eq("business_id", businessId)
     .eq("is_demo", true);
 
   const hasDemoLeads = (demoLeadCount ?? 0) > 0;

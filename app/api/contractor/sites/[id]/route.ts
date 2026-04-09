@@ -25,29 +25,25 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const siteId = await validateSessionFromRequest(request);
-  if (!siteId) {
+  const auth = await validateSessionFromRequest(request);
+  if (!auth) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const { businessId } = auth;
 
-  // Ownership check
-  if (params.id !== siteId) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-
-  const body = await request.json();
+  // Ownership check: verify the target site belongs to the same business
   const supabase = getSupabaseAdmin();
-
-  // Look up business_id
-  const { data: site } = await supabase
+  const { data: targetSite } = await supabase
     .from("sites")
     .select("business_id")
     .eq("id", params.id)
     .single();
 
-  if (!site) {
-    return NextResponse.json({ error: "Site not found" }, { status: 404 });
+  if (!targetSite || targetSite.business_id !== businessId) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
+
+  const body = await request.json();
 
   const bizUpdates: Record<string, unknown> = {};
   const siteUpdates: Record<string, unknown> = {};
@@ -74,7 +70,7 @@ export async function PUT(
     const { error } = await supabase
       .from("businesses")
       .update(bizUpdates)
-      .eq("id", site.business_id);
+      .eq("id", businessId);
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
   }
 

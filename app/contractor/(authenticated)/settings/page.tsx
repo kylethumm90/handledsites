@@ -7,23 +7,16 @@ import PlanSection from "@/components/PlanSection";
 export const dynamic = "force-dynamic";
 
 export default async function ContractorSettingsPage() {
-  const siteId = await validateSessionFromCookie();
-  if (!siteId) redirect("/contractor/login");
+  const auth = await validateSessionFromCookie();
+  if (!auth) redirect("/contractor/login");
 
+  const { businessId } = auth;
   const supabase = getSupabaseAdmin();
-
-  const { data: site } = await supabase
-    .from("sites")
-    .select("business_id")
-    .eq("id", siteId)
-    .single();
-
-  if (!site) redirect("/contractor/login");
 
   const { data: business } = await supabase
     .from("businesses")
     .select("*")
-    .eq("id", site.business_id)
+    .eq("id", businessId)
     .single();
 
   if (!business) redirect("/contractor/login");
@@ -32,7 +25,7 @@ export default async function ContractorSettingsPage() {
   const { data: sub } = await supabase
     .from("subscriptions")
     .select("plan, status, stripe_customer_id")
-    .eq("business_id", site.business_id)
+    .eq("business_id", businessId)
     .single();
 
   const plan = sub?.plan || "free";

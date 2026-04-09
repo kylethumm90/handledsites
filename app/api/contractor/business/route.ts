@@ -11,23 +11,11 @@ const ALLOWED_FIELDS = new Set([
 ]);
 
 export async function PUT(request: NextRequest) {
-  const siteId = await validateSessionFromRequest(request);
-  if (!siteId) {
+  const auth = await validateSessionFromRequest(request);
+  if (!auth) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-
-  const supabase = getSupabaseAdmin();
-
-  // Look up business_id from the contractor's site
-  const { data: site } = await supabase
-    .from("sites")
-    .select("business_id")
-    .eq("id", siteId)
-    .single();
-
-  if (!site) {
-    return NextResponse.json({ error: "Site not found" }, { status: 404 });
-  }
+  const { businessId } = auth;
 
   const body = await request.json();
 
@@ -42,10 +30,11 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: "No valid fields" }, { status: 400 });
   }
 
+  const supabase = getSupabaseAdmin();
   const { error } = await supabase
     .from("businesses")
     .update(updates)
-    .eq("id", site.business_id);
+    .eq("id", businessId);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 400 });

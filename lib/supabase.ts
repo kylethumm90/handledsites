@@ -184,3 +184,19 @@ export type Review = {
   source: string;
   is_featured: boolean;
 };
+
+export type User = {
+  id: string;
+  email: string;
+  name: string | null;
+  phone: string | null;
+  created_at: string;
+};
+
+export type UserBusinessRole = {
+  id: string;
+  user_id: string;
+  business_id: string;
+  role: "owner" | "member";
+  created_at: string;
+};

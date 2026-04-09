@@ -6,29 +6,20 @@ export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const siteId = await validateSessionFromRequest(request);
-  if (!siteId) {
+  const auth = await validateSessionFromRequest(request);
+  if (!auth) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const { businessId } = auth;
 
   const supabase = getSupabaseAdmin();
-
-  const { data: site } = await supabase
-    .from("sites")
-    .select("business_id")
-    .eq("id", siteId)
-    .single();
-
-  if (!site) {
-    return NextResponse.json({ error: "Site not found" }, { status: 404 });
-  }
 
   // Verify lead belongs to this business
   const { data: lead } = await supabase
     .from("leads")
     .select("id")
     .eq("id", params.id)
-    .eq("business_id", site.business_id)
+    .eq("business_id", businessId)
     .single();
 
   if (!lead) {
@@ -44,7 +35,7 @@ export async function POST(
   const { data: entry, error } = await supabase
     .from("activity_log")
     .insert({
-      business_id: site.business_id,
+      business_id: businessId,
       lead_id: params.id,
       type: "note",
       summary: body.summary.trim(),

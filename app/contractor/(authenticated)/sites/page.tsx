@@ -6,25 +6,17 @@ import ContractorSitesEditor from "@/components/ContractorSitesEditor";
 export const dynamic = "force-dynamic";
 
 export default async function ContractorSitesPage() {
-  const siteId = await validateSessionFromCookie();
-  if (!siteId) redirect("/contractor/login");
+  const auth = await validateSessionFromCookie();
+  if (!auth) redirect("/contractor/login");
 
+  const { businessId } = auth;
   const supabase = getSupabaseAdmin();
-
-  // Get the site to find business_id
-  const { data: currentSite } = await supabase
-    .from("sites")
-    .select("business_id")
-    .eq("id", siteId)
-    .single();
-
-  if (!currentSite) redirect("/contractor/login");
 
   // Fetch business for custom domain info
   const { data: business } = await supabase
     .from("businesses")
     .select("custom_domain, domain_status")
-    .eq("id", currentSite.business_id)
+    .eq("id", businessId)
     .single();
 
   const customDomain = business?.domain_status === "active" ? business.custom_domain : null;
@@ -33,7 +25,7 @@ export default async function ContractorSitesPage() {
   const { data: allSites } = await supabase
     .from("sites_full")
     .select("*")
-    .eq("business_id", currentSite.business_id)
+    .eq("business_id", businessId)
     .order("type", { ascending: true });
 
   const sites: ContractorSite[] = (allSites || []).map((data) => ({
@@ -73,7 +65,6 @@ export default async function ContractorSitesPage() {
 
   // Fetch per-site metrics
   const siteIds = sites.map((s) => s.id);
-  const businessId = currentSite.business_id;
 
   const [leadCounts, responseCounts, reviewCount] = await Promise.all([
     supabase

@@ -11,25 +11,18 @@ export default async function CustomerDetailPage({
 }: {
   params: { id: string };
 }) {
-  const siteId = await validateSessionFromCookie();
-  if (!siteId) redirect("/contractor/login");
+  const auth = await validateSessionFromCookie();
+  if (!auth) redirect("/contractor/login");
 
+  const { businessId } = auth;
   const supabase = getSupabaseAdmin();
-
-  const { data: site } = await supabase
-    .from("sites")
-    .select("business_id")
-    .eq("id", siteId)
-    .single();
-
-  if (!site) redirect("/contractor/login");
 
   // Fetch lead, verify ownership
   const { data: lead } = await supabase
     .from("leads")
     .select("*")
     .eq("id", params.id)
-    .eq("business_id", site.business_id)
+    .eq("business_id", businessId)
     .single();
 
   if (!lead) notFound();

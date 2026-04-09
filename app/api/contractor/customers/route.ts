@@ -3,22 +3,11 @@ import { getSupabaseAdmin } from "@/lib/supabase";
 import { validateSessionFromRequest } from "@/lib/contractor-auth";
 
 export async function POST(request: NextRequest) {
-  const siteId = await validateSessionFromRequest(request);
-  if (!siteId) {
+  const auth = await validateSessionFromRequest(request);
+  if (!auth) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-
-  const supabase = getSupabaseAdmin();
-
-  const { data: site } = await supabase
-    .from("sites")
-    .select("business_id")
-    .eq("id", siteId)
-    .single();
-
-  if (!site) {
-    return NextResponse.json({ error: "Site not found" }, { status: 404 });
-  }
+  const { businessId } = auth;
 
   const body = await request.json();
 
@@ -26,10 +15,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Name is required" }, { status: 400 });
   }
 
+  const supabase = getSupabaseAdmin();
   const { data: lead, error } = await supabase
     .from("leads")
     .insert({
-      business_id: site.business_id,
+      business_id: businessId,
       name: body.name.trim(),
       phone: body.phone?.replace(/\D/g, "") || "",
       email: body.email?.trim() || null,
@@ -47,7 +37,7 @@ export async function POST(request: NextRequest) {
 
   // Create activity log entry
   await supabase.from("activity_log").insert({
-    business_id: site.business_id,
+    business_id: businessId,
     lead_id: lead.id,
     type: "lead_created",
     summary: "Added manually",
