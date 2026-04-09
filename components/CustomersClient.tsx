@@ -426,7 +426,7 @@ export default function CustomersClient({ leads: initialLeads, trade }: Props) {
                 <div
                   key={lead.id}
                   className="ct-row"
-                  onClick={() => setSelectedContact(lead)}
+                  onClick={() => window.location.href = `/contractor/customers/${lead.id}`}
                   style={{
                     display: "flex", alignItems: "center", gap: 12, padding: 14,
                     borderBottom: i < filtered.length - 1 ? "1px solid #f0f0f0" : "none",
