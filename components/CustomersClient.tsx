@@ -13,10 +13,10 @@ type Props = {
 
 type Filter = "all" | "lead" | "booked" | "customer";
 
-const STATUS_CFG: Record<string, { label: string; bg: string; color: string; dot: string; activeBg: string }> = {
-  lead: { label: "Lead", bg: "#f3f3f3", color: "#555", dot: "#999", activeBg: "#f3f3f3" },
-  booked: { label: "Booked", bg: "#e8f0fe", color: "#1a56a8", dot: "#3574d1", activeBg: "#e8f0fe" },
-  customer: { label: "Customer", bg: "#e6f4ea", color: "#137333", dot: "#34a06b", activeBg: "#e6f4ea" },
+const STATUS_CFG: Record<string, { label: string; bg: string; color: string; dot: string; border: string }> = {
+  lead: { label: "LEAD", bg: "#FDF6E3", color: "#92400E", dot: "#E0A800", border: "#E0A800" },
+  booked: { label: "BOOKED", bg: "#EEF2FF", color: "#3730A3", dot: "#2F6FED", border: "#2F6FED" },
+  customer: { label: "CUSTOMER", bg: "#2E7D32", color: "#fff", dot: "#2E7D32", border: "#2E7D32" },
 };
 
 const PIPELINE: ("lead" | "booked" | "customer")[] = ["lead", "booked", "customer"];
@@ -27,63 +27,23 @@ function serviceFromLead(lead: Lead): string | null {
   return null;
 }
 
-function LiquidGlassAvatar({ name }: { name: string }) {
+function SimpleAvatar({ name }: { name: string }) {
   const hue = nameHue(name);
   const ini = initials(name);
+  // Use a muted green-brown palette
+  const bg = `hsl(${(hue % 60) + 120}, 25%, 35%)`;
   return (
-    <div style={{ width: 44, height: 44, borderRadius: 22, position: "relative", flexShrink: 0, overflow: "hidden" }}>
-      <div style={{
-        position: "absolute", inset: 0, borderRadius: 22,
-        background: `radial-gradient(ellipse at 30% 20%, hsla(${hue}, 40%, 95%, 0.95), hsla(${hue}, 25%, 88%, 0.7) 60%, hsla(${hue}, 20%, 82%, 0.5))`,
-        backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-      }} />
-      <div style={{
-        position: "absolute", top: 2, left: 6, right: 6, height: 18,
-        borderRadius: "50% 50% 40% 40%",
-        background: "linear-gradient(180deg, rgba(255,255,255,0.75) 0%, rgba(255,255,255,0.0) 100%)",
-        pointerEvents: "none",
-      }} />
-      <div style={{
-        position: "absolute", bottom: 1, left: 8, right: 8, height: 6,
-        borderRadius: "40% 40% 50% 50%",
-        background: "linear-gradient(0deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.0) 100%)",
-        pointerEvents: "none",
-      }} />
-      <div style={{
-        position: "absolute", inset: 0, borderRadius: 22,
-        border: "1px solid rgba(255,255,255,0.6)",
-        boxShadow: `inset 0 1px 2px rgba(255,255,255,0.5), inset 0 -1px 1px rgba(0,0,0,0.03), 0 1px 3px hsla(${hue}, 15%, 50%, 0.1), 0 2px 8px hsla(${hue}, 10%, 50%, 0.06)`,
-        pointerEvents: "none",
-      }} />
-      <div style={{
-        position: "relative", zIndex: 1, width: "100%", height: "100%",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        fontSize: 15, fontWeight: 600, color: `hsl(${hue}, 20%, 40%)`,
-        letterSpacing: "-0.01em", textShadow: "0 0.5px 0 rgba(255,255,255,0.4)",
-      }}>
-        {ini}
-      </div>
+    <div style={{
+      width: 44, height: 44, borderRadius: 22, flexShrink: 0,
+      background: bg,
+      display: "flex", alignItems: "center", justifyContent: "center",
+      fontSize: 15, fontWeight: 700, color: "#fff", letterSpacing: "0.02em",
+    }}>
+      {ini}
     </div>
   );
 }
 
-function TagIcon({ type }: { type: string }) {
-  const c = "#bbb";
-  if (type === "review") return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill={c}><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z" /></svg>
-  );
-  if (type === "referral") return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4-4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 00-3-3.87" /><path d="M16 3.13a4 4 0 010 7.75" />
-    </svg>
-  );
-  if (type === "repeat") return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M17 1l4 4-4 4" /><path d="M3 11V9a4 4 0 014-4h14" /><path d="M7 23l-4-4 4-4" /><path d="M21 13v2a4 4 0 01-4 4H3" />
-    </svg>
-  );
-  return null;
-}
 
 function SizedGlassAvatar({ name, size = 44 }: { name: string; size?: number }) {
   const hue = nameHue(name);
@@ -343,72 +303,104 @@ export default function CustomersClient({ leads: initialLeads, trade }: Props) {
       <div>
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-          <div style={{ fontSize: 24, fontWeight: 700, color: "#111", letterSpacing: "-0.02em" }}>Customers</div>
+          <div style={{ fontSize: 26, fontWeight: 800, color: "#1F2937", letterSpacing: "-0.03em" }}>Customers</div>
           <button
             onClick={() => setShowAdd(true)}
-            style={{ background: "#111", color: "#fff", border: "none", fontSize: 14, fontWeight: 600, padding: "10px 18px", borderRadius: 8, cursor: "pointer" }}
+            style={{ background: "#1F2937", color: "#fff", border: "none", fontSize: 14, fontWeight: 600, padding: "10px 20px", borderRadius: 8, cursor: "pointer" }}
           >
             + Add
           </button>
         </div>
 
-        {/* Pipeline */}
-        <div style={{ marginBottom: 16 }}>
-          <button
-            className="ct-pipe"
-            onClick={() => setFilter("all")}
-            style={{
-              width: "100%", padding: "10px 14px", borderRadius: 8, fontSize: 13, fontWeight: 600,
-              marginBottom: 8, textAlign: "left",
-              background: filter === "all" ? "#f5f5f5" : "#f5f5f5",
-              color: filter === "all" ? "#111" : "#666",
-              border: "1.5px solid #eee",
-            }}
-          >
-            All {counts.all}
-          </button>
-          <div style={{ display: "flex", gap: 8 }}>
-            {PIPELINE.map((stage) => {
-              const cfg = STATUS_CFG[stage];
-              const active = filter === stage;
-              return (
-                <button
-                  key={stage}
-                  className="ct-pipe"
-                  onClick={() => setFilter(filter === stage ? "all" : stage)}
-                  style={{
-                    flex: 1, padding: "10px 12px", borderRadius: 8, textAlign: "left",
-                    background: active ? cfg.activeBg : "#fff",
-                    border: `1.5px solid ${active ? cfg.dot : "#eee"}`,
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <div style={{ width: 8, height: 8, borderRadius: 4, background: cfg.dot, flexShrink: 0 }} />
-                    <span style={{ fontSize: 13, color: active ? cfg.color : "#888", fontWeight: 600 }}>{cfg.label}</span>
-                  </div>
-                  <div style={{ fontSize: 22, fontWeight: 700, color: active ? cfg.color : "#333", letterSpacing: "-0.02em", marginTop: 2 }}>
-                    {counts[stage]}
-                  </div>
-                </button>
-              );
-            })}
+        {/* Alert banner */}
+        {(counts.customer > 0 || counts.lead > 0) && (
+          <div style={{
+            background: "#FDF6E3", border: "1px solid #F3E8C8", borderRadius: 10,
+            padding: "14px 16px", marginBottom: 16,
+            display: "flex", alignItems: "flex-start", gap: 10,
+            fontSize: 14, color: "#6B5B3A", lineHeight: 1.5,
+          }}>
+            <span style={{ fontSize: 16, flexShrink: 0 }}>⚡</span>
+            <span>
+              {counts.customer > 0 && <><strong>{counts.customer} customer{counts.customer !== 1 ? "s" : ""}</strong> ready for review requests. </>}
+              {counts.lead > 0 && <><strong>{counts.lead} lead{counts.lead !== 1 ? "s" : ""}</strong> haven&#39;t been contacted in 3+ days.</>}
+            </span>
           </div>
-          <div style={{ display: "flex", alignItems: "center", padding: "0 4px", marginTop: -4, marginBottom: 4, pointerEvents: "none" }}>
-            <div style={{ flex: 1 }} />
-            <div style={{ flex: 1, textAlign: "center", fontSize: 14, color: "#ddd", fontWeight: 600 }}>&rarr;</div>
-            <div style={{ flex: 1, textAlign: "center", fontSize: 14, color: "#ddd", fontWeight: 600 }}>&rarr;</div>
-          </div>
+        )}
+
+        {/* Stat cards */}
+        <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+          {PIPELINE.map((stage) => (
+            <div key={stage} style={{
+              flex: 1, padding: "14px 16px",
+              border: "1px solid #E5E7EB", borderRadius: 8,
+              background: "#fff",
+            }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                {stage === "lead" ? "Leads" : stage === "booked" ? "Booked" : "Customers"}
+              </div>
+              <div style={{ fontSize: 28, fontWeight: 800, color: "#1F2937", marginTop: 4, letterSpacing: "-0.02em" }}>
+                {counts[stage]}
+              </div>
+            </div>
+          ))}
         </div>
 
         {/* Search */}
-        <input
-          type="text"
-          placeholder="Search..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="ct-search"
-          style={{ width: "100%", padding: "12px 14px", border: "1px solid #e5e5e5", borderRadius: 10, fontSize: 15, color: "#111", background: "#fafafa", marginBottom: 12 }}
-        />
+        <div style={{ position: "relative", marginBottom: 14 }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round" style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)" }}>
+            <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+          </svg>
+          <input
+            type="text"
+            placeholder="Search customers..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="ct-search"
+            style={{ width: "100%", padding: "12px 14px 12px 40px", border: "1px solid #E5E7EB", borderRadius: 10, fontSize: 14, color: "#1F2937", background: "#fff" }}
+          />
+        </div>
+
+        {/* Filter pills */}
+        <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+          {([
+            { key: "all" as Filter, label: "All", count: counts.all },
+            { key: "lead" as Filter, label: "Lead", count: counts.lead },
+            { key: "booked" as Filter, label: "Booked", count: counts.booked },
+            { key: "customer" as Filter, label: "Customer", count: counts.customer },
+          ]).map((f) => {
+            const active = filter === f.key;
+            return (
+              <button
+                key={f.key}
+                className="ct-pipe"
+                onClick={() => setFilter(f.key)}
+                style={{
+                  padding: "7px 14px", borderRadius: 20,
+                  fontSize: 13, fontWeight: 600,
+                  background: active ? "#1F2937" : "#fff",
+                  color: active ? "#fff" : "#6B7280",
+                  border: `1px solid ${active ? "#1F2937" : "#E5E7EB"}`,
+                  display: "flex", alignItems: "center", gap: 5,
+                }}
+              >
+                {f.label}
+                <span style={{
+                  fontSize: 11, fontWeight: 700,
+                  color: active ? "rgba(255,255,255,0.7)" : "#9CA3AF",
+                }}>{f.count}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Section label */}
+        <div style={{
+          fontSize: 11, fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase",
+          letterSpacing: "0.08em", marginBottom: 10,
+        }}>
+          {filter === "all" ? "All Customers" : STATUS_CFG[filter]?.label || "Filtered"}
+        </div>
 
         {/* Contact list */}
         {filtered.length === 0 ? (
@@ -416,11 +408,10 @@ export default function CustomersClient({ leads: initialLeads, trade }: Props) {
             {leads.length === 0 ? "No customers yet. Share your site and quiz funnel to start collecting leads." : "No one matches your search."}
           </div>
         ) : (
-          <div style={{ border: "1px solid #eee", borderRadius: 12, overflow: "hidden" }}>
+          <div style={{ border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden", background: "#fff" }}>
             {filtered.map((lead, i) => {
               const cfg = STATUS_CFG[lead.status] || STATUS_CFG.lead;
               const service = serviceFromLead(lead);
-              const tags = lead.tags || [];
 
               return (
                 <div
@@ -428,32 +419,25 @@ export default function CustomersClient({ leads: initialLeads, trade }: Props) {
                   className="ct-row"
                   onClick={() => window.location.href = `/contractor/customers/${lead.id}`}
                   style={{
-                    display: "flex", alignItems: "center", gap: 12, padding: 14,
-                    borderBottom: i < filtered.length - 1 ? "1px solid #f0f0f0" : "none",
+                    display: "flex", alignItems: "center", gap: 14, padding: "16px 16px",
+                    borderBottom: i < filtered.length - 1 ? "1px solid #F3F4F6" : "none",
                   }}
                 >
-                  <LiquidGlassAvatar name={lead.name} />
+                  <SimpleAvatar name={lead.name} />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-                      <span style={{ fontSize: 16, fontWeight: 600, color: "#111", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{lead.name}</span>
-                      <span style={{
-                        fontSize: 11, fontWeight: 600, padding: "2px 7px", borderRadius: 4, flexShrink: 0,
-                        background: cfg.bg, color: cfg.color,
-                      }}>
-                        {cfg.label}
-                      </span>
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 3 }}>
-                      <span style={{ fontSize: 13, color: "#999" }}>
-                        {service || "No service"} &middot; {relativeTime(lead.created_at)}
-                      </span>
-                      {tags.length > 0 && (
-                        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                          {tags.map((t) => <TagIcon key={t} type={t} />)}
-                        </div>
-                      )}
+                    <span style={{ fontSize: 16, fontWeight: 700, color: "#1F2937" }}>{lead.name}</span>
+                    <div style={{ fontSize: 13, color: "#9CA3AF", marginTop: 2 }}>
+                      {service || "No service"} &middot; {relativeTime(lead.created_at)}
                     </div>
                   </div>
+                  <span style={{
+                    fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 4, flexShrink: 0,
+                    letterSpacing: "0.03em",
+                    background: cfg.bg, color: cfg.color,
+                    border: lead.status === "customer" ? "none" : `1px solid ${cfg.border}30`,
+                  }}>
+                    {cfg.label}
+                  </span>
                 </div>
               );
             })}
