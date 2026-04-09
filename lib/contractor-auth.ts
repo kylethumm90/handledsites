@@ -194,6 +194,13 @@ export async function createSession(ctx: AuthContext): Promise<string> {
   });
 
   if (error) throw new Error("Failed to create session");
+
+  // Update last_login_at
+  await supabase
+    .from("users")
+    .update({ last_login_at: new Date().toISOString() })
+    .eq("id", ctx.userId);
+
   return sessionToken;
 }
 

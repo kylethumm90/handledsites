@@ -15,7 +15,7 @@ export default async function AdminUsersPage() {
   // Get all users with their business roles
   const { data: users } = await supabase
     .from("users")
-    .select("id, email, name, created_at")
+    .select("id, email, name, created_at, last_login_at")
     .order("created_at", { ascending: false });
 
   if (!users || users.length === 0) {
@@ -95,6 +95,7 @@ export default async function AdminUsersPage() {
               <th className="px-4 py-3 font-medium">Role</th>
               <th className="px-4 py-3 font-medium">Trade</th>
               <th className="px-4 py-3 font-medium">Joined</th>
+              <th className="px-4 py-3 font-medium">Last Login</th>
               <th className="px-4 py-3 font-medium">Status</th>
               <th className="px-4 py-3 font-medium"></th>
             </tr>
@@ -143,6 +144,19 @@ export default async function AdminUsersPage() {
                       month: "short",
                       day: "numeric",
                     })}
+                  </td>
+                  <td className="px-4 py-3 text-gray-400">
+                    {user.last_login_at
+                      ? new Date(user.last_login_at).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                        }) +
+                        " " +
+                        new Date(user.last_login_at).toLocaleTimeString("en-US", {
+                          hour: "numeric",
+                          minute: "2-digit",
+                        })
+                      : "Never"}
                   </td>
                   <td className="px-4 py-3">
                     {isActive ? (
