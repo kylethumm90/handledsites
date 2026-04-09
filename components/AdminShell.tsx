@@ -12,7 +12,6 @@ const TABS = [
   { key: "businesses", label: "Businesses", href: "/admin/businesses" },
   { key: "sites", label: "Sites", href: "/admin/sites" },
   { key: "pulse", label: "Pulse", href: "/admin/pulse" },
-  { key: "emails", label: "Emails", href: "/admin/emails" },
 ];
 
 const LANDING_PAGES = [
