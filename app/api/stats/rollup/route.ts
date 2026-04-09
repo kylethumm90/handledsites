@@ -11,16 +11,20 @@ export async function POST(request: NextRequest) {
 }
 
 async function handleRollup(request: NextRequest) {
-  // Auth: check PULSE_API_KEY or Vercel cron secret
+  // Auth: Vercel cron secret (via header) or PULSE_API_KEY
   const authHeader = request.headers.get("authorization") || "";
   const cronSecret = process.env.CRON_SECRET;
   const pulseKey = process.env.PULSE_API_KEY;
 
-  const isAuthorized =
+  // Vercel cron jobs don't send auth headers — they're authenticated
+  // at the infrastructure level. Allow requests from Vercel's cron
+  // by checking the x-vercel-cron header, or fallback to bearer token.
+  const isVercelCron = request.headers.get("x-vercel-cron") === "1";
+  const isBearerAuth =
     (pulseKey && authHeader === `Bearer ${pulseKey}`) ||
     (cronSecret && authHeader === `Bearer ${cronSecret}`);
 
-  if (!isAuthorized) {
+  if (!isVercelCron && !isBearerAuth) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
