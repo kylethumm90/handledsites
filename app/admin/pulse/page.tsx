@@ -183,62 +183,26 @@ export default async function PulseOverviewPage() {
 
   return (
     <AdminShell active="pulse">
+      <h1 className="mb-6 text-xl font-semibold text-gray-900">Pulse</h1>
+
       {/* Totals row */}
-      <div
-        className="animate-newsroom-in mb-10 grid grid-cols-3 sm:grid-cols-6"
-        style={{ animationDelay: "0.05s" }}
-      >
-        <div className="py-4 pr-4">
-          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-muted">
-            Views
-          </p>
-          <p className="mt-1 font-display text-[40px] leading-none text-ink">
-            {totals.views}
-          </p>
-        </div>
-        <div className="border-l border-border-dark py-4 px-4">
-          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-muted">
-            Visitors
-          </p>
-          <p className="mt-1 font-display text-[40px] leading-none text-ink">
-            {totals.visitors}
-          </p>
-        </div>
-        <div className="border-l border-border-dark py-4 px-4">
-          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-muted">
-            Calls
-          </p>
-          <p className="mt-1 font-display text-[40px] leading-none text-ink">
-            {totals.phone}
-          </p>
-        </div>
-        <div className="border-l border-border-dark py-4 px-4">
-          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-muted">
-            Texts
-          </p>
-          <p className="mt-1 font-display text-[40px] leading-none text-ink">
-            {totals.text}
-          </p>
-        </div>
-        <div className="border-l border-border-dark py-4 px-4">
-          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-muted">
-            Forms
-          </p>
-          <p className="mt-1 font-display text-[40px] leading-none text-ink">
-            {totals.forms}
-          </p>
-        </div>
-        <div className="border-l border-border-dark py-4 pl-4">
-          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-muted">
-            Reviews
-          </p>
-          <p className="mt-1 font-display text-[40px] leading-none text-ink">
-            {totals.reviews}
-          </p>
-        </div>
+      <div className="mb-8 grid grid-cols-3 gap-3 sm:grid-cols-6">
+        {[
+          { label: "Views", value: totals.views },
+          { label: "Visitors", value: totals.visitors },
+          { label: "Calls", value: totals.phone },
+          { label: "Texts", value: totals.text },
+          { label: "Forms", value: totals.forms },
+          { label: "Reviews", value: totals.reviews },
+        ].map((stat) => (
+          <div key={stat.label} className="rounded-xl border border-gray-200 bg-white px-4 py-4">
+            <p className="text-xs font-medium text-gray-500">{stat.label}</p>
+            <p className="mt-1 text-3xl font-bold text-gray-900">{stat.value}</p>
+          </div>
+        ))}
       </div>
 
-      <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.12em] text-muted">
+      <p className="mb-3 text-xs font-medium text-gray-400">
         Last 30 days across all sites
       </p>
 
