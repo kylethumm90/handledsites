@@ -1,30 +1,27 @@
 import { redirect } from "next/navigation";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
-import { getSupabaseAdmin, SiteFull } from "@/lib/supabase";
+import { getSupabaseAdmin } from "@/lib/supabase";
 import { TRADES } from "@/lib/constants";
 import AdminShell from "@/components/AdminShell";
-import Link from "next/link";
-import { ExternalLink, BarChart2 } from "lucide-react";
 import AdminCreateSiteButton from "@/components/AdminCreateSiteButton";
+import SitesGrouped, { type BusinessGroup } from "./SitesGrouped";
 
 export const dynamic = "force-dynamic";
 
 type Props = {
-  searchParams: { q?: string; trade?: string; page?: string };
+  searchParams: { q?: string; trade?: string };
 };
 
-const PAGE_SIZE = 20;
+export default async function AdminSitesPage({ searchParams }: Props) {
+  if (!isAdminAuthenticated()) redirect("/admin/login");
 
-async function getSites(searchParams: Props["searchParams"]) {
   const supabase = getSupabaseAdmin();
-  const page = parseInt(searchParams.page || "1", 10);
-  const offset = (page - 1) * PAGE_SIZE;
 
+  // Fetch all sites with business info
   let query = supabase
     .from("sites_full")
-    .select("*", { count: "exact" })
-    .order("created_at", { ascending: false })
-    .range(offset, offset + PAGE_SIZE - 1);
+    .select("id, business_id, business_name, owner_name, trade, city, state, type, slug, created_at")
+    .order("business_name", { ascending: true });
 
   if (searchParams.q) {
     query = query.ilike("business_name", `%${searchParams.q}%`);
@@ -33,26 +30,50 @@ async function getSites(searchParams: Props["searchParams"]) {
     query = query.eq("trade", searchParams.trade);
   }
 
-  const { data, count } = await query;
-  return {
-    sites: (data || []) as SiteFull[],
-    total: count || 0,
-    page,
-    totalPages: Math.ceil((count || 0) / PAGE_SIZE),
-  };
-}
+  const { data: sites } = await query;
 
-export default async function AdminSitesPage({ searchParams }: Props) {
-  if (!isAdminAuthenticated()) redirect("/admin/login");
+  // Group by business
+  const bizMap = new Map<string, BusinessGroup>();
+  let totalSites = 0;
 
-  const { sites, total, page, totalPages } = await getSites(searchParams);
+  for (const site of sites || []) {
+    totalSites++;
+    const existing = bizMap.get(site.business_id);
+    if (existing) {
+      existing.sites.push({
+        id: site.id,
+        type: site.type,
+        slug: site.slug,
+        created_at: site.created_at,
+      });
+    } else {
+      bizMap.set(site.business_id, {
+        business_id: site.business_id,
+        business_name: site.business_name,
+        owner_name: site.owner_name,
+        trade: site.trade,
+        city: site.city,
+        state: site.state,
+        sites: [{
+          id: site.id,
+          type: site.type,
+          slug: site.slug,
+          created_at: site.created_at,
+        }],
+      });
+    }
+  }
+
+  const businesses = Array.from(bizMap.values());
 
   return (
     <AdminShell active="sites">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-xl font-semibold text-gray-900">
           All sites{" "}
-          <span className="text-sm font-normal text-gray-400">({total})</span>
+          <span className="text-sm font-normal text-gray-400">
+            ({totalSites} sites across {businesses.length} businesses)
+          </span>
         </h1>
         <AdminCreateSiteButton />
       </div>
@@ -73,9 +94,7 @@ export default async function AdminSitesPage({ searchParams }: Props) {
         >
           <option value="">All trades</option>
           {TRADES.map((t) => (
-            <option key={t} value={t}>
-              {t}
-            </option>
+            <option key={t} value={t}>{t}</option>
           ))}
         </select>
         <button
@@ -86,124 +105,7 @@ export default async function AdminSitesPage({ searchParams }: Props) {
         </button>
       </form>
 
-      {/* Table */}
-      <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="border-b border-gray-100 text-xs text-gray-500">
-              <th className="px-4 py-3 font-medium">Business</th>
-              <th className="px-4 py-3 font-medium">Type</th>
-              <th className="px-4 py-3 font-medium">Owner</th>
-              <th className="px-4 py-3 font-medium">Trade</th>
-              <th className="px-4 py-3 font-medium">Location</th>
-              <th className="px-4 py-3 font-medium">Created</th>
-              <th className="px-4 py-3 font-medium">Pulse</th>
-              <th className="px-4 py-3 font-medium">View</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sites.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={8}
-                  className="px-4 py-8 text-center text-sm text-gray-400"
-                >
-                  No sites found
-                </td>
-              </tr>
-            ) : (
-              sites.map((site) => (
-                <tr
-                  key={site.id}
-                  className="border-b border-gray-50 last:border-0 hover:bg-gray-50"
-                >
-                  <td className="px-4 py-3">
-                    <Link
-                      href={`/admin/sites/${site.id}`}
-                      className="font-medium text-gray-900 hover:text-blue-600"
-                    >
-                      {site.business_name}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                        site.type === "business_card"
-                          ? "bg-gray-100 text-gray-600"
-                          : site.type === "quiz_funnel"
-                          ? "bg-amber-50 text-amber-700"
-                          : site.type === "website"
-                          ? "bg-blue-50 text-blue-700"
-                          : site.type === "review_wall"
-                          ? "bg-purple-50 text-purple-700"
-                          : "bg-green-50 text-green-700"
-                      }`}
-                    >
-                      {site.type === "business_card" ? "Business Card" : site.type === "quiz_funnel" ? "Quiz Funnel" : site.type === "website" ? "Website" : site.type === "review_wall" ? "Review Wall" : "Review Funnel"}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-gray-600">
-                    {site.owner_name}
-                  </td>
-                  <td className="px-4 py-3 text-gray-600">{site.trade}</td>
-                  <td className="px-4 py-3 text-gray-600">
-                    {site.city}, {site.state}
-                  </td>
-                  <td className="px-4 py-3 text-gray-400">
-                    {new Date(site.created_at).toLocaleDateString()}
-                  </td>
-                  <td className="px-4 py-3">
-                    <Link
-                      href={`/admin/pulse/${site.id}`}
-                      className="text-gray-400 hover:text-blue-600"
-                      title="View Pulse analytics"
-                    >
-                      <BarChart2 className="h-3.5 w-3.5" />
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3">
-                    <a
-                      href={site.type === "quiz_funnel" ? `/q/${site.slug}` : site.type === "review_funnel" ? `/r/${site.slug}` : site.type === "website" ? `/s/${site.slug}` : site.type === "review_wall" ? `/reviews/${site.slug}` : `/${site.slug}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-gray-400 hover:text-gray-600"
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" />
-                    </a>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="mt-4 flex items-center justify-between">
-          <p className="text-xs text-gray-400">
-            Page {page} of {totalPages}
-          </p>
-          <div className="flex gap-2">
-            {page > 1 && (
-              <Link
-                href={`/admin/sites?page=${page - 1}${searchParams.q ? `&q=${searchParams.q}` : ""}${searchParams.trade ? `&trade=${searchParams.trade}` : ""}`}
-                className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
-              >
-                Previous
-              </Link>
-            )}
-            {page < totalPages && (
-              <Link
-                href={`/admin/sites?page=${page + 1}${searchParams.q ? `&q=${searchParams.q}` : ""}${searchParams.trade ? `&trade=${searchParams.trade}` : ""}`}
-                className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
-              >
-                Next
-              </Link>
-            )}
-          </div>
-        </div>
-      )}
+      <SitesGrouped businesses={businesses} />
     </AdminShell>
   );
 }
