@@ -3,24 +3,34 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Lead, ActivityLogEntry } from "@/lib/supabase";
-import { ArrowLeft, Phone, Mail } from "lucide-react";
-import { relativeTime, avatarColor, initials, formatPhone } from "@/lib/utils";
+import { formatPhone } from "@/lib/utils";
 
 type Props = {
   lead: Lead;
   timeline: ActivityLogEntry[];
+  counts: { lead: number; booked: number; customer: number };
 };
 
-const STATUSES: { value: "lead" | "booked" | "customer"; label: string; bg: string; text: string; ring: string }[] = [
-  { value: "lead", label: "Lead", bg: "bg-gray-100", text: "text-gray-600", ring: "ring-gray-200" },
-  { value: "booked", label: "Booked", bg: "bg-blue-50", text: "text-blue-700", ring: "ring-blue-200" },
-  { value: "customer", label: "Customer", bg: "bg-green-50", text: "text-green-700", ring: "ring-green-200" },
-];
+// 4-COLOR SYSTEM
+const GREEN = "#2E7D32";
+const BLUE = "#2F6FED";
+const AMBER = "#E0A800";
+const DARK = "#1F2937";
+const GREY_BG = "#F3F4F6";
+const GREY_BORDER = "#D1D5DB";
+
+type Stage = "lead" | "booked" | "customer";
+
+const STAGE_META: Record<Stage, { label: string; color: string }> = {
+  lead: { label: "New", color: AMBER },
+  booked: { label: "Appt Set", color: BLUE },
+  customer: { label: "Sold", color: GREEN },
+};
 
 function sourceLabel(source: string): string {
   switch (source) {
-    case "quiz_funnel": return "Quiz funnel";
-    case "contact_form": return "Contact form";
+    case "quiz_funnel": return "Quiz Funnel";
+    case "contact_form": return "Contact Form";
     case "manual": return "Manual";
     default: return source;
   }
@@ -32,20 +42,30 @@ function serviceFromLead(lead: Lead): string | null {
   return null;
 }
 
-export default function CustomerDetailClient({ lead, timeline: initialTimeline }: Props) {
+function timelineColor(entry: ActivityLogEntry): string {
+  if (entry.agent) return GREEN; // Ava action
+  if (entry.type === "status_change") return BLUE; // system
+  if (entry.summary?.toLowerCase().includes("intent") || entry.summary?.toLowerCase().includes("wants")) return AMBER;
+  if (entry.summary?.toLowerCase().includes("new lead")) return BLUE;
+  return BLUE; // default system
+}
+
+function firstName(name: string): string {
+  return name.split(" ")[0] || name;
+}
+
+export default function CustomerDetailClient({ lead, timeline: initialTimeline, counts }: Props) {
   const router = useRouter();
-  const [status, setStatus] = useState(lead.status);
+  const [status, setStatus] = useState<Stage>(lead.status);
   const [timeline, setTimeline] = useState(initialTimeline);
-  const [noteText, setNoteText] = useState("");
-  const [showNoteInput, setShowNoteInput] = useState(false);
-  const [savingNote, setSavingNote] = useState(false);
 
-  const color = avatarColor(lead.name);
+  const meta = STAGE_META[status];
   const service = serviceFromLead(lead);
+  const name = firstName(lead.name);
 
-  const handleStatusChange = async (newStatus: "lead" | "booked" | "customer") => {
+  const handleStatusChange = async (newStatus: Stage) => {
     const oldStatus = status;
-    setStatus(newStatus); // Optimistic
+    setStatus(newStatus);
 
     try {
       const res = await fetch(`/api/contractor/customers/${lead.id}`, {
@@ -55,7 +75,6 @@ export default function CustomerDetailClient({ lead, timeline: initialTimeline }
       });
       if (!res.ok) throw new Error("Failed");
 
-      // Add to timeline optimistically
       setTimeline((prev) => [
         {
           id: crypto.randomUUID(),
@@ -63,215 +82,330 @@ export default function CustomerDetailClient({ lead, timeline: initialTimeline }
           business_id: lead.business_id,
           lead_id: lead.id,
           type: "status_change",
-          summary: `Status changed to ${newStatus}`,
+          summary: `Status changed to ${STAGE_META[newStatus].label}`,
           agent: null,
         },
         ...prev,
       ]);
     } catch {
-      setStatus(oldStatus); // Revert
+      setStatus(oldStatus);
     }
   };
 
-  const handleAddNote = async () => {
-    if (!noteText.trim()) return;
-    setSavingNote(true);
-
-    try {
-      const res = await fetch(`/api/contractor/customers/${lead.id}/notes`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ summary: noteText.trim() }),
-      });
-      if (!res.ok) throw new Error("Failed");
-      const entry = await res.json();
-
-      setTimeline((prev) => [entry, ...prev]);
-      setNoteText("");
-      setShowNoteInput(false);
-    } catch {
-      // keep input open on error
-    } finally {
-      setSavingNote(false);
-    }
-  };
-
-  const labelClass = "text-[10px] font-medium uppercase tracking-wider text-gray-400";
+  const F = "'Archivo', sans-serif";
 
   return (
-    <div className="pb-20">
-      {/* Back */}
-      <button
-        onClick={() => router.push("/contractor/customers")}
-        className="mb-4 flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Customers
-      </button>
+    <div style={{
+      fontFamily: F,
+      maxWidth: "100%",
+      margin: "0 auto",
+      background: "#fff",
+      minHeight: "100vh",
+      color: DARK,
+      position: "relative",
+      paddingBottom: 68,
+    }}>
+      <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
 
-      {/* Header */}
-      <div className="mb-6 flex items-center gap-3">
-        <div
-          className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full text-base font-semibold text-white"
-          style={{ backgroundColor: color }}
-        >
-          {initials(lead.name)}
+      {/* Stage bar */}
+      <div style={{
+        background: meta.color,
+        padding: "10px 20px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <button onClick={() => router.push("/contractor/customers")} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex" }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2"><path d="M15 18l-6-6 6-6"/></svg>
+          </button>
+          <span style={{ color: "#fff", fontWeight: 800, fontSize: 13, letterSpacing: 0.5, textTransform: "uppercase" }}>
+            {meta.label}
+          </span>
         </div>
-        <div>
-          <h1 className="text-lg font-semibold text-gray-900">{lead.name}</h1>
-          <p className="text-xs text-gray-500">{sourceLabel(lead.source)}</p>
-        </div>
+        <span style={{ color: "rgba(255,255,255,0.5)", fontSize: 11, fontWeight: 700, letterSpacing: -0.3 }}>
+          handled.
+        </span>
       </div>
 
-      {/* Status selector */}
-      <div className="mb-6">
-        <p className={`mb-2 ${labelClass}`}>Status</p>
-        <div className="flex flex-wrap gap-1.5">
-          {STATUSES.map((s) => (
-            <button
-              key={s.value}
-              onClick={() => handleStatusChange(s.value)}
-              className={`rounded-full px-3 py-1.5 text-xs font-medium transition-all ${
-                status === s.value
-                  ? `${s.bg} ${s.text} ring-2 ${s.ring}`
-                  : "bg-gray-50 text-gray-400 hover:bg-gray-100"
-              }`}
-            >
-              {s.label}
-            </button>
-          ))}
+      {/* Name + service */}
+      <div style={{ padding: "22px 20px 18px" }}>
+        <div style={{ fontWeight: 900, fontSize: 26, letterSpacing: -0.8, lineHeight: 1.1, color: DARK }}>
+          {lead.name}
         </div>
-      </div>
-
-      {/* Contact info */}
-      <div className="mb-8 space-y-3">
-        {lead.phone && (
-          <div>
-            <p className={labelClass}>Phone</p>
-            <a
-              href={`tel:${lead.phone}`}
-              className="flex items-center gap-2 text-sm text-gray-900 hover:text-blue-600"
-            >
-              <Phone className="h-3.5 w-3.5 text-gray-400" />
-              {formatPhone(lead.phone)}
-            </a>
-          </div>
-        )}
-        {lead.email && (
-          <div>
-            <p className={labelClass}>Email</p>
-            <a
-              href={`mailto:${lead.email}`}
-              className="flex items-center gap-2 text-sm text-gray-900 hover:text-blue-600"
-            >
-              <Mail className="h-3.5 w-3.5 text-gray-400" />
-              {lead.email}
-            </a>
-          </div>
-        )}
         {service && (
-          <div>
-            <p className={labelClass}>Service needed</p>
-            <p className="text-sm text-gray-900">{service}</p>
+          <div style={{ fontSize: 14, color: "#6B7280", marginTop: 5, fontWeight: 500 }}>
+            {service}
           </div>
         )}
-        <div>
-          <p className={labelClass}>Date added</p>
-          <p className="text-sm text-gray-900">
-            {new Date(lead.created_at).toLocaleDateString("en-US", {
-              month: "long",
-              day: "numeric",
-              year: "numeric",
-            })}
-          </p>
+
+        {/* Alert banner */}
+        <div style={{
+          marginTop: 14,
+          background: "#FDF6E3",
+          borderLeft: `4px solid ${AMBER}`,
+          padding: "11px 14px",
+          fontSize: 13,
+          fontWeight: 700,
+          color: "#92400E",
+        }}>
+          {status === "lead" && "⚡ Wants a quote. Ready to book."}
+          {status === "booked" && "📅 Appointment set. Confirm before the day."}
+          {status === "customer" && "✅ Sold. Time to get the review."}
         </div>
-        {lead.notes && (
-          <div>
-            <p className={labelClass}>Notes</p>
-            <p className="text-sm text-gray-700">{lead.notes}</p>
-          </div>
-        )}
       </div>
 
-      {/* Timeline */}
-      <div>
-        <p className={`mb-3 ${labelClass}`}>Timeline</p>
+      {/* Stage actions */}
+      <div style={{ padding: "0 20px 20px" }}>
+
+        {/* NEW */}
+        {status === "lead" && (<>
+          {lead.phone && (
+            <a href={`tel:${lead.phone}`} style={{
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+              width: "100%", background: GREEN, color: "#fff",
+              padding: "20px 20px", fontSize: 16, fontWeight: 900,
+              fontFamily: F, textDecoration: "none", border: "none",
+              borderRadius: 0, letterSpacing: -0.3, textTransform: "uppercase",
+            }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+              Call {name}
+            </a>
+          )}
+          <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+            <button onClick={() => handleStatusChange("booked")} style={{
+              flex: 1, background: "#fff", border: `2px solid ${GREEN}`,
+              color: GREEN, padding: "16px 12px", fontSize: 14, fontWeight: 800,
+              fontFamily: F, cursor: "pointer", borderRadius: 0,
+            }}>
+              Appt Booked ✓
+            </button>
+            {lead.phone && (
+              <a href={`sms:${lead.phone}`} style={{
+                flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
+                background: "#fff", border: `2px solid ${BLUE}`,
+                color: BLUE, padding: "16px 12px", fontSize: 14, fontWeight: 800,
+                fontFamily: F, textDecoration: "none", borderRadius: 0,
+              }}>
+                Text {name}
+              </a>
+            )}
+          </div>
+        </>)}
+
+        {/* APPT SET */}
+        {status === "booked" && (<>
+          <button style={{
+            width: "100%", background: GREEN, color: "#fff", border: "none",
+            padding: "20px 20px", fontSize: 16, fontWeight: 900,
+            fontFamily: F, cursor: "pointer", borderRadius: 0,
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+            letterSpacing: -0.3, textTransform: "uppercase",
+          }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
+            Confirm Appointment
+          </button>
+          <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+            {lead.phone && (
+              <a href={`sms:${lead.phone}`} style={{
+                flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
+                background: "#fff", border: `2px solid ${BLUE}`,
+                color: BLUE, padding: "16px 12px", fontSize: 14, fontWeight: 800,
+                fontFamily: F, textDecoration: "none", borderRadius: 0,
+              }}>
+                Send Reminder
+              </a>
+            )}
+            <button style={{
+              flex: 1, background: "#fff", border: `2px solid ${GREY_BORDER}`,
+              color: "#6B7280", padding: "16px 12px", fontSize: 14, fontWeight: 800,
+              fontFamily: F, cursor: "pointer", borderRadius: 0,
+            }}>
+              Reschedule
+            </button>
+          </div>
+          <button onClick={() => handleStatusChange("customer")} style={{
+            width: "100%", marginTop: 6, background: "#fff",
+            border: `2px solid ${GREEN}`, color: GREEN,
+            padding: "16px 12px", fontSize: 14, fontWeight: 800,
+            fontFamily: F, cursor: "pointer", borderRadius: 0,
+          }}>
+            Mark as Sold ✓
+          </button>
+        </>)}
+
+        {/* SOLD */}
+        {status === "customer" && (<>
+          <button style={{
+            width: "100%", background: GREEN, color: "#fff", border: "none",
+            padding: "20px 20px", fontSize: 16, fontWeight: 900,
+            fontFamily: F, cursor: "pointer", borderRadius: 0,
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+            letterSpacing: -0.3, textTransform: "uppercase",
+          }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            Send Review Request
+          </button>
+          <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+            <button style={{
+              flex: 1, background: "#fff", border: `2px solid ${GREEN}`,
+              color: GREEN, padding: "16px 12px", fontSize: 14, fontWeight: 800,
+              fontFamily: F, cursor: "pointer", borderRadius: 0,
+            }}>
+              Ask for Referral
+            </button>
+            {lead.phone && (
+              <a href={`tel:${lead.phone}`} style={{
+                flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                background: "#fff", border: `2px solid ${GREY_BORDER}`,
+                color: "#6B7280", padding: "16px 12px", fontSize: 14, fontWeight: 800,
+                fontFamily: F, textDecoration: "none", borderRadius: 0,
+              }}>
+                Call {name}
+              </a>
+            )}
+          </div>
+        </>)}
+      </div>
+
+      {/* Contact card */}
+      <div style={{ padding: "0 20px 20px" }}>
+        <div style={{
+          fontSize: 10, fontWeight: 800, color: "#9CA3AF",
+          textTransform: "uppercase", letterSpacing: 2, marginBottom: 10,
+        }}>
+          Contact
+        </div>
+        <div style={{ background: "#fff", border: `1px solid ${GREY_BORDER}`, overflow: "hidden" }}>
+          {lead.phone && (
+            <a href={`tel:${lead.phone}`} style={{
+              display: "flex", alignItems: "center", padding: "14px 16px",
+              borderBottom: `1px solid ${GREY_BG}`, textDecoration: "none", color: DARK,
+            }}>
+              <div style={{ width: 28, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+              </div>
+              <span style={{ flex: 1, fontSize: 14, fontWeight: 600 }}>{formatPhone(lead.phone)}</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: GREEN, background: `${GREEN}12`, padding: "4px 10px" }}>CALL</span>
+            </a>
+          )}
+          {lead.email && (
+            <a href={`mailto:${lead.email}`} style={{
+              display: "flex", alignItems: "center", padding: "14px 16px",
+              borderBottom: `1px solid ${GREY_BG}`, textDecoration: "none", color: DARK,
+            }}>
+              <div style={{ width: 28, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 7L2 7"/></svg>
+              </div>
+              <span style={{ flex: 1, fontSize: 14, fontWeight: 600 }}>{lead.email}</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: BLUE, background: `${BLUE}12`, padding: "4px 10px" }}>EMAIL</span>
+            </a>
+          )}
+          <div style={{ display: "flex", alignItems: "center", padding: "14px 16px" }}>
+            <div style={{ width: 28, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            </div>
+            <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: "#6B7280" }}>{sourceLabel(lead.source)}</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: "#9CA3AF" }}>
+              {new Date(lead.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Activity timeline */}
+      <div style={{ padding: "0 20px 28px" }}>
+        <div style={{
+          fontSize: 10, fontWeight: 800, color: "#9CA3AF",
+          textTransform: "uppercase", letterSpacing: 2, marginBottom: 14,
+        }}>
+          What Happened
+        </div>
 
         {timeline.length === 0 ? (
-          <p className="text-sm text-gray-400">No activity yet.</p>
+          <div style={{ fontSize: 14, color: "#9CA3AF" }}>No activity yet.</div>
         ) : (
-          <div className="space-y-0">
-            {timeline.map((entry, i) => (
-              <div key={entry.id} className="flex gap-3">
-                {/* Dot + line */}
-                <div className="flex flex-col items-center">
-                  <div className="mt-1.5 h-2.5 w-2.5 flex-shrink-0 rounded-full bg-green-500" />
-                  {i < timeline.length - 1 && (
-                    <div className="w-px flex-1 bg-gray-200" />
-                  )}
-                </div>
-                {/* Content */}
-                <div className="pb-5">
-                  <p className="text-sm text-gray-700">{entry.summary}</p>
-                  <div className="mt-0.5 flex items-center gap-2">
-                    <span className="text-xs text-gray-400">
-                      {relativeTime(entry.created_at)}
-                    </span>
-                    {entry.agent && (
-                      <span className="rounded-full bg-purple-50 px-1.5 py-0.5 text-[10px] font-medium text-purple-600">
-                        {entry.agent}
-                      </span>
-                    )}
+          <div style={{ position: "relative" }}>
+            <div style={{
+              position: "absolute", left: 5, top: 6, bottom: 6,
+              width: 2, background: GREY_BG,
+            }} />
+
+            {timeline.map((entry, i) => {
+              const dotColor = timelineColor(entry);
+              const isIntent = entry.summary?.toLowerCase().includes("wants") || entry.summary?.toLowerCase().includes("intent");
+              return (
+                <div key={entry.id} style={{
+                  display: "flex", alignItems: "flex-start", gap: 14,
+                  paddingBottom: i < timeline.length - 1 ? 16 : 0, position: "relative",
+                }}>
+                  <div style={{
+                    width: 12, height: 12, borderRadius: "50%",
+                    background: dotColor, border: "2px solid #fff",
+                    flexShrink: 0, marginTop: 2, position: "relative", zIndex: 1,
+                  }} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{
+                      fontSize: 14,
+                      fontWeight: isIntent ? 700 : 500,
+                      color: isIntent ? DARK : "#6B7280",
+                      lineHeight: 1.3,
+                    }}>
+                      {entry.summary}
+                      {entry.agent && (
+                        <span style={{ fontSize: 11, color: "#9CA3AF", marginLeft: 6 }}>({entry.agent})</span>
+                      )}
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 500, flexShrink: 0, marginTop: 2 }}>
+                    {new Date(entry.created_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
 
-      {/* Add note - fixed bottom */}
-      <div className="fixed bottom-0 left-0 right-0 border-t border-gray-200 bg-white p-4">
-        <div className="mx-auto max-w-3xl">
-          {showNoteInput ? (
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={noteText}
-                onChange={(e) => setNoteText(e.target.value)}
-                placeholder="Type a note..."
-                className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-gray-400 focus:outline-none"
-                autoFocus
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    handleAddNote();
-                  }
-                }}
-              />
-              <button
-                onClick={handleAddNote}
-                disabled={savingNote || !noteText.trim()}
-                className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
-              >
-                {savingNote ? "..." : "Save"}
-              </button>
-              <button
-                onClick={() => { setShowNoteInput(false); setNoteText(""); }}
-                className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-500 hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-            </div>
-          ) : (
+      {/* Pipeline tabs */}
+      <div style={{
+        position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)",
+        width: "100%", maxWidth: "100%", background: "#fff",
+        borderTop: `1px solid ${GREY_BORDER}`, display: "flex",
+      }}>
+        {([
+          { key: "lead" as Stage, label: "New", color: AMBER, count: counts.lead },
+          { key: "booked" as Stage, label: "Appt Set", color: BLUE, count: counts.booked },
+          { key: "customer" as Stage, label: "Sold", color: GREEN, count: counts.customer },
+        ]).map((tab) => {
+          const isActive = tab.key === status;
+          return (
             <button
-              onClick={() => setShowNoteInput(true)}
-              className="w-full rounded-lg border border-gray-200 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              key={tab.key}
+              onClick={() => handleStatusChange(tab.key)}
+              style={{
+                flex: 1, padding: "12px 0 10px", background: "transparent",
+                border: "none", borderTop: isActive ? `3px solid ${tab.color}` : "3px solid transparent",
+                cursor: "pointer", display: "flex", flexDirection: "column",
+                alignItems: "center", gap: 2, fontFamily: F,
+              }}
             >
-              Add a note
+              <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                <span style={{
+                  fontSize: 12, fontWeight: isActive ? 800 : 600,
+                  color: isActive ? tab.color : "#9CA3AF",
+                }}>{tab.label}</span>
+                <span style={{
+                  fontSize: 10, fontWeight: 700,
+                  color: isActive ? tab.color : "#9CA3AF",
+                  background: isActive ? `${tab.color}15` : GREY_BG,
+                  padding: "1px 6px",
+                  minWidth: 18, textAlign: "center",
+                }}>{tab.count}</span>
+              </div>
             </button>
-          )}
-        </div>
+          );
+        })}
       </div>
     </div>
   );

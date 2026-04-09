@@ -27,17 +27,41 @@ export default async function CustomerDetailPage({
 
   if (!lead) notFound();
 
-  // Fetch activity log
-  const { data: timeline } = await supabase
-    .from("activity_log")
-    .select("*")
-    .eq("lead_id", params.id)
-    .order("created_at", { ascending: false });
+  // Fetch activity log and pipeline counts in parallel
+  const [{ data: timeline }, leadCount, bookedCount, customerCount] = await Promise.all([
+    supabase
+      .from("activity_log")
+      .select("*")
+      .eq("lead_id", params.id)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("leads")
+      .select("id", { count: "exact", head: true })
+      .eq("business_id", businessId)
+      .eq("status", "lead")
+      .eq("is_demo", false)
+      .then(({ count }) => count ?? 0),
+    supabase
+      .from("leads")
+      .select("id", { count: "exact", head: true })
+      .eq("business_id", businessId)
+      .eq("status", "booked")
+      .eq("is_demo", false)
+      .then(({ count }) => count ?? 0),
+    supabase
+      .from("leads")
+      .select("id", { count: "exact", head: true })
+      .eq("business_id", businessId)
+      .eq("status", "customer")
+      .eq("is_demo", false)
+      .then(({ count }) => count ?? 0),
+  ]);
 
   return (
     <CustomerDetailClient
       lead={lead as Lead}
       timeline={(timeline || []) as ActivityLogEntry[]}
+      counts={{ lead: leadCount, booked: bookedCount, customer: customerCount }}
     />
   );
 }
