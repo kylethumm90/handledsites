@@ -38,11 +38,11 @@ export default async function CustomersPage() {
 
   return (
     <>
-      {hasDemoLeads && <DemoBanner />}
       <CustomersClient
         leads={(leads || []) as Lead[]}
         trade={site.trade}
       />
+      {hasDemoLeads && <DemoBanner />}
     </>
   );
 }

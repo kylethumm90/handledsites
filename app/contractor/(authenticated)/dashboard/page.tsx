@@ -85,7 +85,6 @@ export default async function ContractorDashboardPage() {
 
   return (
     <>
-    {hasDemoLeads && <DemoBanner />}
     <DashboardClient
       businessName={currentSite.business_name}
       logoUrl={currentSite.logo_url}
