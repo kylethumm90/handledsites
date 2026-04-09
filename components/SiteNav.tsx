@@ -7,6 +7,7 @@ const TOOLS = [
   { label: "Missed Call Calculator", href: "/tools/missed-call-calculator.html" },
   { label: "Review Link Generator", href: "/tools/review-link-generator" },
   { label: "Review Response Generator", href: "/tools/review-response-generator" },
+  { label: "Google Review Grader", href: "/tools/review-grader" },
 ];
 
 export default function SiteNav() {
