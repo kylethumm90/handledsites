@@ -59,66 +59,43 @@ export default async function AdminDashboard() {
 
   return (
     <AdminShell active="dashboard">
-      {/* Stat columns */}
-      <div
-        className="animate-newsroom-in mb-10 grid grid-cols-3"
-        style={{ animationDelay: "0.05s" }}
-      >
-        <div className="py-4 pr-6">
-          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-muted">
-            Total businesses
-          </p>
-          <p className="mt-1 font-display text-[64px] leading-none text-ink">
-            {stats.total}
-          </p>
-        </div>
-        <div className="border-l border-border-dark py-4 px-6">
-          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-muted">
-            Created today
-          </p>
-          <p className="mt-1 font-display text-[64px] leading-none text-ink">
-            {stats.today}
-          </p>
-        </div>
-        <div className="border-l border-border-dark py-4 pl-6">
-          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-muted">
-            This week
-          </p>
-          <p className="mt-1 font-display text-[64px] leading-none text-ink">
-            {stats.thisWeek}
-          </p>
-        </div>
+      <h1 className="mb-6 text-xl font-semibold text-gray-900">Dashboard</h1>
+
+      {/* Stat cards */}
+      <div className="mb-8 grid grid-cols-3 gap-3">
+        {[
+          { label: "Total businesses", value: stats.total },
+          { label: "Created today", value: stats.today },
+          { label: "This week", value: stats.thisWeek },
+        ].map((s) => (
+          <div key={s.label} className="rounded-xl border border-gray-200 bg-white px-5 py-5">
+            <p className="text-xs font-medium text-gray-500">{s.label}</p>
+            <p className="mt-1 text-4xl font-bold text-gray-900">{s.value}</p>
+          </div>
+        ))}
       </div>
 
       {/* By Trade & Geography */}
-      <div className="mb-10 grid grid-cols-1 lg:grid-cols-2">
+      <div className="mb-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* By Trade */}
-        <div
-          className="animate-newsroom-in pr-8 pb-8 lg:pb-0"
-          style={{ animationDelay: "0.1s" }}
-        >
-          <h2 className="mb-5 font-display text-lg italic text-ink">By Trade</h2>
+        <div className="rounded-xl border border-gray-200 bg-white p-5">
+          <h2 className="mb-4 text-sm font-semibold text-gray-900">By Trade</h2>
           {stats.tradeBreakdown.length === 0 ? (
-            <p className="font-body text-sm text-muted">No data yet</p>
+            <p className="text-sm text-gray-400">No data yet</p>
           ) : (
             <div className="space-y-2.5">
-              {stats.tradeBreakdown.map(([trade, count], i) => (
+              {stats.tradeBreakdown.map(([trade, count]) => (
                 <div key={trade} className="flex items-center gap-3">
-                  <span className="w-[140px] shrink-0 font-body text-[13px] font-medium text-ink">
+                  <span className="w-[130px] shrink-0 text-sm font-medium text-gray-900">
                     {trade}
                   </span>
-                  <div className="relative flex-1 h-3 bg-border-light">
+                  <div className="relative flex-1 h-2.5 rounded-full bg-gray-100">
                     <div
-                      className="animate-bar-in absolute inset-y-0 left-0 bg-ink"
-                      style={{
-                        width: `${Math.max(3, (count / maxTradeCount) * 100)}%`,
-                        animationDelay: `${0.15 + i * 0.05}s`,
-                      }}
+                      className="absolute inset-y-0 left-0 rounded-full bg-gray-900 transition-all duration-500"
+                      style={{ width: `${Math.max(3, (count / maxTradeCount) * 100)}%` }}
                     />
                   </div>
-                  <span className="w-8 text-right font-mono text-[13px] text-muted">
-                    {count}
-                  </span>
+                  <span className="w-8 text-right text-sm text-gray-400">{count}</span>
                 </div>
               ))}
             </div>
@@ -126,45 +103,32 @@ export default async function AdminDashboard() {
         </div>
 
         {/* Geography */}
-        <div
-          className="animate-newsroom-in border-t border-border-dark pt-8 lg:border-t-0 lg:border-l lg:pl-8 lg:pt-0"
-          style={{ animationDelay: "0.15s" }}
-        >
-          <h2 className="mb-5 font-display text-lg italic text-ink">Geography</h2>
+        <div className="rounded-xl border border-gray-200 bg-white p-5">
+          <h2 className="mb-4 text-sm font-semibold text-gray-900">Geography</h2>
           {stats.stateBreakdown.length === 0 ? (
-            <p className="font-body text-sm text-muted">No data yet</p>
+            <p className="text-sm text-gray-400">No data yet</p>
           ) : (
             <>
-              <div className="grid grid-cols-5 gap-px bg-border-light">
+              <div className="grid grid-cols-5 gap-1.5">
                 {stats.stateBreakdown.map(([state, count]) => {
-                  const opacity = Math.max(0.15, count / maxStateCount);
+                  const opacity = Math.max(0.08, count / maxStateCount);
                   return (
                     <div
                       key={state}
-                      className="flex aspect-square flex-col items-center justify-center bg-paper"
-                      style={{ backgroundColor: `rgba(26, 26, 26, ${opacity * 0.12})` }}
+                      className="flex aspect-square flex-col items-center justify-center rounded-lg"
+                      style={{ backgroundColor: `rgba(17, 24, 39, ${opacity * 0.12})` }}
                     >
-                      <span className="font-mono text-sm font-semibold text-ink">
-                        {state}
-                      </span>
-                      <span className="font-display text-[22px] leading-tight text-ink">
-                        {count}
-                      </span>
+                      <span className="text-xs font-semibold text-gray-700">{state}</span>
+                      <span className="text-lg font-bold text-gray-900">{count}</span>
                     </div>
                   );
                 })}
               </div>
-              <div className="mt-4 flex gap-6 border-t border-border-light pt-3">
-                <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted">
-                  {uniqueStates} states
-                </span>
-                <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted">
-                  {uniqueTrades} trades
-                </span>
+              <div className="mt-3 flex gap-4 border-t border-gray-100 pt-3">
+                <span className="text-xs text-gray-400">{uniqueStates} states</span>
+                <span className="text-xs text-gray-400">{uniqueTrades} trades</span>
                 {topState && (
-                  <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted">
-                    Top: {topState[0]} ({topState[1]})
-                  </span>
+                  <span className="text-xs text-gray-400">Top: {topState[0]} ({topState[1]})</span>
                 )}
               </div>
             </>
@@ -173,79 +137,54 @@ export default async function AdminDashboard() {
       </div>
 
       {/* Recent signups */}
-      <div
-        className="animate-newsroom-in"
-        style={{ animationDelay: "0.2s" }}
-      >
-        <h2 className="mb-5 font-display text-lg italic text-ink">Recent Signups</h2>
-        {stats.recent.length === 0 ? (
-          <p className="font-body text-sm text-muted">No businesses yet</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="border-t-2 border-ink border-b border-b-border-dark">
-                  <th className="py-2 pr-4 font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-muted">
-                    Business
-                  </th>
-                  <th className="py-2 pr-4 font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-muted">
-                    Owner
-                  </th>
-                  <th className="py-2 pr-4 font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-muted">
-                    Trade
-                  </th>
-                  <th className="py-2 pr-4 font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-muted">
-                    Location
-                  </th>
-                  <th className="py-2 font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-muted">
-                    Created
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {stats.recent.map((biz, i) => {
-                  const isToday = biz.created_at >= stats.todayStart;
-                  return (
-                    <tr
-                      key={biz.id}
-                      className="animate-row-in border-b border-border-light last:border-0"
-                      style={{ animationDelay: `${0.25 + i * 0.03}s` }}
-                    >
-                      <td className="py-2.5 pr-4">
-                        <Link
-                          href={`/admin/businesses/${biz.id}`}
-                          className="font-body text-sm font-medium text-ink hover:underline"
-                        >
-                          {biz.name}
-                        </Link>
-                      </td>
-                      <td className="py-2.5 pr-4 font-body text-sm text-muted">
-                        {biz.owner_name}
-                      </td>
-                      <td className="py-2.5 pr-4 font-body text-sm text-ink">
-                        {biz.trade}
-                      </td>
-                      <td className="py-2.5 pr-4 font-body text-sm text-muted">
-                        {biz.city}, {biz.state}
-                      </td>
-                      <td className="py-2.5 font-mono text-xs text-muted">
-                        <span className="flex items-center gap-2">
-                          {new Date(biz.created_at).toLocaleDateString()}
-                          {isToday && (
-                            <span className="inline-block bg-ink px-1.5 py-0.5 font-mono text-[9px] font-medium uppercase tracking-wider text-paper">
-                              today
-                            </span>
-                          )}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+      <h2 className="mb-3 text-sm font-semibold text-gray-900">Recent Signups</h2>
+      {stats.recent.length === 0 ? (
+        <p className="text-sm text-gray-400">No businesses yet</p>
+      ) : (
+        <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-gray-100 text-xs text-gray-500">
+                <th className="px-4 py-3 font-medium">Business</th>
+                <th className="px-4 py-3 font-medium">Owner</th>
+                <th className="px-4 py-3 font-medium">Trade</th>
+                <th className="px-4 py-3 font-medium">Location</th>
+                <th className="px-4 py-3 font-medium">Created</th>
+              </tr>
+            </thead>
+            <tbody>
+              {stats.recent.map((biz) => {
+                const isToday = biz.created_at >= stats.todayStart;
+                return (
+                  <tr key={biz.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50">
+                    <td className="px-4 py-3">
+                      <Link
+                        href={`/admin/businesses/${biz.id}`}
+                        className="font-medium text-gray-900 hover:text-blue-600"
+                      >
+                        {biz.name}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-3 text-gray-600">{biz.owner_name}</td>
+                    <td className="px-4 py-3 text-gray-600">{biz.trade}</td>
+                    <td className="px-4 py-3 text-gray-600">{biz.city}, {biz.state}</td>
+                    <td className="px-4 py-3 text-gray-400">
+                      <span className="flex items-center gap-2">
+                        {new Date(biz.created_at).toLocaleDateString()}
+                        {isToday && (
+                          <span className="rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-semibold text-green-700">
+                            Today
+                          </span>
+                        )}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </AdminShell>
   );
 }
