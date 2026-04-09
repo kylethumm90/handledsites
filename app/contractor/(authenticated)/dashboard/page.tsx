@@ -3,7 +3,6 @@ import { validateSessionFromCookie } from "@/lib/contractor-auth";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import type { Lead } from "@/lib/supabase";
 import DashboardClient from "./DashboardClient";
-import DemoBanner from "@/components/DemoBanner";
 
 export const dynamic = "force-dynamic";
 

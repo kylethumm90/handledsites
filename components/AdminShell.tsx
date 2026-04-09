@@ -10,6 +10,7 @@ const EASE = "cubic-bezier(0.25,0.1,0.25,1)";
 const TABS = [
   { key: "dashboard", label: "Dashboard", href: "/admin" },
   { key: "businesses", label: "Businesses", href: "/admin/businesses" },
+  { key: "users", label: "Users", href: "/admin/users" },
   { key: "sites", label: "Sites", href: "/admin/sites" },
   { key: "pulse", label: "Pulse", href: "/admin/pulse" },
 ];
@@ -29,7 +30,7 @@ export default function AdminShell({
   active,
 }: {
   children: React.ReactNode;
-  active: "dashboard" | "sites" | "businesses" | "pulse" | "landing-pages" | "tools" | "emails";
+  active: "dashboard" | "sites" | "businesses" | "users" | "pulse" | "landing-pages" | "tools" | "emails";
 }) {
   const pathname = usePathname();
   const [lpOpen, setLpOpen] = useState(false);
