@@ -174,7 +174,7 @@ export default async function WebsitePage({ params }: { params: { slug: string }
                   <span style={{ fontSize: 14, fontWeight: 800, color: "#fff" }}>{ownerInitials(site.business_name)}</span>
                 </div>
               )}
-              <span className="ws-nav-name">{site.business_name}</span>
+              {!site.logo_url && <span className="ws-nav-name">{site.business_name}</span>}
             </div>
             <div className="ws-nav-right">
               {site.license_number && <span className="ws-nav-license">Lic. {site.license_number}</span>}
