@@ -11,6 +11,7 @@ type Props = {
   counts: { lead: number; booked: number; customer: number };
   existingReferralCode?: string | null;
   referrerName?: string | null;
+  employees?: { id: string; name: string }[];
 };
 
 // 4-COLOR SYSTEM
@@ -56,13 +57,14 @@ function firstName(name: string): string {
   return name.split(" ")[0] || name;
 }
 
-export default function CustomerDetailClient({ lead, timeline: initialTimeline, counts, existingReferralCode, referrerName }: Props) {
+export default function CustomerDetailClient({ lead, timeline: initialTimeline, counts, existingReferralCode, referrerName, employees }: Props) {
   const router = useRouter();
   const [status, setStatus] = useState<Stage>(lead.status);
   const [timeline, setTimeline] = useState(initialTimeline);
   const [referralCode, setReferralCode] = useState<string | null>(existingReferralCode || null);
   const [referralLoading, setReferralLoading] = useState(false);
   const [referralCopied, setReferralCopied] = useState(false);
+  const [assignedEmployee, setAssignedEmployee] = useState<string | null>(lead.employee_id || null);
 
   const meta = STAGE_META[status];
   const service = serviceFromLead(lead);
@@ -328,6 +330,45 @@ export default function CustomerDetailClient({ lead, timeline: initialTimeline, 
           )}
         </div>
       </div>
+
+      {/* Assign rep */}
+      {employees && employees.length > 0 && (
+        <div style={{ padding: "0 20px 20px" }}>
+          <div style={{
+            fontSize: 10, fontWeight: 800, color: "#9CA3AF",
+            textTransform: "uppercase", letterSpacing: 2, marginBottom: 10,
+          }}>
+            Assigned To
+          </div>
+          <select
+            value={assignedEmployee || ""}
+            onChange={async (e) => {
+              const empId = e.target.value || null;
+              setAssignedEmployee(empId);
+              await fetch(`/api/contractor/customers/${lead.id}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ employee_id: empId }),
+              });
+            }}
+            style={{
+              width: "100%", padding: "12px 14px",
+              border: `1px solid ${GREY_BORDER}`, background: "#fff",
+              fontSize: 14, fontWeight: 600, color: assignedEmployee ? DARK : "#9CA3AF",
+              fontFamily: "'Archivo', sans-serif",
+              appearance: "none",
+              backgroundImage: `url("data:image/svg+xml,%3Csvg width='12' height='12' viewBox='0 0 12 12' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M3 4.5L6 7.5L9 4.5' stroke='%239CA3AF' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`,
+              backgroundRepeat: "no-repeat",
+              backgroundPosition: "right 14px center",
+            }}
+          >
+            <option value="">Unassigned</option>
+            {employees.map((emp) => (
+              <option key={emp.id} value={emp.id}>{emp.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* Referral partner — only for Sold contacts */}
       {(status === "customer" || referralCode) && (

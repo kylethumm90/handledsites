@@ -146,6 +146,8 @@ export type Lead = {
   tags: string[];
   notes: string | null;
   is_demo: boolean;
+  referral_code: string | null;
+  employee_id: string | null;
   created_at: string;
 };
 

@@ -82,6 +82,14 @@ export default async function CustomerDetailPage({
     }
   }
 
+  // Fetch employees for assignment dropdown
+  const { data: employees } = await supabase
+    .from("employees")
+    .select("id, name")
+    .eq("business_id", businessId)
+    .eq("is_active", true)
+    .order("name");
+
   return (
     <CustomerDetailClient
       lead={lead as Lead}
@@ -89,6 +97,7 @@ export default async function CustomerDetailPage({
       counts={{ lead: leadCount, booked: bookedCount, customer: customerCount }}
       existingReferralCode={referralPartner?.referral_code || null}
       referrerName={referrerName}
+      employees={(employees || []).map(e => ({ id: e.id, name: e.name }))}
     />
   );
 }
