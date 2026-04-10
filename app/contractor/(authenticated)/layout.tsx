@@ -7,7 +7,7 @@ import { PlanProvider } from "@/lib/plans";
 
 const TABS = [
   { label: "Dashboard", href: "/contractor/dashboard" },
-  { label: "Customers", href: "/contractor/customers" },
+  { label: "Pipeline", href: "/contractor/customers" },
   { label: "Sites", href: "/contractor/sites" },
   { label: "Settings", href: "/contractor/settings" },
 ];

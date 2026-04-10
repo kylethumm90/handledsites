@@ -303,7 +303,7 @@ export default function CustomersClient({ leads: initialLeads, trade }: Props) {
       <div>
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-          <div style={{ fontSize: 26, fontWeight: 800, color: "#1F2937", letterSpacing: "-0.03em" }}>Customers</div>
+          <div style={{ fontSize: 26, fontWeight: 800, color: "#1F2937", letterSpacing: "-0.03em" }}>Pipeline</div>
           <button
             onClick={() => setShowAdd(true)}
             style={{ background: "#1F2937", color: "#fff", border: "none", fontSize: 14, fontWeight: 600, padding: "10px 20px", borderRadius: 8, cursor: "pointer" }}
@@ -399,7 +399,7 @@ export default function CustomersClient({ leads: initialLeads, trade }: Props) {
           fontSize: 11, fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase",
           letterSpacing: "0.08em", marginBottom: 10,
         }}>
-          {filter === "all" ? "All Customers" : STATUS_CFG[filter]?.label || "Filtered"}
+          {filter === "all" ? "All Contacts" : STATUS_CFG[filter]?.label || "Filtered"}
         </div>
 
         {/* Contact list */}
