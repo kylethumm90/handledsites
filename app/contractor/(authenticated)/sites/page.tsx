@@ -133,5 +133,15 @@ export default async function ContractorSitesPage() {
 
   const hasGoogle = !!business?.google_place_id;
 
-  return <ContractorSitesEditor sites={sites} customDomain={customDomain} siteMetrics={siteMetrics} websiteData={websiteData} hasGoogle={hasGoogle} />;
+  // Fetch employees
+  const { data: employees } = await supabase
+    .from("employees")
+    .select("*")
+    .eq("business_id", businessId)
+    .order("created_at", { ascending: true });
+
+  // Get business slug for team URLs
+  const businessSlug = sites.length > 0 ? sites[0].slug : "";
+
+  return <ContractorSitesEditor sites={sites} customDomain={customDomain} siteMetrics={siteMetrics} websiteData={websiteData} hasGoogle={hasGoogle} employees={employees || []} businessSlug={businessSlug} />;
 }

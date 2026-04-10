@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import type { ContractorSite } from "@/lib/supabase";
+import type { ContractorSite, Employee } from "@/lib/supabase";
 import { QRCodeSVG } from "qrcode.react";
 
 type SiteMetric = { label: string; value: number };
 type WebsiteData = { aboutBio: string; heroTagline: string; yearsInBusiness: number | null; licenseNumber: string; serviceAreas: string };
-type Props = { sites: ContractorSite[]; customDomain?: string | null; siteMetrics?: Record<string, SiteMetric[]>; websiteData?: WebsiteData; hasGoogle?: boolean };
+type Props = { sites: ContractorSite[]; customDomain?: string | null; siteMetrics?: Record<string, SiteMetric[]>; websiteData?: WebsiteData; hasGoogle?: boolean; employees?: Employee[]; businessSlug?: string };
 
 /* ─── helpers ─── */
 const F = "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', sans-serif";
@@ -618,8 +618,211 @@ function WebsiteSettings({ data }: { data: WebsiteData }) {
   );
 }
 
+/* ─── Team section ─── */
+function TeamSection({ employees: initial, businessSlug }: { employees: Employee[]; businessSlug: string }) {
+  const [employees, setEmployees] = useState(initial);
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [formName, setFormName] = useState("");
+  const [formTitle, setFormTitle] = useState("");
+  const [formPhone, setFormPhone] = useState("");
+  const [formEmail, setFormEmail] = useState("");
+  const [formBio, setFormBio] = useState("");
+  const [formCerts, setFormCerts] = useState("");
+  const [copied, setCopied] = useState<string | null>(null);
+
+  const resetForm = () => {
+    setFormName(""); setFormTitle(""); setFormPhone(""); setFormEmail(""); setFormBio(""); setFormCerts("");
+    setShowForm(false); setEditingId(null);
+  };
+
+  const startEdit = (emp: Employee) => {
+    setFormName(emp.name); setFormTitle(emp.title || ""); setFormPhone(emp.phone || "");
+    setFormEmail(emp.email || ""); setFormBio(emp.bio || "");
+    setFormCerts((emp.certifications || []).join(", "));
+    setEditingId(emp.id); setShowForm(true);
+  };
+
+  const handleSave = async () => {
+    if (!formName.trim()) return;
+    setSaving(true);
+    const body = {
+      name: formName.trim(),
+      title: formTitle.trim() || null,
+      phone: formPhone.replace(/\D/g, "") || null,
+      email: formEmail.trim() || null,
+      bio: formBio.trim() || null,
+      certifications: formCerts.trim() ? formCerts.split(",").map((s) => s.trim()).filter(Boolean) : null,
+    };
+    try {
+      if (editingId) {
+        const res = await fetch(`/api/contractor/employees/${editingId}`, {
+          method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+        });
+        if (!res.ok) throw new Error();
+        const updated = await res.json();
+        setEmployees(employees.map((e) => (e.id === updated.id ? updated : e)));
+      } else {
+        const res = await fetch("/api/contractor/employees", {
+          method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+        });
+        if (!res.ok) throw new Error();
+        const created = await res.json();
+        setEmployees([...employees, created]);
+      }
+      resetForm();
+    } catch { /* keep form open */ }
+    setSaving(false);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Remove this team member?")) return;
+    const res = await fetch(`/api/contractor/employees/${id}`, { method: "DELETE" });
+    if (res.ok) setEmployees(employees.filter((e) => e.id !== id));
+  };
+
+  const copyUrl = (slug: string) => {
+    const url = `${typeof window !== "undefined" ? window.location.origin : ""}/team/${businessSlug}/${slug}`;
+    navigator.clipboard.writeText(url);
+    setCopied(slug);
+    setTimeout(() => setCopied(null), 1500);
+  };
+
+  const inputStyle: React.CSSProperties = {
+    width: "100%", borderRadius: 10, border: "1px solid rgba(0,0,0,0.06)",
+    background: "rgba(0,0,0,0.025)", padding: "9px 12px", fontSize: 14,
+    color: "#1d1d1f", fontFamily: F, outline: "none",
+  };
+  const labelStyle: React.CSSProperties = {
+    display: "block", fontSize: 11, fontWeight: 500, color: "#86868b",
+    marginBottom: 5, letterSpacing: "0.01em",
+  };
+
+  return (
+    <div style={{ marginTop: 32 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+        <div>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: "#1d1d1f", letterSpacing: "-0.02em", margin: 0 }}>
+            Team
+          </h2>
+          <p style={{ fontSize: 13, color: "#86868b", marginTop: 2 }}>
+            Employee cards your team can share with customers.
+          </p>
+        </div>
+        {!showForm && (
+          <button onClick={() => { resetForm(); setShowForm(true); }} style={{
+            background: "#0071e3", color: "#fff", border: "none", borderRadius: 10,
+            padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer",
+          }}>
+            + Add
+          </button>
+        )}
+      </div>
+
+      {/* Add/Edit form */}
+      {showForm && (
+        <div style={{
+          background: "rgba(255,255,255,0.72)", backdropFilter: "blur(40px)",
+          border: "1px solid rgba(0,0,0,0.04)", borderRadius: 20, padding: "18px 20px",
+          marginBottom: 16,
+        }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+            <div><label style={labelStyle}>Name *</label><input value={formName} onChange={(e) => setFormName(e.target.value)} placeholder="Marcus Rivera" style={inputStyle} /></div>
+            <div><label style={labelStyle}>Title</label><input value={formTitle} onChange={(e) => setFormTitle(e.target.value)} placeholder="Senior Solar Consultant" style={inputStyle} /></div>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+            <div><label style={labelStyle}>Phone</label><input value={formPhone} onChange={(e) => setFormPhone(e.target.value)} placeholder="5125559012" style={inputStyle} /></div>
+            <div><label style={labelStyle}>Email</label><input value={formEmail} onChange={(e) => setFormEmail(e.target.value)} placeholder="marcus@company.com" style={inputStyle} /></div>
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <label style={labelStyle}>Bio</label>
+            <textarea value={formBio} onChange={(e) => setFormBio(e.target.value)} placeholder="A bit about this team member..." rows={3} style={{ ...inputStyle, resize: "vertical" }} />
+          </div>
+          <div style={{ marginBottom: 14 }}>
+            <label style={labelStyle}>Certifications</label>
+            <input value={formCerts} onChange={(e) => setFormCerts(e.target.value)} placeholder="NABCEP Certified, Top Performer" style={inputStyle} />
+            <p style={{ fontSize: 11, color: "#aeaeb2", marginTop: 4 }}>Comma-separated list of badges.</p>
+          </div>
+          <div style={{ display: "flex", gap: 10 }}>
+            <button onClick={handleSave} disabled={saving || !formName.trim()} style={{
+              background: "#0071e3", color: "#fff", border: "none", borderRadius: 10,
+              padding: "9px 20px", fontSize: 13, fontWeight: 600, cursor: "pointer",
+              opacity: saving || !formName.trim() ? 0.5 : 1,
+            }}>
+              {saving ? "Saving..." : editingId ? "Update" : "Add Member"}
+            </button>
+            <button onClick={resetForm} style={{
+              background: "transparent", border: "1px solid rgba(0,0,0,0.1)", borderRadius: 10,
+              padding: "9px 16px", fontSize: 13, fontWeight: 500, color: "#86868b", cursor: "pointer",
+            }}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Employee list */}
+      {employees.length === 0 && !showForm ? (
+        <div style={{
+          background: "rgba(255,255,255,0.72)", borderRadius: 20,
+          border: "1px solid rgba(0,0,0,0.04)", padding: 32, textAlign: "center",
+        }}>
+          <p style={{ fontSize: 14, color: "#86868b", margin: 0 }}>No team members yet.</p>
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {employees.map((emp) => (
+            <div key={emp.id} style={{
+              background: "rgba(255,255,255,0.72)", backdropFilter: "blur(40px)",
+              border: "1px solid rgba(0,0,0,0.04)", borderRadius: 16, padding: "14px 18px",
+              display: "flex", alignItems: "center", gap: 14,
+            }}>
+              {/* Avatar */}
+              <div style={{
+                width: 40, height: 40, borderRadius: 20, flexShrink: 0,
+                background: emp.photo_url ? undefined : "linear-gradient(145deg, rgba(0,0,0,0.03), rgba(0,0,0,0.06))",
+                backgroundImage: emp.photo_url ? `url(${emp.photo_url})` : undefined,
+                backgroundSize: "cover", backgroundPosition: "center",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 14, fontWeight: 600, color: "#86868b",
+              }}>
+                {!emp.photo_url && emp.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()}
+              </div>
+              {/* Info */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: "#1d1d1f" }}>{emp.name}</div>
+                {emp.title && <div style={{ fontSize: 12, color: "#86868b" }}>{emp.title}</div>}
+              </div>
+              {/* Actions */}
+              <button onClick={() => copyUrl(emp.slug)} style={{
+                background: "none", border: "none", cursor: "pointer", padding: 4,
+                fontSize: 11, fontWeight: 500, color: copied === emp.slug ? "#34C759" : "#0071e3",
+              }}>
+                {copied === emp.slug ? "Copied!" : "Copy URL"}
+              </button>
+              <button onClick={() => startEdit(emp)} style={{
+                background: "none", border: "none", cursor: "pointer", padding: 4,
+                fontSize: 11, fontWeight: 500, color: "#86868b",
+              }}>
+                Edit
+              </button>
+              <button onClick={() => handleDelete(emp.id)} style={{
+                background: "none", border: "none", cursor: "pointer", padding: 4,
+                fontSize: 11, fontWeight: 500, color: "#FF3B30",
+              }}>
+                Remove
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ─── Main export ─── */
-export default function ContractorSitesEditor({ sites, customDomain, siteMetrics, websiteData, hasGoogle }: Props) {
+export default function ContractorSitesEditor({ sites, customDomain, siteMetrics, websiteData, hasGoogle, employees: initialEmployees, businessSlug }: Props) {
   const liveSites = sites.length;
 
   return (
@@ -680,6 +883,9 @@ export default function ContractorSitesEditor({ sites, customDomain, siteMetrics
           ))}
         </div>
       )}
+
+      {/* Team section */}
+      <TeamSection employees={initialEmployees || []} businessSlug={businessSlug || ""} />
     </div>
   );
 }
