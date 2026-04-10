@@ -593,7 +593,9 @@ const WEBSITE_CSS = `
 /* REVIEWS */
 .ws-reviews-grid { display: grid; grid-template-columns: 1fr; gap: 14px; }
 .ws-review-card { background: #fff; border: 1px solid #E5E7EB; border-radius: 14px; padding: 20px; }
-.ws-review-text { font-size: 14px; color: #374151; line-height: 1.65; margin-bottom: 14px; }
+.ws-review-text { font-size: 14px; color: #374151; line-height: 1.65; margin-bottom: 14px; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.ws-review-text.ws-review-expanded { -webkit-line-clamp: unset; }
+.ws-review-toggle { font-size: 12px; font-weight: 600; color: #6B7280; cursor: pointer; border: none; background: none; padding: 0; margin-bottom: 14px; }
 .ws-review-author { display: flex; align-items: center; gap: 10px; }
 .ws-review-avatar { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px; color: #fff; flex-shrink: 0; }
 .ws-review-name { font-size: 13px; font-weight: 600; color: #0C1A2E; }
