@@ -511,7 +511,7 @@ function CtaButton({
 
   if (as === "a") {
     return (
-      <a style={baseStyle} {...handlers} {...rest}>
+      <a style={baseStyle} {...handlers} {...rest} onClick={onClick}>
         {children}
       </a>
     );
