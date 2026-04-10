@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import { validateSessionFromRequest } from "@/lib/contractor-auth";
+import { addEmployeeToResend } from "@/lib/resend-contacts";
 
 export async function GET(request: NextRequest) {
   const auth = await validateSessionFromRequest(request);
@@ -56,5 +57,27 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Sync to Resend if employee has email
+  if (data.email) {
+    try {
+      const { data: biz } = await supabase
+        .from("businesses")
+        .select("name, trade")
+        .eq("id", auth.businessId)
+        .single();
+
+      await addEmployeeToResend({
+        email: data.email,
+        name: data.name,
+        phone: data.phone || undefined,
+        businessName: biz?.name || "",
+        trade: biz?.trade || undefined,
+      });
+    } catch {
+      // Non-critical
+    }
+  }
+
   return NextResponse.json(data);
 }

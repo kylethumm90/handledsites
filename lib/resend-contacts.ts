@@ -27,3 +27,28 @@ export async function addContactToResend(business: {
     },
   });
 }
+
+export async function addEmployeeToResend(employee: {
+  email: string;
+  name: string;
+  phone?: string;
+  businessName: string;
+  trade?: string;
+}) {
+  const resend = getResend();
+
+  const [firstName, ...rest] = (employee.name || "").split(" ");
+  const lastName = rest.join(" ");
+
+  await resend.contacts.create({
+    email: employee.email,
+    firstName: firstName || employee.name,
+    lastName: lastName || "",
+    properties: {
+      business_name: employee.businessName || "",
+      phone: employee.phone || "",
+      trade: employee.trade || "",
+      role: "employee",
+    },
+  });
+}
