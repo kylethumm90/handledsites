@@ -10,6 +10,7 @@ type Props = {
   timeline: ActivityLogEntry[];
   counts: { lead: number; booked: number; customer: number };
   existingReferralCode?: string | null;
+  referrerName?: string | null;
 };
 
 // 4-COLOR SYSTEM
@@ -55,7 +56,7 @@ function firstName(name: string): string {
   return name.split(" ")[0] || name;
 }
 
-export default function CustomerDetailClient({ lead, timeline: initialTimeline, counts, existingReferralCode }: Props) {
+export default function CustomerDetailClient({ lead, timeline: initialTimeline, counts, existingReferralCode, referrerName }: Props) {
   const router = useRouter();
   const [status, setStatus] = useState<Stage>(lead.status);
   const [timeline, setTimeline] = useState(initialTimeline);
@@ -305,7 +306,7 @@ export default function CustomerDetailClient({ lead, timeline: initialTimeline, 
               <span style={{ fontSize: 11, fontWeight: 700, color: BLUE, background: `${BLUE}12`, padding: "4px 10px" }}>EMAIL</span>
             </a>
           )}
-          <div style={{ display: "flex", alignItems: "center", padding: "14px 16px" }}>
+          <div style={{ display: "flex", alignItems: "center", padding: "14px 16px", borderBottom: referrerName ? `1px solid ${GREY_BG}` : "none" }}>
             <div style={{ width: 28, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
             </div>
@@ -314,6 +315,17 @@ export default function CustomerDetailClient({ lead, timeline: initialTimeline, 
               {new Date(lead.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
             </span>
           </div>
+          {referrerName && (
+            <div style={{ display: "flex", alignItems: "center", padding: "14px 16px" }}>
+              <div style={{ width: 28, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4-4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/>
+                </svg>
+              </div>
+              <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: "#6B7280" }}>Referred by {referrerName}</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: GREEN, background: `${GREEN}12`, padding: "4px 10px" }}>REFERRAL</span>
+            </div>
+          )}
         </div>
       </div>
 

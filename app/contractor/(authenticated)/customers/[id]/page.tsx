@@ -64,12 +64,31 @@ export default async function CustomerDetailPage({
     .eq("customer_id", params.id)
     .single();
 
+  // Look up who referred this lead (if referral source)
+  let referrerName: string | null = null;
+  if (lead.referral_code) {
+    const { data: rp } = await supabase
+      .from("referral_partners")
+      .select("customer_id")
+      .eq("referral_code", lead.referral_code)
+      .single();
+    if (rp) {
+      const { data: referrer } = await supabase
+        .from("leads")
+        .select("name")
+        .eq("id", rp.customer_id)
+        .single();
+      referrerName = referrer?.name || null;
+    }
+  }
+
   return (
     <CustomerDetailClient
       lead={lead as Lead}
       timeline={(timeline || []) as ActivityLogEntry[]}
       counts={{ lead: leadCount, booked: bookedCount, customer: customerCount }}
       existingReferralCode={referralPartner?.referral_code || null}
+      referrerName={referrerName}
     />
   );
 }
