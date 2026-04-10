@@ -329,7 +329,8 @@ export default function CustomerDetailClient({ lead, timeline: initialTimeline, 
         </div>
       </div>
 
-      {/* Referral partner */}
+      {/* Referral partner — only for Sold contacts */}
+      {(status === "customer" || referralCode) && (
       <div style={{ padding: "0 20px 20px" }}>
         {referralCode ? (
           <div style={{ background: "#fff", border: `1px solid ${GREY_BORDER}`, padding: "14px 16px" }}>
@@ -373,6 +374,7 @@ export default function CustomerDetailClient({ lead, timeline: initialTimeline, 
           </button>
         )}
       </div>
+      )}
 
       {/* Activity timeline */}
       <div style={{ padding: "0 20px 28px" }}>
