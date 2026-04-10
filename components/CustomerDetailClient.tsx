@@ -58,6 +58,9 @@ export default function CustomerDetailClient({ lead, timeline: initialTimeline, 
   const router = useRouter();
   const [status, setStatus] = useState<Stage>(lead.status);
   const [timeline, setTimeline] = useState(initialTimeline);
+  const [referralCode, setReferralCode] = useState<string | null>(null);
+  const [referralLoading, setReferralLoading] = useState(false);
+  const [referralCopied, setReferralCopied] = useState(false);
 
   const meta = STAGE_META[status];
   const service = serviceFromLead(lead);
@@ -311,6 +314,51 @@ export default function CustomerDetailClient({ lead, timeline: initialTimeline, 
             </span>
           </div>
         </div>
+      </div>
+
+      {/* Referral partner */}
+      <div style={{ padding: "0 20px 20px" }}>
+        {referralCode ? (
+          <div style={{ background: "#fff", border: `1px solid ${GREY_BORDER}`, padding: "14px 16px" }}>
+            <div style={{ fontSize: 10, fontWeight: 800, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: 2, marginBottom: 8 }}>Referral Link</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ flex: 1, fontSize: 13, color: DARK, fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {typeof window !== "undefined" ? window.location.origin : ""}/refer/{referralCode}
+              </span>
+              <button onClick={() => {
+                navigator.clipboard.writeText(`${window.location.origin}/refer/${referralCode}`);
+                setReferralCopied(true);
+                setTimeout(() => setReferralCopied(false), 1500);
+              }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600, color: referralCopied ? GREEN : "#6B7280", padding: "4px 8px" }}>
+                {referralCopied ? "Copied!" : "Copy"}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={async () => {
+              setReferralLoading(true);
+              try {
+                const res = await fetch("/api/contractor/referral-partner", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ customer_id: lead.id }),
+                });
+                const data = await res.json();
+                if (data.referral_code) setReferralCode(data.referral_code);
+              } catch { /* ignore */ }
+              setReferralLoading(false);
+            }}
+            disabled={referralLoading}
+            style={{
+              width: "100%", padding: "12px", background: "#fff",
+              border: `1px solid ${GREY_BORDER}`, fontSize: 13, fontWeight: 600,
+              color: "#6B7280", cursor: "pointer", fontFamily: "'Archivo', sans-serif",
+            }}
+          >
+            {referralLoading ? "Creating..." : "Make referral partner"}
+          </button>
+        )}
       </div>
 
       {/* Activity timeline */}
