@@ -354,7 +354,7 @@ export default function ReviewClient({
                   <p className="text-center" style={{ fontSize: 13, color: "#9CA3AF", margin: "12px 0" }}>
                     Then paste it on Google
                   </p>
-                  <CtaButton as="a" href={googleReviewUrl} target="_blank" rel="noopener noreferrer">
+                  <CtaButton as="a" href={googleReviewUrl} target="_blank" rel="noopener noreferrer" onClick={() => setTimeout(() => setDone(true), 2500)}>
                     Leave a review on Google
                     <ExternalLink className="h-4 w-4" />
                   </CtaButton>
@@ -368,7 +368,7 @@ export default function ReviewClient({
           )}
 
           {!generatedReview && googleReviewUrl && (
-            <CtaButton as="a" href={googleReviewUrl} target="_blank" rel="noopener noreferrer">
+            <CtaButton as="a" href={googleReviewUrl} target="_blank" rel="noopener noreferrer" onClick={() => setTimeout(() => setDone(true), 2500)}>
               Leave a review on Google
               <ExternalLink className="h-4 w-4" />
             </CtaButton>
