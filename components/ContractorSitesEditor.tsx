@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import type { ContractorSite, Employee } from "@/lib/supabase";
+import { getSupabaseClient } from "@/lib/supabase";
 import { QRCodeSVG } from "qrcode.react";
 
 type SiteMetric = { label: string; value: number };
@@ -630,23 +631,57 @@ function TeamSection({ employees: initial, businessSlug }: { employees: Employee
   const [formEmail, setFormEmail] = useState("");
   const [formBio, setFormBio] = useState("");
   const [formCerts, setFormCerts] = useState("");
+  const [formPhoto, setFormPhoto] = useState<File | null>(null);
+  const [formPhotoPreview, setFormPhotoPreview] = useState<string | null>(null);
+  const [existingPhotoUrl, setExistingPhotoUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const resetForm = () => {
     setFormName(""); setFormTitle(""); setFormPhone(""); setFormEmail(""); setFormBio(""); setFormCerts("");
+    setFormPhoto(null); setFormPhotoPreview(null); setExistingPhotoUrl(null);
     setShowForm(false); setEditingId(null);
+  };
+
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { alert("Photo must be under 5MB"); return; }
+    setFormPhoto(file);
+    setFormPhotoPreview(URL.createObjectURL(file));
   };
 
   const startEdit = (emp: Employee) => {
     setFormName(emp.name); setFormTitle(emp.title || ""); setFormPhone(emp.phone || "");
     setFormEmail(emp.email || ""); setFormBio(emp.bio || "");
     setFormCerts((emp.certifications || []).join(", "));
+    setFormPhoto(null); setFormPhotoPreview(null);
+    setExistingPhotoUrl(emp.photo_url || null);
     setEditingId(emp.id); setShowForm(true);
   };
 
   const handleSave = async () => {
     if (!formName.trim()) return;
     setSaving(true);
+
+    // Upload photo if selected
+    let photoUrl: string | null = existingPhotoUrl;
+    if (formPhoto) {
+      try {
+        const supabase = getSupabaseClient();
+        const ext = formPhoto.name.split(".").pop() || "png";
+        const slug = formName.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-");
+        const path = `employee-photos/${businessSlug}-${slug}-${Date.now()}.${ext}`;
+        const { error: uploadError } = await supabase.storage
+          .from("contractor-assets").upload(path, formPhoto, { upsert: true });
+        if (uploadError) throw uploadError;
+        const { data: urlData } = supabase.storage.from("contractor-assets").getPublicUrl(path);
+        photoUrl = urlData.publicUrl;
+      } catch {
+        // Continue without photo update
+      }
+    }
+
     const body = {
       name: formName.trim(),
       title: formTitle.trim() || null,
@@ -654,6 +689,7 @@ function TeamSection({ employees: initial, businessSlug }: { employees: Employee
       email: formEmail.trim() || null,
       bio: formBio.trim() || null,
       certifications: formCerts.trim() ? formCerts.split(",").map((s) => s.trim()).filter(Boolean) : null,
+      photo_url: photoUrl,
     };
     try {
       if (editingId) {
@@ -727,6 +763,38 @@ function TeamSection({ employees: initial, businessSlug }: { employees: Employee
           border: "1px solid rgba(0,0,0,0.04)", borderRadius: 20, padding: "18px 20px",
           marginBottom: 16,
         }}>
+          {/* Photo upload */}
+          <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 14 }}>
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              style={{
+                width: 64, height: 64, borderRadius: 32, flexShrink: 0,
+                background: formPhotoPreview || existingPhotoUrl ? undefined : "linear-gradient(145deg, rgba(0,0,0,0.04), rgba(0,0,0,0.08))",
+                backgroundImage: formPhotoPreview || existingPhotoUrl ? `url(${formPhotoPreview || existingPhotoUrl})` : undefined,
+                backgroundSize: "cover", backgroundPosition: "center",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                cursor: "pointer", border: "2px dashed rgba(0,0,0,0.1)",
+                transition: `all 0.2s ${EASE}`,
+              }}
+            >
+              {!formPhotoPreview && !existingPhotoUrl && (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#aeaeb2" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" />
+                  <circle cx="12" cy="13" r="4" />
+                </svg>
+              )}
+            </div>
+            <input ref={fileInputRef} type="file" accept="image/*" onChange={handlePhotoSelect} style={{ display: "none" }} />
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "#1d1d1f" }}>
+                {formPhotoPreview || existingPhotoUrl ? "Change photo" : "Add profile photo"}
+              </div>
+              <div style={{ fontSize: 11, color: "#aeaeb2", marginTop: 2 }}>
+                Click the circle to upload. Max 5MB.
+              </div>
+            </div>
+          </div>
+
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
             <div><label style={labelStyle}>Name *</label><input value={formName} onChange={(e) => setFormName(e.target.value)} placeholder="Marcus Rivera" style={inputStyle} /></div>
             <div><label style={labelStyle}>Title</label><input value={formTitle} onChange={(e) => setFormTitle(e.target.value)} placeholder="Senior Solar Consultant" style={inputStyle} /></div>
