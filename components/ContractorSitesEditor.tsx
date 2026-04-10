@@ -6,7 +6,7 @@ import { QRCodeSVG } from "qrcode.react";
 
 type SiteMetric = { label: string; value: number };
 type WebsiteData = { aboutBio: string; heroTagline: string; yearsInBusiness: number | null; licenseNumber: string; serviceAreas: string };
-type Props = { sites: ContractorSite[]; customDomain?: string | null; siteMetrics?: Record<string, SiteMetric[]>; websiteData?: WebsiteData };
+type Props = { sites: ContractorSite[]; customDomain?: string | null; siteMetrics?: Record<string, SiteMetric[]>; websiteData?: WebsiteData; hasGoogle?: boolean };
 
 /* ─── helpers ─── */
 const F = "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', sans-serif";
@@ -218,12 +218,14 @@ function SiteCard({
   index,
   customDomain,
   metrics,
+  googleAlert,
   children,
 }: {
   site: ContractorSite;
   index: number;
   customDomain?: string | null;
   metrics?: SiteMetric[];
+  googleAlert?: boolean;
   children?: React.ReactNode;
 }) {
   const [hover, setHover] = useState(false);
@@ -316,6 +318,25 @@ function SiteCard({
           ))}
         </div>
       </div>
+
+      {/* Google alert */}
+      {googleAlert && (
+        <a href="/contractor/settings" style={{
+          display: "flex", alignItems: "center", gap: 8,
+          marginTop: 12, padding: "8px 12px",
+          background: "rgba(234,168,74,0.08)",
+          border: "1px solid rgba(234,168,74,0.2)",
+          borderRadius: 10, textDecoration: "none",
+          transition: `all 0.2s ${EASE}`,
+        }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#EAA84A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+            <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+          <span style={{ fontSize: 12, color: "#92700e", lineHeight: 1.35 }}>
+            Connect your Google Business in <span style={{ fontWeight: 600 }}>Settings</span> for best results.
+          </span>
+        </a>
+      )}
 
       {/* Expandable content */}
       {expandable && (
@@ -598,7 +619,7 @@ function WebsiteSettings({ data }: { data: WebsiteData }) {
 }
 
 /* ─── Main export ─── */
-export default function ContractorSitesEditor({ sites, customDomain, siteMetrics, websiteData }: Props) {
+export default function ContractorSitesEditor({ sites, customDomain, siteMetrics, websiteData, hasGoogle }: Props) {
   const liveSites = sites.length;
 
   return (
@@ -649,7 +670,10 @@ export default function ContractorSitesEditor({ sites, customDomain, siteMetrics
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {sites.map((site, i) => (
-            <SiteCard key={site.id} site={site} index={i} customDomain={customDomain} metrics={siteMetrics?.[site.id]}>
+            <SiteCard
+              key={site.id} site={site} index={i} customDomain={customDomain} metrics={siteMetrics?.[site.id]}
+              googleAlert={!hasGoogle && (site.type === "review_funnel" || site.type === "review_wall")}
+            >
               {site.type === "business_card" && <BusinessCardSettings site={site} />}
               {site.type === "website" && websiteData && <WebsiteSettings data={websiteData} />}
             </SiteCard>
