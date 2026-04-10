@@ -12,6 +12,7 @@ type Props = {
   existingReferralCode?: string | null;
   referrerName?: string | null;
   employees?: { id: string; name: string }[];
+  reviewFunnelSlug?: string | null;
 };
 
 // 4-COLOR SYSTEM
@@ -57,7 +58,7 @@ function firstName(name: string): string {
   return name.split(" ")[0] || name;
 }
 
-export default function CustomerDetailClient({ lead, timeline: initialTimeline, counts, existingReferralCode, referrerName, employees }: Props) {
+export default function CustomerDetailClient({ lead, timeline: initialTimeline, counts, existingReferralCode, referrerName, employees, reviewFunnelSlug }: Props) {
   const router = useRouter();
   const [status, setStatus] = useState<Stage>(lead.status);
   const [timeline, setTimeline] = useState(initialTimeline);
@@ -243,16 +244,34 @@ export default function CustomerDetailClient({ lead, timeline: initialTimeline, 
 
         {/* SOLD */}
         {status === "customer" && (<>
-          <button style={{
-            width: "100%", background: GREEN, color: "#fff", border: "none",
-            padding: "20px 20px", fontSize: 16, fontWeight: 900,
-            fontFamily: F, cursor: "pointer", borderRadius: 0,
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
-            letterSpacing: -0.3, textTransform: "uppercase",
-          }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-            Send Review Request
-          </button>
+          {(() => {
+            const assignedEmp = employees?.find(e => e.id === assignedEmployee);
+            const repParam = assignedEmp ? `?rep_id=${assignedEmp.id}` : "";
+            const reviewUrl = reviewFunnelSlug ? `/r/${reviewFunnelSlug}${repParam}` : null;
+            return reviewUrl ? (
+              <a href={reviewUrl} target="_blank" rel="noopener noreferrer" style={{
+                width: "100%", background: GREEN, color: "#fff", border: "none",
+                padding: "20px 20px", fontSize: 16, fontWeight: 900,
+                fontFamily: F, textDecoration: "none", borderRadius: 0,
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+                letterSpacing: -0.3, textTransform: "uppercase",
+              }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                Send Review Request
+              </a>
+            ) : (
+              <button disabled style={{
+                width: "100%", background: "#9CA3AF", color: "#fff", border: "none",
+                padding: "20px 20px", fontSize: 16, fontWeight: 900,
+                fontFamily: F, cursor: "default", borderRadius: 0,
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+                letterSpacing: -0.3, textTransform: "uppercase",
+              }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                Send Review Request
+              </button>
+            );
+          })()}
           <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
             <button style={{
               flex: 1, background: "#fff", border: `2px solid ${GREEN}`,

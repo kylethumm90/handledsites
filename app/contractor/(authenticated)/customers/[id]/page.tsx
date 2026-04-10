@@ -90,6 +90,16 @@ export default async function CustomerDetailPage({
     .eq("is_active", true)
     .order("name");
 
+  // Fetch review funnel slug
+  const { data: reviewSite } = await supabase
+    .from("sites")
+    .select("slug")
+    .eq("business_id", businessId)
+    .eq("type", "review_funnel")
+    .eq("is_active", true)
+    .limit(1)
+    .single();
+
   return (
     <CustomerDetailClient
       lead={lead as Lead}
@@ -98,6 +108,7 @@ export default async function CustomerDetailPage({
       existingReferralCode={referralPartner?.referral_code || null}
       referrerName={referrerName}
       employees={(employees || []).map(e => ({ id: e.id, name: e.name }))}
+      reviewFunnelSlug={reviewSite?.slug || null}
     />
   );
 }
