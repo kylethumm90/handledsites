@@ -155,6 +155,17 @@ export default function OnboardingWizard() {
     ]);
     if (siteError) throw new Error(siteError.message);
 
+    // Seed demo leads + create user + sync to Resend
+    try {
+      await fetch("/api/seed-demo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ business_id: bizData.id }),
+      });
+    } catch {
+      // Non-critical
+    }
+
     // Auto-login: create a contractor session
     await fetch("/api/onboarding/auto-login", {
       method: "POST",
