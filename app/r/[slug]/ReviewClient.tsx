@@ -9,6 +9,8 @@ type Props = {
   businessName: string;
   logoUrl: string | null;
   googleReviewUrl: string | null;
+  repId?: string | null;
+  repName?: string | null;
 };
 
 type Step = "rating" | "questions" | "feedback" | "result";
@@ -33,6 +35,8 @@ export default function ReviewClient({
   businessName,
   logoUrl,
   googleReviewUrl,
+  repId,
+  repName,
 }: Props) {
   const [step, setStep] = useState<Step>("rating");
   const [rating, setRating] = useState(0);
@@ -60,7 +64,7 @@ export default function ReviewClient({
       const res = await fetch("/api/review/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ site_id: siteId, rating, professionalism, communication, feedback }),
+        body: JSON.stringify({ site_id: siteId, rating, professionalism, communication, feedback, rep_id: repId || undefined, rep_name: repName || undefined }),
       });
       const data = await res.json();
       setIsPositive(data.is_positive);

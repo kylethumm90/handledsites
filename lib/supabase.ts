@@ -171,6 +171,7 @@ export type ReviewResponse = {
   tech_name: string | null;
   professionalism: string | null;
   communication: string | null;
+  rep_id: string | null;
 };
 
 export type Review = {

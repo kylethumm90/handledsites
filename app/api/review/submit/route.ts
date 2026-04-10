@@ -4,7 +4,7 @@ import Anthropic from "@anthropic-ai/sdk";
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const { site_id, rating, feedback, professionalism, communication } = body;
+  const { site_id, rating, feedback, professionalism, communication, rep_id, rep_name } = body;
 
   if (!site_id || !rating) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -23,6 +23,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Site not found" }, { status: 404 });
   }
 
+  // Resolve rep name if rep_id provided but no rep_name
+  let resolvedRepName = rep_name || null;
+  if (rep_id && !resolvedRepName) {
+    const { data: emp } = await supabase
+      .from("employees")
+      .select("name")
+      .eq("id", rep_id)
+      .single();
+    if (emp) resolvedRepName = emp.name.split(" ")[0];
+  }
+
   const isPositive = rating >= 4;
   let generatedReview: string | null = null;
 
@@ -32,6 +43,11 @@ export async function POST(request: NextRequest) {
     if (apiKey) {
       try {
         const client = new Anthropic({ apiKey });
+
+        const repInstruction = resolvedRepName
+          ? `\nThe customer worked with ${resolvedRepName}. Naturally include their first name in the review where it fits — like "${resolvedRepName} walked us through..." or "Working with ${resolvedRepName} was...". Only include the name where it reads naturally, don't force it.`
+          : "";
+
         const message = await client.messages.create({
           model: "claude-sonnet-4-20250514",
           max_tokens: 300,
@@ -45,7 +61,7 @@ Rules:
 - Don't start with "I"
 - No em dashes
 - No exclamation marks in the first sentence
-- Output ONLY the review text, nothing else`,
+- Output ONLY the review text, nothing else${repInstruction}`,
           messages: [
             {
               role: "user",
@@ -65,7 +81,7 @@ Additional feedback: "${feedback}"`,
     }
   }
 
-  // Store response
+  // Store response with rep attribution
   await supabase.from("review_responses").insert({
     business_id: site.business_id,
     site_id,
@@ -75,6 +91,8 @@ Additional feedback: "${feedback}"`,
     is_positive: isPositive,
     professionalism: professionalism || null,
     communication: communication || null,
+    rep_id: rep_id || null,
+    tech_name: resolvedRepName || null,
   });
 
   if (isPositive) {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Phone, MessageSquare, UserPlus, Calendar, Shield, Settings2 } from "lucide-react";
+import { Phone, MessageSquare, UserPlus, Calendar, Shield, Settings2, Star } from "lucide-react";
 import { SERVICE_ICONS } from "@/lib/icons";
 import { generateVCard, downloadVCard } from "@/lib/vcard";
 
@@ -18,6 +18,7 @@ type Props = {
     hours_start: number;
     hours_end: number;
     calendar_url: string | null;
+    slug: string;
   };
   business: {
     name: string;
@@ -28,6 +29,8 @@ type Props = {
     services: string[];
   };
   coverImage: string;
+  reviewFunnelUrl?: string | null;
+  fiveStarCount?: number;
 };
 
 function isWithinBusinessHours(start: number, end: number): boolean {
@@ -51,7 +54,7 @@ function getInitials(name: string): string {
     .join("");
 }
 
-export default function EmployeeCard({ employee, business, coverImage }: Props) {
+export default function EmployeeCard({ employee, business, coverImage, reviewFunnelUrl, fiveStarCount }: Props) {
   const [available, setAvailable] = useState(true);
 
   useEffect(() => {
@@ -240,6 +243,19 @@ export default function EmployeeCard({ employee, business, coverImage }: Props) 
         </div>
       )}
 
+      {/* Five-star review count */}
+      {fiveStarCount != null && fiveStarCount > 0 && (
+        <div className="flex items-center justify-center">
+          <div
+            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold"
+            style={{ background: "rgba(250,204,21,0.12)", color: "#facc15" }}
+          >
+            <Star className="h-3 w-3" fill="#facc15" />
+            {fiveStarCount} five-star review{fiveStarCount !== 1 ? "s" : ""}
+          </div>
+        </div>
+      )}
+
       {/* CTA Buttons */}
       {employee.phone && (
         <div className="space-y-3">
@@ -277,6 +293,17 @@ export default function EmployeeCard({ employee, business, coverImage }: Props) 
             <Calendar className="h-4 w-4" />
             Schedule a consultation
           </a>
+
+          {reviewFunnelUrl && (
+            <a
+              href={`${reviewFunnelUrl}?rep=${employee.slug}`}
+              className="flex items-center justify-center gap-2 rounded-xl border py-3.5 text-sm font-bold transition-opacity hover:opacity-90"
+              style={{ borderColor: "rgba(255,255,255,0.1)", background: "transparent", color: "#facc15" }}
+            >
+              <Star className="h-4 w-4" />
+              Leave a review
+            </a>
+          )}
         </div>
       )}
 

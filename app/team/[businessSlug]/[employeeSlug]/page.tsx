@@ -80,6 +80,27 @@ export default async function EmployeeCardPage({ params }: Props) {
   const coverImage =
     TRADE_IMAGES[business.trade] || TRADE_IMAGES["default"];
 
+  const supabase = getSupabaseAdmin();
+
+  // Get review funnel URL for this business
+  const { data: reviewSite } = await supabase
+    .from("sites")
+    .select("slug")
+    .eq("business_id", employee.business_id)
+    .eq("type", "review_funnel")
+    .eq("is_active", true)
+    .limit(1)
+    .single();
+
+  const reviewFunnelUrl = reviewSite ? `/r/${reviewSite.slug}` : null;
+
+  // Count five-star reviews attributed to this rep
+  const { count: fiveStarCount } = await supabase
+    .from("review_responses")
+    .select("id", { count: "exact", head: true })
+    .eq("rep_id", employee.id)
+    .gte("rating", 4);
+
   return (
     <div className="min-h-screen bg-card-bg font-inter">
       <EmployeeCard
@@ -95,6 +116,7 @@ export default async function EmployeeCardPage({ params }: Props) {
           hours_start: employee.hours_start,
           hours_end: employee.hours_end,
           calendar_url: employee.calendar_url,
+          slug: employee.slug,
         }}
         business={{
           name: business.name,
@@ -105,6 +127,8 @@ export default async function EmployeeCardPage({ params }: Props) {
           services: business.services || [],
         }}
         coverImage={coverImage}
+        reviewFunnelUrl={reviewFunnelUrl}
+        fiveStarCount={fiveStarCount ?? 0}
       />
     </div>
   );
