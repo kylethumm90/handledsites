@@ -57,11 +57,19 @@ export default async function CustomerDetailPage({
       .then(({ count }) => count ?? 0),
   ]);
 
+  // Check if customer is already a referral partner
+  const { data: referralPartner } = await supabase
+    .from("referral_partners")
+    .select("referral_code")
+    .eq("customer_id", params.id)
+    .single();
+
   return (
     <CustomerDetailClient
       lead={lead as Lead}
       timeline={(timeline || []) as ActivityLogEntry[]}
       counts={{ lead: leadCount, booked: bookedCount, customer: customerCount }}
+      existingReferralCode={referralPartner?.referral_code || null}
     />
   );
 }

@@ -9,6 +9,7 @@ type Props = {
   lead: Lead;
   timeline: ActivityLogEntry[];
   counts: { lead: number; booked: number; customer: number };
+  existingReferralCode?: string | null;
 };
 
 // 4-COLOR SYSTEM
@@ -54,11 +55,11 @@ function firstName(name: string): string {
   return name.split(" ")[0] || name;
 }
 
-export default function CustomerDetailClient({ lead, timeline: initialTimeline, counts }: Props) {
+export default function CustomerDetailClient({ lead, timeline: initialTimeline, counts, existingReferralCode }: Props) {
   const router = useRouter();
   const [status, setStatus] = useState<Stage>(lead.status);
   const [timeline, setTimeline] = useState(initialTimeline);
-  const [referralCode, setReferralCode] = useState<string | null>(null);
+  const [referralCode, setReferralCode] = useState<string | null>(existingReferralCode || null);
   const [referralLoading, setReferralLoading] = useState(false);
   const [referralCopied, setReferralCopied] = useState(false);
 
