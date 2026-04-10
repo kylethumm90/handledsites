@@ -200,3 +200,21 @@ export type UserBusinessRole = {
   role: "owner" | "member";
   created_at: string;
 };
+
+export type Employee = {
+  id: string;
+  business_id: string;
+  name: string;
+  slug: string;
+  title: string | null;
+  phone: string | null;
+  email: string | null;
+  photo_url: string | null;
+  bio: string | null;
+  certifications: string[] | null;
+  stats: string[] | null;
+  hours_start: number;
+  hours_end: number;
+  is_active: boolean;
+  created_at: string;
+};
