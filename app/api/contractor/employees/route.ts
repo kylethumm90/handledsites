@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
   if (!auth) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await request.json();
-  const { name, title, phone, email, photo_url, bio, certifications, stats } = body;
+  const { name, title, phone, email, photo_url, bio, certifications, stats, calendar_url } = body;
 
   if (!name || typeof name !== "string") {
     return NextResponse.json({ error: "Name required" }, { status: 400 });
@@ -50,6 +50,7 @@ export async function POST(request: NextRequest) {
       bio: bio || null,
       certifications: certifications || null,
       stats: stats || null,
+      calendar_url: calendar_url || null,
     })
     .select()
     .single();

@@ -633,13 +633,14 @@ function TeamSection({ employees: initial, businessSlug }: { employees: Employee
   const [formCerts, setFormCerts] = useState("");
   const [formPhoto, setFormPhoto] = useState<File | null>(null);
   const [formPhotoPreview, setFormPhotoPreview] = useState<string | null>(null);
+  const [formCalendarUrl, setFormCalendarUrl] = useState("");
   const [existingPhotoUrl, setExistingPhotoUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const resetForm = () => {
     setFormName(""); setFormTitle(""); setFormPhone(""); setFormEmail(""); setFormBio(""); setFormCerts("");
-    setFormPhoto(null); setFormPhotoPreview(null); setExistingPhotoUrl(null);
+    setFormPhoto(null); setFormPhotoPreview(null); setExistingPhotoUrl(null); setFormCalendarUrl("");
     setShowForm(false); setEditingId(null);
   };
 
@@ -657,6 +658,7 @@ function TeamSection({ employees: initial, businessSlug }: { employees: Employee
     setFormCerts((emp.certifications || []).join(", "));
     setFormPhoto(null); setFormPhotoPreview(null);
     setExistingPhotoUrl(emp.photo_url || null);
+    setFormCalendarUrl(emp.calendar_url || "");
     setEditingId(emp.id); setShowForm(true);
   };
 
@@ -690,6 +692,7 @@ function TeamSection({ employees: initial, businessSlug }: { employees: Employee
       bio: formBio.trim() || null,
       certifications: formCerts.trim() ? formCerts.split(",").map((s) => s.trim()).filter(Boolean) : null,
       photo_url: photoUrl,
+      calendar_url: formCalendarUrl.trim() || null,
     };
     try {
       if (editingId) {
@@ -807,10 +810,15 @@ function TeamSection({ employees: initial, businessSlug }: { employees: Employee
             <label style={labelStyle}>Bio</label>
             <textarea value={formBio} onChange={(e) => setFormBio(e.target.value)} placeholder="A bit about this team member..." rows={3} style={{ ...inputStyle, resize: "vertical" }} />
           </div>
-          <div style={{ marginBottom: 14 }}>
+          <div style={{ marginBottom: 12 }}>
             <label style={labelStyle}>Certifications</label>
             <input value={formCerts} onChange={(e) => setFormCerts(e.target.value)} placeholder="NABCEP Certified, Top Performer" style={inputStyle} />
             <p style={{ fontSize: 11, color: "#aeaeb2", marginTop: 4 }}>Comma-separated list of badges.</p>
+          </div>
+          <div style={{ marginBottom: 14 }}>
+            <label style={labelStyle}>Calendar link</label>
+            <input value={formCalendarUrl} onChange={(e) => setFormCalendarUrl(e.target.value)} placeholder="https://calendly.com/your-name" style={inputStyle} />
+            <p style={{ fontSize: 11, color: "#aeaeb2", marginTop: 4 }}>Calendly, Cal.com, or any scheduling link. Powers the &quot;Schedule a consultation&quot; button.</p>
           </div>
           <div style={{ display: "flex", gap: 10 }}>
             <button onClick={handleSave} disabled={saving || !formName.trim()} style={{

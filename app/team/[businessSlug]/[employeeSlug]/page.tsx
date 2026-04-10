@@ -94,6 +94,7 @@ export default async function EmployeeCardPage({ params }: Props) {
           stats: employee.stats,
           hours_start: employee.hours_start,
           hours_end: employee.hours_end,
+          calendar_url: employee.calendar_url,
         }}
         business={{
           name: business.name,

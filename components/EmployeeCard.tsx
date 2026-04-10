@@ -17,6 +17,7 @@ type Props = {
     stats: string[] | null;
     hours_start: number;
     hours_end: number;
+    calendar_url: string | null;
   };
   business: {
     name: string;
@@ -267,7 +268,9 @@ export default function EmployeeCard({ employee, business, coverImage }: Props) 
           </button>
 
           <a
-            href={`sms:${formattedPhone}?body=${encodeURIComponent("Hi, I'd like to schedule a consultation")}`}
+            href={employee.calendar_url || `sms:${formattedPhone}?body=${encodeURIComponent("Hi, I'd like to schedule a consultation")}`}
+            target={employee.calendar_url ? "_blank" : undefined}
+            rel={employee.calendar_url ? "noopener noreferrer" : undefined}
             className="flex items-center justify-center gap-2 rounded-xl border py-3.5 text-sm font-bold text-card-muted transition-opacity hover:opacity-90"
             style={{ borderColor: "rgba(255,255,255,0.1)", background: "transparent" }}
           >

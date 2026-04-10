@@ -215,6 +215,7 @@ export type Employee = {
   stats: string[] | null;
   hours_start: number;
   hours_end: number;
+  calendar_url: string | null;
   is_active: boolean;
   created_at: string;
 };
