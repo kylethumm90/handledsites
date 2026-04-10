@@ -5,7 +5,8 @@ import type { ContractorSite } from "@/lib/supabase";
 import { QRCodeSVG } from "qrcode.react";
 
 type SiteMetric = { label: string; value: number };
-type Props = { sites: ContractorSite[]; customDomain?: string | null; siteMetrics?: Record<string, SiteMetric[]> };
+type WebsiteData = { aboutBio: string; heroTagline: string; yearsInBusiness: number | null; licenseNumber: string; serviceAreas: string };
+type Props = { sites: ContractorSite[]; customDomain?: string | null; siteMetrics?: Record<string, SiteMetric[]>; websiteData?: WebsiteData };
 
 /* ─── helpers ─── */
 const F = "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', sans-serif";
@@ -477,8 +478,127 @@ function BusinessCardSettings({ site }: { site: ContractorSite }) {
   );
 }
 
+/* ─── Website settings panel ─── */
+function WebsiteSettings({ data }: { data: WebsiteData }) {
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
+  const [aboutBio, setAboutBio] = useState(data.aboutBio);
+  const [heroTagline, setHeroTagline] = useState(data.heroTagline);
+  const [yearsInBusiness, setYearsInBusiness] = useState(data.yearsInBusiness?.toString() ?? "");
+  const [licenseNumber, setLicenseNumber] = useState(data.licenseNumber);
+  const [serviceAreas, setServiceAreas] = useState(data.serviceAreas);
+
+  const handleSave = async () => {
+    setSaving(true); setMessage("");
+    try {
+      const res = await fetch("/api/contractor/business", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          about_bio: aboutBio.trim() || null,
+          hero_tagline: heroTagline.trim() || null,
+          years_in_business: yearsInBusiness === "" ? null : Number(yearsInBusiness),
+          license_number: licenseNumber.trim() || null,
+          service_areas: serviceAreas.trim()
+            ? serviceAreas.split(",").map((s: string) => s.trim()).filter(Boolean)
+            : null,
+        }),
+      });
+      if (!res.ok) throw new Error("Save failed");
+      setMessage("Saved!");
+      setTimeout(() => setMessage(""), 2000);
+    } catch { setMessage("Error saving"); }
+    finally { setSaving(false); }
+  };
+
+  const inputStyle: React.CSSProperties = {
+    width: "100%", borderRadius: 10,
+    border: "1px solid rgba(0,0,0,0.06)", background: "rgba(0,0,0,0.025)",
+    padding: "9px 12px", fontSize: 14, color: "#1d1d1f",
+    fontFamily: F, outline: "none",
+    transition: `border 0.2s ${EASE}`,
+  };
+  const labelStyle: React.CSSProperties = {
+    display: "block", fontSize: 11, fontWeight: 500, color: "#86868b",
+    marginBottom: 5, letterSpacing: "0.01em",
+  };
+
+  return (
+    <div style={{
+      marginTop: 18, paddingTop: 18,
+      borderTop: "1px solid rgba(0,0,0,0.04)",
+      display: "flex", flexDirection: "column", gap: 14,
+    }}>
+      <div>
+        <label style={labelStyle}>About your business</label>
+        <textarea
+          value={aboutBio}
+          onChange={(e) => setAboutBio(e.target.value)}
+          placeholder="Tell customers a bit about your business, experience, and what makes you different."
+          rows={4}
+          style={{ ...inputStyle, resize: "vertical" }}
+        />
+        <p style={{ fontSize: 11, color: "#aeaeb2", marginTop: 4 }}>Leave blank to hide the about section.</p>
+      </div>
+      <div>
+        <label style={labelStyle}>Hero tagline</label>
+        <input
+          type="text"
+          value={heroTagline}
+          onChange={(e) => setHeroTagline(e.target.value)}
+          placeholder="e.g. Fast, Reliable Electrical in Somerville, AL"
+          style={inputStyle}
+        />
+        <p style={{ fontSize: 11, color: "#aeaeb2", marginTop: 4 }}>Main headline on your website. Leave blank for auto-generated.</p>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <div>
+          <label style={labelStyle}>Years in business</label>
+          <input type="number" value={yearsInBusiness} onChange={(e) => setYearsInBusiness(e.target.value)} placeholder="e.g. 18" style={inputStyle} />
+        </div>
+        <div>
+          <label style={labelStyle}>License number</label>
+          <input type="text" value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value)} placeholder="e.g. HVAC-AL-004821" style={inputStyle} />
+        </div>
+      </div>
+      <div>
+        <label style={labelStyle}>Service areas</label>
+        <input
+          type="text"
+          value={serviceAreas}
+          onChange={(e) => setServiceAreas(e.target.value)}
+          placeholder="e.g. Huntsville, Madison, Decatur, Athens"
+          style={inputStyle}
+        />
+        <p style={{ fontSize: 11, color: "#aeaeb2", marginTop: 4 }}>Comma-separated list of cities you serve.</p>
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          style={{
+            padding: "9px 20px", borderRadius: 10,
+            background: "#0071e3", color: "#fff",
+            fontSize: 13, fontWeight: 600, border: "none",
+            cursor: "pointer", opacity: saving ? 0.5 : 1,
+            transition: `all 0.2s ${EASE}`,
+          }}
+        >
+          {saving ? "Saving\u2026" : "Save Changes"}
+        </button>
+        {message && (
+          <span style={{
+            fontSize: 12, fontWeight: 500,
+            color: message.includes("Error") ? "#FF3B30" : "#34C759",
+          }}>{message}</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ─── Main export ─── */
-export default function ContractorSitesEditor({ sites, customDomain, siteMetrics }: Props) {
+export default function ContractorSitesEditor({ sites, customDomain, siteMetrics, websiteData }: Props) {
   const liveSites = sites.length;
 
   return (
@@ -531,6 +651,7 @@ export default function ContractorSitesEditor({ sites, customDomain, siteMetrics
           {sites.map((site, i) => (
             <SiteCard key={site.id} site={site} index={i} customDomain={customDomain} metrics={siteMetrics?.[site.id]}>
               {site.type === "business_card" && <BusinessCardSettings site={site} />}
+              {site.type === "website" && websiteData && <WebsiteSettings data={websiteData} />}
             </SiteCard>
           ))}
         </div>

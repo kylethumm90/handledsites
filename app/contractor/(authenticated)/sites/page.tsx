@@ -12,10 +12,10 @@ export default async function ContractorSitesPage() {
   const { businessId } = auth;
   const supabase = getSupabaseAdmin();
 
-  // Fetch business for custom domain info
+  // Fetch business for custom domain info + website fields
   const { data: business } = await supabase
     .from("businesses")
-    .select("custom_domain, domain_status")
+    .select("custom_domain, domain_status, about_bio, hero_tagline, years_in_business, license_number, service_areas")
     .eq("id", businessId)
     .single();
 
@@ -123,5 +123,13 @@ export default async function ContractorSitesPage() {
     }
   }
 
-  return <ContractorSitesEditor sites={sites} customDomain={customDomain} siteMetrics={siteMetrics} />;
+  const websiteData = {
+    aboutBio: business?.about_bio ?? "",
+    heroTagline: business?.hero_tagline ?? "",
+    yearsInBusiness: business?.years_in_business ?? null,
+    licenseNumber: business?.license_number ?? "",
+    serviceAreas: (business?.service_areas || []).join(", "),
+  };
+
+  return <ContractorSitesEditor sites={sites} customDomain={customDomain} siteMetrics={siteMetrics} websiteData={websiteData} />;
 }
