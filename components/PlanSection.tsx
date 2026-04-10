@@ -9,6 +9,7 @@ import {
   planRank,
   type PlanFeatures,
 } from "@/lib/plans";
+import PlanChangeModal from "./PlanChangeModal";
 
 type Props = {
   plan: string;
@@ -38,20 +39,28 @@ const FEATURE_LABELS: { key: keyof PlanFeatures; label: string }[] = [
 export default function PlanSection({ plan, status, hasStripeCustomer }: Props) {
   const [upgrading, setUpgrading] = useState<string | null>(null);
   const [managing, setManaging] = useState(false);
+  const [pendingPlan, setPendingPlan] = useState<string | null>(null);
   const features = getPlanFeatures(plan);
   const currentRank = planRank(plan);
   const price = PLAN_PRICES[plan] || 0;
 
-  const handleUpgrade = async (targetPlan: string) => {
-    setUpgrading(targetPlan);
+  const handleUpgradeClick = (targetPlan: string) => {
+    setPendingPlan(targetPlan);
+  };
+
+  const handleConfirm = async () => {
+    if (!pendingPlan) return;
+    setUpgrading(pendingPlan);
+    setPendingPlan(null);
     try {
       const res = await fetch("/api/stripe/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan: targetPlan }),
+        body: JSON.stringify({ plan: pendingPlan }),
       });
       const data = await res.json();
       if (data.url) window.location.href = data.url;
+      else window.location.href = "/contractor/settings?upgraded=true";
     } catch {
       setUpgrading(null);
     }
@@ -70,6 +79,16 @@ export default function PlanSection({ plan, status, hasStripeCustomer }: Props) 
 
   return (
     <div>
+      {/* Confirmation modal */}
+      {pendingPlan && (
+        <PlanChangeModal
+          currentPlan={plan}
+          targetPlan={pendingPlan}
+          onConfirm={handleConfirm}
+          onCancel={() => setPendingPlan(null)}
+        />
+      )}
+
       {/* Current plan */}
       <div style={{
         display: "flex",
@@ -152,14 +171,11 @@ export default function PlanSection({ plan, status, hasStripeCustomer }: Props) 
 
       {/* Upgrade options */}
       {currentRank < PLAN_ORDER.length - 1 && (
-        <div style={{
-          display: "flex",
-          gap: 8,
-        }}>
+        <div style={{ display: "flex", gap: 8 }}>
           {PLAN_ORDER.slice(currentRank + 1).map((p) => (
             <button
               key={p}
-              onClick={() => handleUpgrade(p)}
+              onClick={() => handleUpgradeClick(p)}
               disabled={upgrading !== null}
               style={{
                 flex: 1,
