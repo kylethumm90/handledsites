@@ -28,30 +28,68 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Site not found" }, { status: 404 });
   }
 
-  // Look up the business email to find the user
+  // Look up the business to find or create a user
   const { data: business } = await supabase
     .from("businesses")
-    .select("email")
+    .select("email, owner_name")
     .eq("id", site.business_id)
     .single();
 
-  if (!business?.email) {
+  if (!business) {
     return NextResponse.json({ error: "Business not found" }, { status: 404 });
   }
 
-  const { data: user } = await supabase
-    .from("users")
-    .select("id")
-    .ilike("email", business.email)
-    .single();
+  let userId: string;
 
-  if (!user) {
-    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  if (business.email) {
+    // Try to find existing user
+    const { data: user } = await supabase
+      .from("users")
+      .select("id")
+      .ilike("email", business.email)
+      .single();
+
+    if (user) {
+      userId = user.id;
+    } else {
+      // Auto-create user for this business
+      const { data: newUser } = await supabase
+        .from("users")
+        .upsert({ email: business.email.toLowerCase(), name: business.owner_name || null }, { onConflict: "email" })
+        .select("id")
+        .single();
+
+      if (!newUser) {
+        return NextResponse.json({ error: "Failed to create user" }, { status: 500 });
+      }
+      userId = newUser.id;
+
+      await supabase
+        .from("user_business_roles")
+        .upsert({ user_id: userId, business_id: site.business_id, role: "owner" }, { onConflict: "user_id,business_id" });
+    }
+  } else {
+    // No email — create a placeholder user for impersonation
+    const placeholderEmail = `admin-impersonate-${site.business_id}@handled.internal`;
+    const { data: placeholder } = await supabase
+      .from("users")
+      .upsert({ email: placeholderEmail, name: business.owner_name || "Admin View" }, { onConflict: "email" })
+      .select("id")
+      .single();
+
+    if (!placeholder) {
+      return NextResponse.json({ error: "Failed to create session" }, { status: 500 });
+    }
+    userId = placeholder.id;
+
+    await supabase
+      .from("user_business_roles")
+      .upsert({ user_id: userId, business_id: site.business_id, role: "owner" }, { onConflict: "user_id,business_id" });
   }
 
   try {
     const authCtx: AuthContext = {
-      userId: user.id,
+      userId,
       businessId: site.business_id,
       siteId,
     };
