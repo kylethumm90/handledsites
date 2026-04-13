@@ -481,28 +481,78 @@ export default function CustomerDetailClient({ lead, timeline: initialTimeline, 
             {timeline.map((entry, i) => {
               const dotColor = timelineColor(entry);
               const isIntent = entry.summary?.toLowerCase().includes("wants") || entry.summary?.toLowerCase().includes("intent");
+              const isNote = entry.type === "note";
               return (
                 <div key={entry.id} style={{
                   display: "flex", alignItems: "flex-start", gap: 14,
                   paddingBottom: i < timeline.length - 1 ? 16 : 0, position: "relative",
                 }}>
-                  <div style={{
-                    width: 12, height: 12, borderRadius: "50%",
-                    background: dotColor, border: "2px solid #fff",
-                    flexShrink: 0, marginTop: 2, position: "relative", zIndex: 1,
-                  }} />
-                  <div style={{ flex: 1 }}>
+                  {isNote ? (
+                    // Speech-bubble icon for human-written notes (referral
+                    // messages, website contact form, manual contractor notes)
                     <div style={{
-                      fontSize: 14,
-                      fontWeight: isIntent ? 700 : 500,
-                      color: isIntent ? DARK : "#6B7280",
-                      lineHeight: 1.3,
+                      width: 14, height: 14, display: "flex", alignItems: "center",
+                      justifyContent: "center", flexShrink: 0, marginTop: 1,
+                      position: "relative", zIndex: 1, background: "#fff",
                     }}>
-                      {entry.summary}
-                      {entry.agent && (
-                        <span style={{ fontSize: 11, color: "#9CA3AF", marginLeft: 6 }}>({entry.agent})</span>
-                      )}
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke={GREEN}
+                        strokeWidth="2.2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                      >
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                      </svg>
                     </div>
+                  ) : (
+                    <div style={{
+                      width: 12, height: 12, borderRadius: "50%",
+                      background: dotColor, border: "2px solid #fff",
+                      flexShrink: 0, marginTop: 2, position: "relative", zIndex: 1,
+                    }} />
+                  )}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    {isNote ? (
+                      <>
+                        <div style={{
+                          fontSize: 10, fontWeight: 700, color: "#9CA3AF",
+                          textTransform: "uppercase", letterSpacing: 1,
+                          marginBottom: 4,
+                        }}>
+                          Customer note
+                        </div>
+                        <div style={{
+                          background: GREY_BG,
+                          borderLeft: `3px solid ${GREEN}`,
+                          borderRadius: "4px 8px 8px 4px",
+                          padding: "8px 12px",
+                          fontSize: 14,
+                          color: DARK,
+                          lineHeight: 1.4,
+                          whiteSpace: "pre-wrap",
+                          wordBreak: "break-word",
+                        }}>
+                          {entry.summary}
+                        </div>
+                      </>
+                    ) : (
+                      <div style={{
+                        fontSize: 14,
+                        fontWeight: isIntent ? 700 : 500,
+                        color: isIntent ? DARK : "#6B7280",
+                        lineHeight: 1.3,
+                      }}>
+                        {entry.summary}
+                        {entry.agent && (
+                          <span style={{ fontSize: 11, color: "#9CA3AF", marginLeft: 6 }}>({entry.agent})</span>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <div style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 500, flexShrink: 0, marginTop: 2 }}>
                     {new Date(entry.created_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
