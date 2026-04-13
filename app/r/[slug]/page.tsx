@@ -47,6 +47,15 @@ export default async function ReviewFunnelPage({
 
   if (!site) notFound();
 
+  // Pull referral + brand config from businesses directly — the sites_full
+  // view may not be updated yet with these columns, so a small second query
+  // keeps the migration painless.
+  const { data: bizConfig } = await supabase
+    .from("businesses")
+    .select("trade, brand_color, referral_enabled, referral_reward_amount_cents, referral_reward_type")
+    .eq("id", site.business_id)
+    .single();
+
   // Look up rep if param provided
   let repId: string | null = null;
   let repName: string | null = null;
@@ -85,6 +94,11 @@ export default async function ReviewFunnelPage({
       businessName={site.business_name}
       logoUrl={site.logo_url}
       googleReviewUrl={site.google_review_url}
+      trade={bizConfig?.trade ?? site.trade ?? null}
+      brandColor={bizConfig?.brand_color ?? null}
+      referralEnabled={bizConfig?.referral_enabled ?? false}
+      rewardAmountCents={bizConfig?.referral_reward_amount_cents ?? null}
+      rewardType={bizConfig?.referral_reward_type ?? null}
       repId={repId}
       repName={repName}
     />

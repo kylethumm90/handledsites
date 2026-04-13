@@ -68,6 +68,18 @@ export default function ContractorSettingsEditor({ business }: Props) {
   const [domainChecking, setDomainChecking] = useState(false);
   const [domainDns, setDomainDns] = useState<{ type: string; name: string; value: string } | null>(null);
 
+  // Referral program + brand
+  const [brandColor, setBrandColor] = useState(business.brand_color ?? "");
+  const [referralEnabled, setReferralEnabled] = useState(business.referral_enabled ?? true);
+  const [rewardAmount, setRewardAmount] = useState(
+    business.referral_reward_amount_cents != null
+      ? (business.referral_reward_amount_cents / 100).toString()
+      : ""
+  );
+  const [rewardType, setRewardType] = useState<"cash" | "credit" | "gift_card" | "">(
+    business.referral_reward_type ?? ""
+  );
+
   const handleAddDomain = async () => {
     if (!domainInput.trim()) return;
     setDomainSaving(true);
@@ -211,6 +223,11 @@ export default function ContractorSettingsEditor({ business }: Props) {
           gtm_id: gtmId || null,
           meta_pixel_id: metaPixelId || null,
           zapier_webhook_url: zapierWebhookUrl || null,
+          brand_color: brandColor.trim() || null,
+          referral_enabled: referralEnabled,
+          referral_reward_amount_cents:
+            rewardAmount.trim() === "" ? null : Math.round(Number(rewardAmount) * 100),
+          referral_reward_type: rewardType || null,
         }),
       });
       if (!res.ok) throw new Error("Save failed");
@@ -507,6 +524,82 @@ export default function ContractorSettingsEditor({ business }: Props) {
         {domainError && domainStatus === "none" && (
           <p className="mt-2 text-xs text-red-600">{domainError}</p>
         )}
+      </div>
+
+      {/* Section 7: Referral Program */}
+      <div className="mt-6 rounded-xl border border-gray-200 bg-white p-5">
+        <h2 className="mb-1 text-sm font-semibold text-gray-900">Referral Program</h2>
+        <p className="mb-4 text-xs text-gray-400">
+          Reward happy customers for sending you new business. These settings power the referral CTA shown on your review funnel thank-you page.
+        </p>
+
+        <div className="space-y-4">
+          <label className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              checked={referralEnabled}
+              onChange={(e) => setReferralEnabled(e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 text-gray-900 focus:ring-gray-400"
+            />
+            <span className="text-sm text-gray-900">Enable referral program</span>
+          </label>
+
+          <div>
+            <label className={labelClass}>Reward amount</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">$</span>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value={rewardAmount}
+                onChange={(e) => setRewardAmount(e.target.value)}
+                placeholder="25"
+                disabled={!referralEnabled}
+                className={`${inputClass} pl-6 disabled:bg-gray-50 disabled:text-gray-400`}
+              />
+            </div>
+            <p className="mt-1 text-xs text-gray-400">What each referrer earns when their friend books with you.</p>
+          </div>
+
+          <div>
+            <label className={labelClass}>Reward type</label>
+            <select
+              value={rewardType}
+              onChange={(e) => setRewardType(e.target.value as "cash" | "credit" | "gift_card" | "")}
+              disabled={!referralEnabled}
+              className={`${inputClass} disabled:bg-gray-50 disabled:text-gray-400`}
+            >
+              <option value="">Select type...</option>
+              <option value="cash">Cash</option>
+              <option value="credit">Account credit</option>
+              <option value="gift_card">Gift card</option>
+            </select>
+          </div>
+
+          <div>
+            <label className={labelClass}>Brand color</label>
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={brandColor || "#10B981"}
+                onChange={(e) => setBrandColor(e.target.value)}
+                className="h-9 w-12 shrink-0 cursor-pointer rounded-lg border border-gray-200 bg-white p-1"
+                aria-label="Brand color picker"
+              />
+              <input
+                type="text"
+                value={brandColor}
+                onChange={(e) => setBrandColor(e.target.value)}
+                placeholder="#10B981"
+                className={`${inputClass} font-mono`}
+              />
+            </div>
+            <p className="mt-1 text-xs text-gray-400">
+              Accent color for the referral CTA button on your review funnel. Leave blank to use the default green.
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Save */}

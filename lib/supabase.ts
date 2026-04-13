@@ -92,6 +92,11 @@ export type Business = {
   custom_domain: string | null;
   domain_status: "none" | "pending" | "active" | "error";
   domain_error: string | null;
+  // Referral program + brand
+  brand_color: string | null;
+  referral_enabled: boolean;
+  referral_reward_amount_cents: number | null;
+  referral_reward_type: "cash" | "credit" | "gift_card" | null;
   created_at: string;
 };
 

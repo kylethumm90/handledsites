@@ -8,6 +8,7 @@ const ALLOWED_FIELDS = new Set([
   "social_facebook", "social_instagram", "social_google", "social_nextdoor",
   "street_address", "google_place_id", "google_rating", "google_review_count", "google_reviews",
   "gtm_id", "meta_pixel_id", "zapier_webhook_url", "google_review_url",
+  "brand_color", "referral_enabled", "referral_reward_amount_cents", "referral_reward_type",
 ]);
 
 export async function PUT(request: NextRequest) {

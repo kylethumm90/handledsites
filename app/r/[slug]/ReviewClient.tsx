@@ -9,9 +9,31 @@ type Props = {
   businessName: string;
   logoUrl: string | null;
   googleReviewUrl: string | null;
+  trade?: string | null;
+  brandColor?: string | null;
+  referralEnabled?: boolean;
+  rewardAmountCents?: number | null;
+  rewardType?: "cash" | "credit" | "gift_card" | null;
   repId?: string | null;
   repName?: string | null;
 };
+
+type ReferralState = "idle" | "form" | "submitting" | "enrolled";
+
+const DEFAULT_BRAND = "#10B981";
+
+function rewardTypeLabel(type: "cash" | "credit" | "gift_card" | null | undefined): string {
+  switch (type) {
+    case "cash":
+      return "cash";
+    case "credit":
+      return "in account credit";
+    case "gift_card":
+      return "as a gift card";
+    default:
+      return "";
+  }
+}
 
 type Step = "rating" | "questions" | "feedback" | "result";
 
@@ -35,6 +57,11 @@ export default function ReviewClient({
   businessName,
   logoUrl,
   googleReviewUrl,
+  trade,
+  brandColor,
+  referralEnabled,
+  rewardAmountCents,
+  rewardType,
   repId,
   repName,
 }: Props) {
@@ -50,6 +77,62 @@ export default function ReviewClient({
   const [copied, setCopied] = useState(false);
   const [done, setDone] = useState(false);
   const emojiRowRef = useRef<HTMLDivElement>(null);
+
+  // Referral enrollment state (thank-you page step 2)
+  const [referralState, setReferralState] = useState<ReferralState>("idle");
+  const [referralName, setReferralName] = useState("");
+  const [referralPhone, setReferralPhone] = useState("");
+  const [referralUrl, setReferralUrl] = useState<string | null>(null);
+  const [referralError, setReferralError] = useState("");
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  const accent = brandColor && brandColor.trim() ? brandColor : DEFAULT_BRAND;
+  const rewardDollars =
+    rewardAmountCents != null && rewardAmountCents > 0
+      ? Math.round(rewardAmountCents / 100)
+      : null;
+  const showReferralBlock = referralEnabled !== false; // default true if undefined
+  const hasRewardCopy = rewardDollars != null && rewardType != null;
+
+  const handleEnroll = async () => {
+    if (!referralName.trim() || !referralPhone.trim()) {
+      setReferralError("Name and phone are required.");
+      return;
+    }
+    setReferralError("");
+    setReferralState("submitting");
+    try {
+      const res = await fetch("/api/reviews/referral-enroll", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          site_id: siteId,
+          name: referralName.trim(),
+          phone: referralPhone.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setReferralError(data.error || "Something went wrong. Please try again.");
+        setReferralState("form");
+        return;
+      }
+      setReferralUrl(data.referral_url);
+      setReferralState("enrolled");
+    } catch {
+      setReferralError("Network error. Please try again.");
+      setReferralState("form");
+    }
+  };
+
+  const handleCopyLink = async () => {
+    if (!referralUrl) return;
+    try {
+      await navigator.clipboard.writeText(referralUrl);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch {}
+  };
 
   const handleRating = (value: number) => {
     setSelectedEmoji(value);
@@ -81,15 +164,269 @@ export default function ReviewClient({
   if (done) {
     return (
       <Shell businessName={businessName} logoUrl={logoUrl} step="result">
-        <div className="py-16 text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full" style={{ backgroundColor: "#ECFDF5" }}>
+        {/* Confirmation */}
+        <div className="text-center" style={{ paddingTop: 24, paddingBottom: 8 }}>
+          <div
+            className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full"
+            style={{ backgroundColor: "#ECFDF5" }}
+          >
             <Check className="h-7 w-7" style={{ color: "#10B981" }} />
           </div>
           <h2 style={{ fontSize: 18, fontWeight: 500, color: "#111827" }}>Thank you!</h2>
           <p className="mt-2" style={{ fontSize: 14, color: "#6B7280" }}>
-            We appreciate you taking the time.
+            Your review means a lot to {businessName}.
           </p>
         </div>
+
+        {showReferralBlock && (
+          <>
+            {/* Divider */}
+            <div
+              style={{
+                height: 1,
+                background: "#F3F4F6",
+                margin: "24px 0",
+              }}
+            />
+
+            {/* Referral CTA block */}
+            {referralState === "idle" && (
+              <div style={{ paddingBottom: 8 }}>
+                <h3
+                  className="text-center"
+                  style={{ fontSize: 16, fontWeight: 600, color: "#111827", marginBottom: 8 }}
+                >
+                  {hasRewardCopy
+                    ? `Earn $${rewardDollars} for every friend you refer`
+                    : `Know someone who needs ${trade || "help"}?`}
+                </h3>
+                <p
+                  className="text-center"
+                  style={{ fontSize: 13, color: "#6B7280", marginBottom: 20, lineHeight: 1.5 }}
+                >
+                  {hasRewardCopy
+                    ? `When someone you refer books with ${businessName}, you get $${rewardDollars} ${rewardTypeLabel(rewardType)}. It's that simple.`
+                    : `Send friends to ${businessName} and help your neighbors find someone they can trust.`}
+                </p>
+                <button
+                  onClick={() => setReferralState("form")}
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    minHeight: 44,
+                    padding: "12px 20px",
+                    borderRadius: 10,
+                    border: "none",
+                    background: accent,
+                    color: "#FFFFFF",
+                    fontSize: 15,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    transition: "opacity 0.15s ease",
+                  }}
+                  onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.opacity = "0.9")}
+                  onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.opacity = "1")}
+                >
+                  Count me in
+                </button>
+              </div>
+            )}
+
+            {/* Inline enrollment form */}
+            {(referralState === "form" || referralState === "submitting") && (
+              <div style={{ paddingBottom: 8 }}>
+                <h3
+                  className="text-center"
+                  style={{ fontSize: 16, fontWeight: 600, color: "#111827", marginBottom: 6 }}
+                >
+                  You&rsquo;re almost in
+                </h3>
+                <p
+                  className="text-center"
+                  style={{ fontSize: 13, color: "#6B7280", marginBottom: 16 }}
+                >
+                  We&rsquo;ll generate your unique referral link.
+                </p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  <input
+                    type="text"
+                    value={referralName}
+                    onChange={(e) => setReferralName(e.target.value)}
+                    placeholder="Your name"
+                    autoComplete="name"
+                    style={{
+                      width: "100%",
+                      padding: "12px 14px",
+                      borderRadius: 10,
+                      border: "1px solid #D1D5DB",
+                      fontSize: 15,
+                      color: "#111827",
+                      outline: "none",
+                    }}
+                  />
+                  <input
+                    type="tel"
+                    value={referralPhone}
+                    onChange={(e) => setReferralPhone(e.target.value)}
+                    placeholder="Mobile number"
+                    autoComplete="tel"
+                    inputMode="tel"
+                    style={{
+                      width: "100%",
+                      padding: "12px 14px",
+                      borderRadius: 10,
+                      border: "1px solid #D1D5DB",
+                      fontSize: 15,
+                      color: "#111827",
+                      outline: "none",
+                    }}
+                  />
+                  {referralError && (
+                    <p style={{ fontSize: 12, color: "#DC2626", margin: 0 }}>{referralError}</p>
+                  )}
+                  <button
+                    onClick={handleEnroll}
+                    disabled={referralState === "submitting"}
+                    style={{
+                      display: "block",
+                      width: "100%",
+                      minHeight: 44,
+                      padding: "12px 20px",
+                      borderRadius: 10,
+                      border: "none",
+                      background: accent,
+                      color: "#FFFFFF",
+                      fontSize: 15,
+                      fontWeight: 600,
+                      cursor: referralState === "submitting" ? "default" : "pointer",
+                      opacity: referralState === "submitting" ? 0.7 : 1,
+                      marginTop: 4,
+                    }}
+                  >
+                    {referralState === "submitting" ? "Setting up..." : "Get my referral link"}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setReferralState("idle");
+                      setReferralError("");
+                    }}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: "#9CA3AF",
+                      fontSize: 12,
+                      cursor: "pointer",
+                      padding: "4px 0",
+                    }}
+                  >
+                    Never mind
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Enrolled — show the link */}
+            {referralState === "enrolled" && referralUrl && (
+              <div style={{ paddingBottom: 8 }}>
+                <div className="text-center" style={{ marginBottom: 16 }}>
+                  <div
+                    className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full"
+                    style={{ backgroundColor: "#ECFDF5" }}
+                  >
+                    <Check className="h-5 w-5" style={{ color: "#10B981" }} />
+                  </div>
+                  <h3 style={{ fontSize: 16, fontWeight: 600, color: "#111827", marginBottom: 4 }}>
+                    You&rsquo;re in!
+                  </h3>
+                  <p style={{ fontSize: 13, color: "#6B7280" }}>
+                    Share this link with friends who need {trade || "help"}.
+                  </p>
+                </div>
+
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    background: "#F9FAFB",
+                    border: "1px solid #E5E7EB",
+                    borderRadius: 10,
+                    padding: "10px 12px",
+                    marginBottom: 10,
+                  }}
+                >
+                  <span
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      fontSize: 13,
+                      color: "#374151",
+                      fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+                    }}
+                  >
+                    {referralUrl}
+                  </span>
+                  <button
+                    onClick={handleCopyLink}
+                    aria-label="Copy referral link"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
+                      padding: "6px 10px",
+                      borderRadius: 6,
+                      border: "none",
+                      background: accent,
+                      color: "#FFFFFF",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {linkCopied ? (
+                      <>
+                        <Check className="h-3 w-3" />
+                        Copied
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-3 w-3" />
+                        Copy
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                <a
+                  href={`sms:?&body=${encodeURIComponent(
+                    `Check out ${businessName} — I just used them and they were great: ${referralUrl}`
+                  )}`}
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    minHeight: 44,
+                    padding: "12px 20px",
+                    borderRadius: 10,
+                    border: `1.5px solid ${accent}`,
+                    background: "#FFFFFF",
+                    color: accent,
+                    fontSize: 14,
+                    fontWeight: 600,
+                    textAlign: "center",
+                    textDecoration: "none",
+                    lineHeight: "20px",
+                  }}
+                >
+                  Share via text
+                </a>
+              </div>
+            )}
+          </>
+        )}
       </Shell>
     );
   }

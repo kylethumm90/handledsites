@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import { validateSessionFromRequest } from "@/lib/contractor-auth";
-import crypto from "crypto";
-
-function generateCode(): string {
-  return crypto.randomBytes(4).toString("hex"); // 8 char hex
-}
+import { generateUniqueReferralCode } from "@/lib/referral-code";
 
 export async function POST(request: NextRequest) {
   const auth = await validateSessionFromRequest(request);
@@ -43,20 +39,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ referral_code: existing.referral_code });
   }
 
-  // Generate unique code with retry
-  let code = generateCode();
-  let attempts = 0;
-  while (attempts < 5) {
-    const { data: collision } = await supabase
-      .from("referral_partners")
-      .select("id")
-      .eq("referral_code", code)
-      .single();
-
-    if (!collision) break;
-    code = generateCode();
-    attempts++;
-  }
+  const code = await generateUniqueReferralCode(supabase);
 
   const { data, error } = await supabase
     .from("referral_partners")

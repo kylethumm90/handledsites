@@ -153,3 +153,19 @@ CREATE INDEX idx_contractor_sessions_hash ON contractor_sessions (session_hash);
 -- SELECT id, 'free', 'active' FROM businesses
 -- WHERE id NOT IN (SELECT business_id FROM subscriptions);
 
+-- ============================================
+-- Referral program + brand color (per-business)
+-- ============================================
+
+-- Run as migration:
+--
+-- ALTER TABLE businesses ADD COLUMN brand_color TEXT;
+-- ALTER TABLE businesses ADD COLUMN referral_enabled BOOLEAN NOT NULL DEFAULT true;
+-- ALTER TABLE businesses ADD COLUMN referral_reward_amount_cents INTEGER;
+-- ALTER TABLE businesses ADD COLUMN referral_reward_type TEXT
+--   CHECK (referral_reward_type IN ('cash', 'credit', 'gift_card'));
+--
+-- Update sites_full view to include the four new business columns so the
+-- public review funnel page (/r/[slug]) can read them in its existing query:
+-- brand_color, referral_enabled, referral_reward_amount_cents, referral_reward_type
+
