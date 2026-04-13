@@ -37,7 +37,7 @@ export async function POST(
     .insert({
       business_id: businessId,
       lead_id: params.id,
-      type: "note",
+      type: "user_note",
       summary: body.summary.trim(),
     })
     .select()

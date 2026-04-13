@@ -71,6 +71,36 @@ export default function CustomerDetailClient({ lead, timeline: initialTimeline, 
   const [referralLoading, setReferralLoading] = useState(false);
   const [referralCopied, setReferralCopied] = useState(false);
   const [assignedEmployee, setAssignedEmployee] = useState<string | null>(lead.employee_id || null);
+  const [addingNote, setAddingNote] = useState(false);
+  const [noteDraft, setNoteDraft] = useState("");
+  const [savingNote, setSavingNote] = useState(false);
+
+  const handleAddNote = async () => {
+    const trimmed = noteDraft.trim();
+    if (!trimmed) return;
+    setSavingNote(true);
+    try {
+      const res = await fetch(`/api/contractor/customers/${lead.id}/notes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ summary: trimmed }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      const entry: ActivityLogEntry = await res.json();
+      setTimeline((prev) => [entry, ...prev]);
+      setNoteDraft("");
+      setAddingNote(false);
+    } catch {
+      // leave the composer open so the contractor can retry
+    } finally {
+      setSavingNote(false);
+    }
+  };
+
+  const cancelAddNote = () => {
+    setNoteDraft("");
+    setAddingNote(false);
+  };
 
   const meta = STAGE_META[status];
   const service = serviceFromLead(lead);
@@ -463,11 +493,98 @@ export default function CustomerDetailClient({ lead, timeline: initialTimeline, 
       {/* Activity timeline */}
       <div style={{ padding: "0 20px 28px" }}>
         <div style={{
-          fontSize: 10, fontWeight: 800, color: "#9CA3AF",
-          textTransform: "uppercase", letterSpacing: 2, marginBottom: 14,
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          marginBottom: 14,
         }}>
-          The Story
+          <div style={{
+            fontSize: 10, fontWeight: 800, color: "#9CA3AF",
+            textTransform: "uppercase", letterSpacing: 2,
+          }}>
+            The Story
+          </div>
+          {!addingNote && (
+            <button
+              type="button"
+              onClick={() => setAddingNote(true)}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 4,
+                background: "transparent", border: "none", cursor: "pointer",
+                padding: 0, fontFamily: F, fontSize: 12, fontWeight: 600,
+                color: "#9CA3AF",
+              }}
+            >
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              Add note
+            </button>
+          )}
         </div>
+
+        {addingNote && (
+          <div style={{
+            marginBottom: 16,
+            background: GREY_BG,
+            borderLeft: `3px solid ${BLUE}`,
+            borderRadius: "4px 8px 8px 4px",
+            padding: "10px 12px",
+          }}>
+            <textarea
+              value={noteDraft}
+              onChange={(e) => setNoteDraft(e.target.value)}
+              placeholder="Write a note…"
+              rows={3}
+              autoFocus
+              style={{
+                width: "100%", resize: "vertical",
+                border: "none", outline: "none", background: "transparent",
+                fontFamily: F, fontSize: 14, color: DARK, lineHeight: 1.4,
+                padding: 0,
+              }}
+            />
+            <div style={{
+              display: "flex", alignItems: "center", justifyContent: "flex-end",
+              gap: 12, marginTop: 8,
+            }}>
+              <button
+                type="button"
+                onClick={cancelAddNote}
+                disabled={savingNote}
+                style={{
+                  background: "transparent", border: "none", cursor: "pointer",
+                  padding: 0, fontFamily: F, fontSize: 12, fontWeight: 600,
+                  color: "#9CA3AF",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleAddNote}
+                disabled={savingNote || !noteDraft.trim()}
+                style={{
+                  background: BLUE, color: "#fff",
+                  border: "none", borderRadius: 6, cursor: savingNote || !noteDraft.trim() ? "default" : "pointer",
+                  padding: "6px 14px", fontFamily: F, fontSize: 12, fontWeight: 700,
+                  opacity: savingNote || !noteDraft.trim() ? 0.5 : 1,
+                }}
+              >
+                {savingNote ? "Saving…" : "Save"}
+              </button>
+            </div>
+          </div>
+        )}
 
         {timeline.length === 0 ? (
           <div style={{ fontSize: 14, color: "#9CA3AF" }}>No activity yet.</div>
@@ -482,32 +599,54 @@ export default function CustomerDetailClient({ lead, timeline: initialTimeline, 
               const dotColor = timelineColor(entry);
               const isIntent = entry.summary?.toLowerCase().includes("wants") || entry.summary?.toLowerCase().includes("intent");
               const isNote = entry.type === "note";
+              const isUserNote = entry.type === "user_note";
+              const isAnyNote = isNote || isUserNote;
+              const noteAccent = isUserNote ? BLUE : GREEN;
+              const noteLabel = isUserNote ? "User note" : "Customer note";
               return (
                 <div key={entry.id} style={{
                   display: "flex", alignItems: "flex-start", gap: 14,
                   paddingBottom: i < timeline.length - 1 ? 16 : 0, position: "relative",
                 }}>
-                  {isNote ? (
-                    // Speech-bubble icon for human-written notes (referral
-                    // messages, website contact form, manual contractor notes)
+                  {isAnyNote ? (
+                    // Customer notes (referral/contact form messages) get a
+                    // speech-bubble icon in brand green. User notes (manual
+                    // contractor entries) get a pencil icon in brand blue.
                     <div style={{
                       width: 14, height: 14, display: "flex", alignItems: "center",
                       justifyContent: "center", flexShrink: 0, marginTop: 1,
                       position: "relative", zIndex: 1, background: "#fff",
                     }}>
-                      <svg
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke={GREEN}
-                        strokeWidth="2.2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        aria-hidden="true"
-                      >
-                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                      </svg>
+                      {isUserNote ? (
+                        <svg
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke={noteAccent}
+                          strokeWidth="2.2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          aria-hidden="true"
+                        >
+                          <path d="M12 20h9" />
+                          <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                        </svg>
+                      ) : (
+                        <svg
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke={noteAccent}
+                          strokeWidth="2.2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          aria-hidden="true"
+                        >
+                          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                        </svg>
+                      )}
                     </div>
                   ) : (
                     <div style={{
@@ -517,18 +656,18 @@ export default function CustomerDetailClient({ lead, timeline: initialTimeline, 
                     }} />
                   )}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    {isNote ? (
+                    {isAnyNote ? (
                       <>
                         <div style={{
                           fontSize: 10, fontWeight: 700, color: "#9CA3AF",
                           textTransform: "uppercase", letterSpacing: 1,
                           marginBottom: 4,
                         }}>
-                          Customer note
+                          {noteLabel}
                         </div>
                         <div style={{
                           background: GREY_BG,
-                          borderLeft: `3px solid ${GREEN}`,
+                          borderLeft: `3px solid ${noteAccent}`,
                           borderRadius: "4px 8px 8px 4px",
                           padding: "8px 12px",
                           fontSize: 14,
