@@ -53,5 +53,16 @@ export async function POST(request: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  // Log the manual enrollment. Best-effort — partner row is already live.
+  await supabase
+    .from("activity_log")
+    .insert({
+      business_id: auth.businessId,
+      lead_id: customer_id,
+      type: "referral_partner_created",
+      summary: "Made referral partner",
+    })
+    .then(() => {}, () => {});
+
   return NextResponse.json({ referral_code: data.referral_code });
 }

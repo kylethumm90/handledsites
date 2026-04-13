@@ -96,6 +96,23 @@ Additional feedback: "${feedback}"`,
     lead_id: lead_id || null,
   });
 
+  // Log activity when the review is attributable to a specific customer.
+  // Best-effort: never fail the submission if the log insert errors.
+  if (lead_id) {
+    const summary = isPositive
+      ? `Left a ${rating}-star review`
+      : `Submitted feedback (${rating}/5)`;
+    await supabase
+      .from("activity_log")
+      .insert({
+        business_id: site.business_id,
+        lead_id,
+        type: "review_received",
+        summary,
+      })
+      .then(() => {}, () => {});
+  }
+
   if (isPositive) {
     return NextResponse.json({
       is_positive: true,

@@ -49,6 +49,11 @@ function serviceFromLead(lead: Lead): string | null {
 function timelineColor(entry: ActivityLogEntry): string {
   if (entry.agent) return GREEN; // Ava action
   if (entry.type === "status_change") return BLUE; // system
+  if (entry.type === "review_request_sent") return AMBER;
+  if (entry.type === "review_received") return GREEN;
+  if (entry.type === "referral_opt_in") return GREEN;
+  if (entry.type === "referral_partner_created") return GREEN;
+  if (entry.type === "employee_assigned") return BLUE;
   if (entry.summary?.toLowerCase().includes("intent") || entry.summary?.toLowerCase().includes("wants")) return AMBER;
   if (entry.summary?.toLowerCase().includes("new lead")) return BLUE;
   return BLUE; // default system
@@ -251,16 +256,33 @@ export default function CustomerDetailClient({ lead, timeline: initialTimeline, 
             if (assignedEmp) params.set("rep_id", assignedEmp.id);
             const reviewUrl = reviewFunnelSlug ? `/r/${reviewFunnelSlug}?${params.toString()}` : null;
             return reviewUrl ? (
-              <a href={reviewUrl} target="_blank" rel="noopener noreferrer" style={{
-                width: "100%", background: GREEN, color: "#fff", border: "none",
-                padding: "20px 20px", fontSize: 16, fontWeight: 900,
-                fontFamily: F, textDecoration: "none", borderRadius: 0,
-                display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
-                letterSpacing: -0.3, textTransform: "uppercase",
-              }}>
+              <button
+                onClick={async () => {
+                  // Fire-and-forget: log the send, then open the link in a new tab.
+                  // If the log call fails, still open the tab — losing a timeline
+                  // entry is better than blocking the contractor's workflow.
+                  try {
+                    const res = await fetch(`/api/contractor/customers/${lead.id}/review-request-sent`, {
+                      method: "POST",
+                    });
+                    if (res.ok) {
+                      const data = await res.json().catch(() => null);
+                      if (data?.entry) setTimeline((t) => [data.entry, ...t]);
+                    }
+                  } catch { /* ignore — still open link */ }
+                  window.open(reviewUrl, "_blank", "noopener,noreferrer");
+                }}
+                style={{
+                  width: "100%", background: GREEN, color: "#fff", border: "none",
+                  padding: "20px 20px", fontSize: 16, fontWeight: 900,
+                  fontFamily: F, cursor: "pointer", borderRadius: 0,
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+                  letterSpacing: -0.3, textTransform: "uppercase",
+                }}
+              >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
                 Send Review Request
-              </a>
+              </button>
             ) : (
               <button disabled style={{
                 width: "100%", background: "#9CA3AF", color: "#fff", border: "none",
@@ -444,7 +466,7 @@ export default function CustomerDetailClient({ lead, timeline: initialTimeline, 
           fontSize: 10, fontWeight: 800, color: "#9CA3AF",
           textTransform: "uppercase", letterSpacing: 2, marginBottom: 14,
         }}>
-          What Happened
+          The Story
         </div>
 
         {timeline.length === 0 ? (

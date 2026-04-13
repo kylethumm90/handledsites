@@ -151,6 +151,18 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Log the opt-in against the customer's lead. Best-effort — don't fail the
+  // enrollment if the activity insert errors (the partner row is already live).
+  await supabase
+    .from("activity_log")
+    .insert({
+      business_id: business.id,
+      lead_id: customerId,
+      type: "referral_opt_in",
+      summary: "Opted in as referral partner",
+    })
+    .then(() => {}, () => {});
+
   const base = process.env.NEXT_PUBLIC_BASE_URL?.replace(/\/$/, "") || "";
   const referralUrl = base
     ? `${base}/refer/${partner.referral_code}`
