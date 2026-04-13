@@ -49,6 +49,34 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  // Log to The Story on the newly-created lead: where it came from + the
+  // message (if any) as a separate note-style entry. Best-effort — never
+  // fail the referral if activity logging errors.
+  const referrerFirst = referrer?.name?.split(" ")[0] || null;
+  await supabase
+    .from("activity_log")
+    .insert({
+      business_id: partner.business_id,
+      lead_id: lead.id,
+      type: "lead_created",
+      summary: referrerFirst
+        ? `New referral from ${referrerFirst}`
+        : "New referral",
+    })
+    .then(() => {}, () => {});
+
+  if (message?.trim()) {
+    await supabase
+      .from("activity_log")
+      .insert({
+        business_id: partner.business_id,
+        lead_id: lead.id,
+        type: "note",
+        summary: message.trim(),
+      })
+      .then(() => {}, () => {});
+  }
+
   // Notify business owner via email
   try {
     const { data: business } = await supabase
