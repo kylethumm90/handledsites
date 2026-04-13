@@ -246,8 +246,10 @@ export default function CustomerDetailClient({ lead, timeline: initialTimeline, 
         {status === "customer" && (<>
           {(() => {
             const assignedEmp = employees?.find(e => e.id === assignedEmployee);
-            const repParam = assignedEmp ? `?rep_id=${assignedEmp.id}` : "";
-            const reviewUrl = reviewFunnelSlug ? `/r/${reviewFunnelSlug}${repParam}` : null;
+            const params = new URLSearchParams();
+            params.set("lead_id", lead.id);
+            if (assignedEmp) params.set("rep_id", assignedEmp.id);
+            const reviewUrl = reviewFunnelSlug ? `/r/${reviewFunnelSlug}?${params.toString()}` : null;
             return reviewUrl ? (
               <a href={reviewUrl} target="_blank" rel="noopener noreferrer" style={{
                 width: "100%", background: GREEN, color: "#fff", border: "none",

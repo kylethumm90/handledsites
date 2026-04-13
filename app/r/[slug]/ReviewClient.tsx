@@ -16,6 +16,7 @@ type Props = {
   rewardType?: "cash" | "credit" | "gift_card" | null;
   repId?: string | null;
   repName?: string | null;
+  existingLead?: { id: string; name: string; phone: string } | null;
 };
 
 type ReferralState = "idle" | "form" | "submitting" | "enrolled";
@@ -64,6 +65,7 @@ export default function ReviewClient({
   rewardType,
   repId,
   repName,
+  existingLead,
 }: Props) {
   const [step, setStep] = useState<Step>("rating");
   const [rating, setRating] = useState(0);
@@ -125,6 +127,35 @@ export default function ReviewClient({
     }
   };
 
+  // One-tap path: link carried a lead_id, so we already know who the
+  // reviewer is and can enroll them without asking for name/phone again.
+  const handleEnrollExistingLead = async () => {
+    if (!existingLead) return;
+    setReferralError("");
+    setReferralState("submitting");
+    try {
+      const res = await fetch("/api/reviews/referral-enroll", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          site_id: siteId,
+          lead_id: existingLead.id,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setReferralError(data.error || "Something went wrong. Please try again.");
+        setReferralState("idle");
+        return;
+      }
+      setReferralUrl(data.referral_url);
+      setReferralState("enrolled");
+    } catch {
+      setReferralError("Network error. Please try again.");
+      setReferralState("idle");
+    }
+  };
+
   const handleCopyLink = async () => {
     if (!referralUrl) return;
     try {
@@ -147,7 +178,7 @@ export default function ReviewClient({
       const res = await fetch("/api/review/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ site_id: siteId, rating, professionalism, communication, feedback, rep_id: repId || undefined, rep_name: repName || undefined }),
+        body: JSON.stringify({ site_id: siteId, rating, professionalism, communication, feedback, rep_id: repId || undefined, rep_name: repName || undefined, lead_id: existingLead?.id || undefined }),
       });
       const data = await res.json();
       setIsPositive(data.is_positive);
@@ -172,7 +203,9 @@ export default function ReviewClient({
           >
             <Check className="h-7 w-7" style={{ color: "#10B981" }} />
           </div>
-          <h2 style={{ fontSize: 18, fontWeight: 500, color: "#111827" }}>Thank you!</h2>
+          <h2 style={{ fontSize: 18, fontWeight: 500, color: "#111827" }}>
+            {existingLead ? `Thanks, ${existingLead.name.split(" ")[0]}!` : "Thank you!"}
+          </h2>
           <p className="mt-2" style={{ fontSize: 14, color: "#6B7280" }}>
             Your review means a lot to {businessName}.
           </p>
@@ -190,7 +223,7 @@ export default function ReviewClient({
             />
 
             {/* Referral CTA block */}
-            {referralState === "idle" && (
+            {(referralState === "idle" || (existingLead && referralState === "submitting")) && (
               <div style={{ paddingBottom: 8 }}>
                 <h3
                   className="text-center"
@@ -209,7 +242,14 @@ export default function ReviewClient({
                     : `Send friends to ${businessName} and help your neighbors find someone they can trust.`}
                 </p>
                 <button
-                  onClick={() => setReferralState("form")}
+                  onClick={() => {
+                    if (existingLead) {
+                      handleEnrollExistingLead();
+                    } else {
+                      setReferralState("form");
+                    }
+                  }}
+                  disabled={referralState === "submitting"}
                   style={{
                     display: "block",
                     width: "100%",
@@ -221,19 +261,33 @@ export default function ReviewClient({
                     color: "#FFFFFF",
                     fontSize: 15,
                     fontWeight: 600,
-                    cursor: "pointer",
+                    cursor: referralState === "submitting" ? "default" : "pointer",
+                    opacity: referralState === "submitting" ? 0.7 : 1,
                     transition: "opacity 0.15s ease",
                   }}
-                  onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.opacity = "0.9")}
-                  onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.opacity = "1")}
+                  onMouseEnter={(e) => {
+                    if (referralState !== "submitting") {
+                      (e.currentTarget as HTMLButtonElement).style.opacity = "0.9";
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (referralState !== "submitting") {
+                      (e.currentTarget as HTMLButtonElement).style.opacity = "1";
+                    }
+                  }}
                 >
-                  Count me in
+                  {referralState === "submitting" ? "Setting up..." : "Count me in"}
                 </button>
+                {referralError && existingLead && (
+                  <p style={{ fontSize: 12, color: "#DC2626", marginTop: 8, textAlign: "center" }}>
+                    {referralError}
+                  </p>
+                )}
               </div>
             )}
 
-            {/* Inline enrollment form */}
-            {(referralState === "form" || referralState === "submitting") && (
+            {/* Inline enrollment form (fallback when no lead_id on the URL) */}
+            {!existingLead && (referralState === "form" || referralState === "submitting") && (
               <div style={{ paddingBottom: 8 }}>
                 <h3
                   className="text-center"

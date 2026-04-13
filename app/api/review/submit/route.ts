@@ -4,7 +4,7 @@ import Anthropic from "@anthropic-ai/sdk";
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const { site_id, rating, feedback, professionalism, communication, rep_id, rep_name } = body;
+  const { site_id, rating, feedback, professionalism, communication, rep_id, rep_name, lead_id } = body;
 
   if (!site_id || !rating) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -81,7 +81,7 @@ Additional feedback: "${feedback}"`,
     }
   }
 
-  // Store response with rep attribution
+  // Store response with rep + (optional) customer attribution
   await supabase.from("review_responses").insert({
     business_id: site.business_id,
     site_id,
@@ -93,6 +93,7 @@ Additional feedback: "${feedback}"`,
     communication: communication || null,
     rep_id: rep_id || null,
     tech_name: resolvedRepName || null,
+    lead_id: lead_id || null,
   });
 
   if (isPositive) {

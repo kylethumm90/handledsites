@@ -169,3 +169,16 @@ CREATE INDEX idx_contractor_sessions_hash ON contractor_sessions (session_hash);
 -- public review funnel page (/r/[slug]) can read them in its existing query:
 -- brand_color, referral_enabled, referral_reward_amount_cents, referral_reward_type
 
+-- ============================================
+-- Attribute review responses to specific customers
+-- ============================================
+
+-- When the review link carries ?lead_id=<uuid>, the review funnel now stores
+-- that lead id on review_responses so reviews are tied to a known customer.
+-- Nullable + ON DELETE SET NULL keeps direct/QR-code review flows working.
+--
+-- Run as migration:
+--
+-- ALTER TABLE review_responses ADD COLUMN lead_id UUID REFERENCES leads(id) ON DELETE SET NULL;
+-- CREATE INDEX idx_review_responses_lead_id ON review_responses (lead_id) WHERE lead_id IS NOT NULL;
+

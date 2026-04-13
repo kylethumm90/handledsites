@@ -33,7 +33,7 @@ export default async function ReviewFunnelPage({
   searchParams,
 }: {
   params: { slug: string };
-  searchParams: { rep?: string; rep_id?: string };
+  searchParams: { rep?: string; rep_id?: string; lead_id?: string };
 }) {
   const supabase = getSupabaseAdmin();
 
@@ -55,6 +55,22 @@ export default async function ReviewFunnelPage({
     .select("trade, brand_color, referral_enabled, referral_reward_amount_cents, referral_reward_type")
     .eq("id", site.business_id)
     .single();
+
+  // If the link carries a lead_id, resolve the matching customer so the
+  // thank-you screen can skip the name/phone form and auto-enroll them.
+  // Scoped to the same business to prevent cross-tenant data access.
+  let existingLead: { id: string; name: string; phone: string } | null = null;
+  if (searchParams.lead_id) {
+    const { data: lead } = await supabase
+      .from("leads")
+      .select("id, name, phone, business_id")
+      .eq("id", searchParams.lead_id)
+      .eq("business_id", site.business_id)
+      .single();
+    if (lead) {
+      existingLead = { id: lead.id, name: lead.name, phone: lead.phone };
+    }
+  }
 
   // Look up rep if param provided
   let repId: string | null = null;
@@ -101,6 +117,7 @@ export default async function ReviewFunnelPage({
       rewardType={bizConfig?.referral_reward_type ?? null}
       repId={repId}
       repName={repName}
+      existingLead={existingLead}
     />
     </>
   );
