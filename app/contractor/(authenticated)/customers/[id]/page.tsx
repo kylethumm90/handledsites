@@ -66,6 +66,7 @@ export default async function CustomerDetailPage({
 
   // Look up who referred this lead (if referral source)
   let referrerName: string | null = null;
+  let referrerId: string | null = null;
   if (lead.referral_code) {
     const { data: rp } = await supabase
       .from("referral_partners")
@@ -75,10 +76,11 @@ export default async function CustomerDetailPage({
     if (rp) {
       const { data: referrer } = await supabase
         .from("leads")
-        .select("name")
+        .select("id, name")
         .eq("id", rp.customer_id)
         .single();
       referrerName = referrer?.name || null;
+      referrerId = referrer?.id || null;
     }
   }
 
@@ -107,6 +109,7 @@ export default async function CustomerDetailPage({
       counts={{ lead: leadCount, booked: bookedCount, customer: customerCount }}
       existingReferralCode={referralPartner?.referral_code || null}
       referrerName={referrerName}
+      referrerId={referrerId}
       employees={(employees || []).map(e => ({ id: e.id, name: e.name }))}
       reviewFunnelSlug={reviewSite?.slug || null}
     />

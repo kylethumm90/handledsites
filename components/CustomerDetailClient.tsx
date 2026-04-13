@@ -1,6 +1,8 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Lead, ActivityLogEntry } from "@/lib/supabase";
 import { formatPhone } from "@/lib/utils";
@@ -11,6 +13,7 @@ type Props = {
   counts: { lead: number; booked: number; customer: number };
   existingReferralCode?: string | null;
   referrerName?: string | null;
+  referrerId?: string | null;
   employees?: { id: string; name: string }[];
   reviewFunnelSlug?: string | null;
 };
@@ -63,7 +66,42 @@ function firstName(name: string): string {
   return name.split(" ")[0] || name;
 }
 
-export default function CustomerDetailClient({ lead, timeline: initialTimeline, counts, existingReferralCode, referrerName, employees, reviewFunnelSlug }: Props) {
+// The referral API writes `New referral from <firstName>` on the referred
+// lead's activity log. In the detail view we want the referrer's first name
+// to be a link back to their own contact card, so split the summary at the
+// known prefix and swap the trailing name for a clickable span. Only applied
+// when the parent page resolved a real referrerId (so direct / non-referral
+// `lead_created` entries stay plain text).
+function renderEntrySummary(
+  entry: ActivityLogEntry,
+  referrerId: string | null | undefined,
+  referrerName: string | null | undefined
+): ReactNode {
+  const prefix = "New referral from ";
+  if (
+    referrerId &&
+    entry.type === "lead_created" &&
+    entry.summary?.startsWith(prefix)
+  ) {
+    const nameText = entry.summary.slice(prefix.length);
+    const href = `/contractor/customers/${referrerId}`;
+    return (
+      <>
+        {prefix}
+        <Link
+          href={href}
+          style={{ color: BLUE, fontWeight: 600, textDecoration: "none" }}
+          title={referrerName || nameText}
+        >
+          {nameText}
+        </Link>
+      </>
+    );
+  }
+  return entry.summary;
+}
+
+export default function CustomerDetailClient({ lead, timeline: initialTimeline, counts, existingReferralCode, referrerName, referrerId, employees, reviewFunnelSlug }: Props) {
   const router = useRouter();
   const [status, setStatus] = useState<Stage>(lead.status);
   const [timeline, setTimeline] = useState(initialTimeline);
@@ -686,7 +724,7 @@ export default function CustomerDetailClient({ lead, timeline: initialTimeline, 
                         color: isIntent ? DARK : "#6B7280",
                         lineHeight: 1.3,
                       }}>
-                        {entry.summary}
+                        {renderEntrySummary(entry, referrerId, referrerName)}
                         {entry.agent && (
                           <span style={{ fontSize: 11, color: "#9CA3AF", marginLeft: 6 }}>({entry.agent})</span>
                         )}
