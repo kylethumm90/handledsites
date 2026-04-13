@@ -366,80 +366,84 @@ export default function CustomerDetailClient({ lead, timeline: initialTimeline, 
 
         {/* APPT SET */}
         {status === "booked" && (<>
-          {appointmentAt && (() => {
-            const d = new Date(appointmentAt);
-            if (isNaN(d.getTime())) return null;
-            const dayLabel = d.toLocaleDateString("en-US", {
-              weekday: "long", month: "long", day: "numeric",
-            });
-            const timeLabel = d.toLocaleTimeString("en-US", {
-              hour: "numeric", minute: "2-digit",
-            });
-            return (
-              <div style={{
-                display: "flex", alignItems: "center", gap: 14,
-                background: "#EFF4FE", border: `1px solid ${BLUE}`,
-                padding: "14px 16px", marginBottom: 10,
-              }}>
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
-                  stroke={BLUE} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                  style={{ flexShrink: 0 }}>
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                  <line x1="16" y1="2" x2="16" y2="6"/>
-                  <line x1="8" y1="2" x2="8" y2="6"/>
-                  <line x1="3" y1="10" x2="21" y2="10"/>
-                </svg>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{
-                    fontSize: 10, fontWeight: 800, color: BLUE,
-                    textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 2,
-                  }}>
-                    Appointment
-                  </div>
-                  <div style={{ fontSize: 16, fontWeight: 800, color: DARK, lineHeight: 1.2 }}>
-                    {dayLabel}
-                  </div>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: "#4B5563", marginTop: 1 }}>
-                    {timeLabel}
-                  </div>
-                </div>
-              </div>
-            );
-          })()}
-          <button style={{
-            width: "100%", background: GREEN, color: "#fff", border: "none",
-            padding: "20px 20px", fontSize: 16, fontWeight: 900,
-            fontFamily: F, cursor: "pointer", borderRadius: 0,
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
-            letterSpacing: -0.3, textTransform: "uppercase",
+          <div style={{
+            background: "#fff",
+            border: "1px solid #E5E7EB",
+            borderRadius: 12,
+            padding: 16,
+            marginBottom: 14,
           }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
-            Confirm Appointment
-          </button>
-          <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
-            {lead.phone && (
-              <a href={`sms:${lead.phone}`} style={{
-                flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
-                background: "#fff", border: `2px solid ${BLUE}`,
-                color: BLUE, padding: "16px 12px", fontSize: 14, fontWeight: 800,
-                fontFamily: F, textDecoration: "none", borderRadius: 0,
-              }}>
-                Send Reminder
-              </a>
-            )}
-            <button onClick={openApptModal} style={{
-              flex: 1, background: "#fff", border: `2px solid ${GREY_BORDER}`,
-              color: "#6B7280", padding: "16px 12px", fontSize: 14, fontWeight: 800,
-              fontFamily: F, cursor: "pointer", borderRadius: 0,
+            {appointmentAt && (() => {
+              const d = new Date(appointmentAt);
+              if (isNaN(d.getTime())) return null;
+              const dayLabel = d.toLocaleDateString("en-US", {
+                weekday: "long", month: "long", day: "numeric",
+              });
+              const timeLabel = d.toLocaleTimeString("en-US", {
+                hour: "numeric", minute: "2-digit",
+              });
+              return (
+                <>
+                  <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+                      stroke="#6B7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                      style={{ flexShrink: 0 }}>
+                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                      <line x1="16" y1="2" x2="16" y2="6"/>
+                      <line x1="8" y1="2" x2="8" y2="6"/>
+                      <line x1="3" y1="10" x2="21" y2="10"/>
+                    </svg>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 17, fontWeight: 800, color: DARK, lineHeight: 1.2 }}>
+                        {dayLabel}
+                      </div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: "#6B7280", marginTop: 2 }}>
+                        {timeLabel}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ height: 1, background: "#E5E7EB", margin: "14px -16px" }} />
+                </>
+              );
+            })()}
+
+            <button style={{
+              width: "100%", background: GREEN, color: "#fff", border: "none",
+              padding: "16px 20px", fontSize: 15, fontWeight: 900,
+              fontFamily: F, cursor: "pointer", borderRadius: 8,
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+              letterSpacing: -0.3, textTransform: "uppercase",
             }}>
-              Reschedule
+              Confirm Appointment
             </button>
+
+            <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+              {lead.phone ? (
+                <a href={`sms:${lead.phone}`} style={{
+                  flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
+                  background: "#fff", border: "1px solid #E5E7EB",
+                  color: DARK, padding: "12px", fontSize: 13, fontWeight: 700,
+                  fontFamily: F, textDecoration: "none", borderRadius: 8,
+                }}>
+                  Send Reminder
+                </a>
+              ) : (
+                <div style={{ flex: 1 }} />
+              )}
+              <button onClick={openApptModal} style={{
+                flex: 1, background: "#fff", border: "1px solid #E5E7EB",
+                color: DARK, padding: "12px", fontSize: 13, fontWeight: 700,
+                fontFamily: F, cursor: "pointer", borderRadius: 8,
+              }}>
+                Reschedule
+              </button>
+            </div>
           </div>
+
           <button onClick={() => handleStatusChange("customer")} style={{
-            width: "100%", marginTop: 6, background: "#fff",
-            border: `2px solid ${GREEN}`, color: GREEN,
-            padding: "16px 12px", fontSize: 14, fontWeight: 800,
-            fontFamily: F, cursor: "pointer", borderRadius: 0,
+            width: "100%", background: "transparent", border: "none",
+            color: GREEN, padding: "14px", fontSize: 14, fontWeight: 800,
+            fontFamily: F, cursor: "pointer", textAlign: "center",
           }}>
             Mark as Sold ✓
           </button>
