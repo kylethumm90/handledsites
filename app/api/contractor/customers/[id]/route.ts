@@ -17,7 +17,7 @@ export async function PUT(
   // Verify lead belongs to this business
   const { data: lead } = await supabase
     .from("leads")
-    .select("id, status, business_id, employee_id")
+    .select("id, status, business_id, employee_id, appointment_at")
     .eq("id", params.id)
     .eq("business_id", businessId)
     .single();
@@ -28,7 +28,7 @@ export async function PUT(
 
   const body = await request.json();
 
-  const ALLOWED = new Set(["status", "service_needed", "notes", "tags", "employee_id"]);
+  const ALLOWED = new Set(["status", "service_needed", "notes", "tags", "employee_id", "appointment_at"]);
   const updates: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(body)) {
     if (ALLOWED.has(key)) updates[key] = value;
@@ -47,14 +47,49 @@ export async function PUT(
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
-  // Log status change
+  // Log status change. When moving to "booked" with an appointment_at in the
+  // same update, inline the formatted date/time so The Story reads
+  // "Appointment booked for Apr 18 at 2:30 PM" rather than a bare status flip.
   if (updates.status && updates.status !== lead.status) {
+    let summary = `Status changed to ${updates.status}`;
+    if (updates.status === "booked" && typeof updates.appointment_at === "string") {
+      const d = new Date(updates.appointment_at);
+      if (!isNaN(d.getTime())) {
+        const when = d.toLocaleString("en-US", {
+          month: "short",
+          day: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+        });
+        summary = `Appointment booked for ${when}`;
+      }
+    }
     await supabase.from("activity_log").insert({
       business_id: businessId,
       lead_id: params.id,
       type: "status_change",
-      summary: `Status changed to ${updates.status}`,
+      summary,
     });
+  } else if (
+    // Standalone reschedule: appointment_at changed but status stayed "booked".
+    typeof updates.appointment_at === "string" &&
+    updates.appointment_at !== lead.appointment_at
+  ) {
+    const d = new Date(updates.appointment_at);
+    if (!isNaN(d.getTime())) {
+      const when = d.toLocaleString("en-US", {
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      });
+      await supabase.from("activity_log").insert({
+        business_id: businessId,
+        lead_id: params.id,
+        type: "status_change",
+        summary: `Appointment rescheduled to ${when}`,
+      });
+    }
   }
 
   // Log employee (re)assignment. "employee_id" in updates can be a string or

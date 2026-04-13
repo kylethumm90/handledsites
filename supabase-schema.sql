@@ -197,3 +197,17 @@ CREATE INDEX idx_contractor_sessions_hash ON contractor_sessions (session_hash);
 --
 -- ALTER TABLE review_responses ADD COLUMN highlights TEXT[];
 
+-- ============================================
+-- Appointment datetime on leads
+-- ============================================
+
+-- When a contractor taps "Appt Booked" on the lead detail view, the UI now
+-- collects a date + time before flipping status to "booked". The timestamp
+-- is stored on the lead so the Appt Set stage can show it prominently above
+-- the action buttons (and later for reminders / confirm flows). Nullable so
+-- legacy leads stay valid and leads still in the New stage have it unset.
+--
+-- Run as migration:
+--
+-- ALTER TABLE leads ADD COLUMN appointment_at TIMESTAMPTZ;
+

@@ -153,6 +153,7 @@ export type Lead = {
   is_demo: boolean;
   referral_code: string | null;
   employee_id: string | null;
+  appointment_at: string | null;
   created_at: string;
 };
 

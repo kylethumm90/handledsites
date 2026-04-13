@@ -112,6 +112,96 @@ export default function CustomerDetailClient({ lead, timeline: initialTimeline, 
   const [addingNote, setAddingNote] = useState(false);
   const [noteDraft, setNoteDraft] = useState("");
   const [savingNote, setSavingNote] = useState(false);
+  const [appointmentAt, setAppointmentAt] = useState<string | null>(lead.appointment_at || null);
+  const [apptModalOpen, setApptModalOpen] = useState(false);
+  const [apptDate, setApptDate] = useState("");
+  const [apptTime, setApptTime] = useState("");
+  const [apptSaving, setApptSaving] = useState(false);
+  const [apptError, setApptError] = useState("");
+
+  const openApptModal = () => {
+    // Pre-fill with existing appointment when rescheduling; otherwise default
+    // to today's date and a clean 10:00 time so the contractor can just type
+    // over the parts that matter.
+    const seed = appointmentAt ? new Date(appointmentAt) : new Date();
+    const yyyy = seed.getFullYear();
+    const mm = String(seed.getMonth() + 1).padStart(2, "0");
+    const dd = String(seed.getDate()).padStart(2, "0");
+    setApptDate(`${yyyy}-${mm}-${dd}`);
+    if (appointmentAt) {
+      const hh = String(seed.getHours()).padStart(2, "0");
+      const mi = String(seed.getMinutes()).padStart(2, "0");
+      setApptTime(`${hh}:${mi}`);
+    } else {
+      setApptTime("10:00");
+    }
+    setApptError("");
+    setApptModalOpen(true);
+  };
+
+  const closeApptModal = () => {
+    if (apptSaving) return;
+    setApptModalOpen(false);
+    setApptError("");
+  };
+
+  // Confirm the appointment form. If the lead is still in "lead" stage, this
+  // also flips status to "booked". If the lead is already "booked" (reschedule),
+  // it just updates appointment_at.
+  const handleSaveAppointment = async () => {
+    if (!apptDate || !apptTime) {
+      setApptError("Date and time are required.");
+      return;
+    }
+    const combined = new Date(`${apptDate}T${apptTime}`);
+    if (isNaN(combined.getTime())) {
+      setApptError("That date and time is invalid.");
+      return;
+    }
+    const iso = combined.toISOString();
+    const isReschedule = status === "booked";
+    setApptSaving(true);
+    setApptError("");
+    try {
+      const body: Record<string, unknown> = { appointment_at: iso };
+      if (!isReschedule) body.status = "booked";
+      const res = await fetch(`/api/contractor/customers/${lead.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error("Failed");
+
+      setAppointmentAt(iso);
+      if (!isReschedule) setStatus("booked");
+
+      const when = combined.toLocaleString("en-US", {
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      });
+      setTimeline((prev) => [
+        {
+          id: crypto.randomUUID(),
+          created_at: new Date().toISOString(),
+          business_id: lead.business_id,
+          lead_id: lead.id,
+          type: "status_change",
+          summary: isReschedule
+            ? `Appointment rescheduled to ${when}`
+            : `Appointment booked for ${when}`,
+          agent: null,
+        },
+        ...prev,
+      ]);
+      setApptModalOpen(false);
+    } catch {
+      setApptError("Couldn't save. Please try again.");
+    } finally {
+      setApptSaving(false);
+    }
+  };
 
   const handleAddNote = async () => {
     const trimmed = noteDraft.trim();
@@ -254,7 +344,7 @@ export default function CustomerDetailClient({ lead, timeline: initialTimeline, 
             </a>
           )}
           <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
-            <button onClick={() => handleStatusChange("booked")} style={{
+            <button onClick={openApptModal} style={{
               flex: 1, background: "#fff", border: `2px solid ${GREEN}`,
               color: GREEN, padding: "16px 12px", fontSize: 14, fontWeight: 800,
               fontFamily: F, cursor: "pointer", borderRadius: 0,
@@ -276,6 +366,46 @@ export default function CustomerDetailClient({ lead, timeline: initialTimeline, 
 
         {/* APPT SET */}
         {status === "booked" && (<>
+          {appointmentAt && (() => {
+            const d = new Date(appointmentAt);
+            if (isNaN(d.getTime())) return null;
+            const dayLabel = d.toLocaleDateString("en-US", {
+              weekday: "long", month: "long", day: "numeric",
+            });
+            const timeLabel = d.toLocaleTimeString("en-US", {
+              hour: "numeric", minute: "2-digit",
+            });
+            return (
+              <div style={{
+                display: "flex", alignItems: "center", gap: 14,
+                background: "#EFF4FE", border: `1px solid ${BLUE}`,
+                padding: "14px 16px", marginBottom: 10,
+              }}>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
+                  stroke={BLUE} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                  style={{ flexShrink: 0 }}>
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                  <line x1="16" y1="2" x2="16" y2="6"/>
+                  <line x1="8" y1="2" x2="8" y2="6"/>
+                  <line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    fontSize: 10, fontWeight: 800, color: BLUE,
+                    textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 2,
+                  }}>
+                    Appointment
+                  </div>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: DARK, lineHeight: 1.2 }}>
+                    {dayLabel}
+                  </div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: "#4B5563", marginTop: 1 }}>
+                    {timeLabel}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
           <button style={{
             width: "100%", background: GREEN, color: "#fff", border: "none",
             padding: "20px 20px", fontSize: 16, fontWeight: 900,
@@ -297,7 +427,7 @@ export default function CustomerDetailClient({ lead, timeline: initialTimeline, 
                 Send Reminder
               </a>
             )}
-            <button style={{
+            <button onClick={openApptModal} style={{
               flex: 1, background: "#fff", border: `2px solid ${GREY_BORDER}`,
               color: "#6B7280", padding: "16px 12px", fontSize: 14, fontWeight: 800,
               fontFamily: F, cursor: "pointer", borderRadius: 0,
@@ -781,6 +911,113 @@ export default function CustomerDetailClient({ lead, timeline: initialTimeline, 
           );
         })}
       </div>
+
+      {/* Appointment modal — collects date + time before flipping to booked,
+          or updates the existing appointment when rescheduling from Appt Set. */}
+      {apptModalOpen && (
+        <div
+          onClick={closeApptModal}
+          style={{
+            position: "fixed", inset: 0, background: "rgba(17,24,39,0.6)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            padding: 20, zIndex: 50,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#fff", width: "100%", maxWidth: 380,
+              borderRadius: 12, padding: "22px 22px 18px",
+              fontFamily: F, boxShadow: "0 20px 50px rgba(0,0,0,0.25)",
+            }}
+          >
+            <div style={{
+              fontSize: 18, fontWeight: 900, color: DARK,
+              letterSpacing: -0.3, marginBottom: 4,
+            }}>
+              {status === "booked" ? "Reschedule appointment" : "Set appointment"}
+            </div>
+            <div style={{ fontSize: 13, color: "#6B7280", marginBottom: 18 }}>
+              {status === "booked"
+                ? "Pick a new date and time."
+                : `When is ${name} booked in?`}
+            </div>
+
+            <label style={{
+              display: "block", fontSize: 10, fontWeight: 800, color: "#6B7280",
+              textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 6,
+            }}>
+              Date
+            </label>
+            <input
+              type="date"
+              value={apptDate}
+              onChange={(e) => setApptDate(e.target.value)}
+              style={{
+                width: "100%", padding: "12px 14px", fontSize: 15, fontFamily: F,
+                border: `1px solid ${GREY_BORDER}`, borderRadius: 8, outline: "none",
+                color: DARK, marginBottom: 14,
+              }}
+            />
+
+            <label style={{
+              display: "block", fontSize: 10, fontWeight: 800, color: "#6B7280",
+              textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 6,
+            }}>
+              Time
+            </label>
+            <input
+              type="time"
+              value={apptTime}
+              onChange={(e) => setApptTime(e.target.value)}
+              style={{
+                width: "100%", padding: "12px 14px", fontSize: 15, fontFamily: F,
+                border: `1px solid ${GREY_BORDER}`, borderRadius: 8, outline: "none",
+                color: DARK, marginBottom: 4,
+              }}
+            />
+
+            {apptError && (
+              <div style={{
+                fontSize: 12, color: "#B91C1C", marginTop: 10, fontWeight: 600,
+              }}>
+                {apptError}
+              </div>
+            )}
+
+            <div style={{
+              display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 18,
+            }}>
+              <button
+                type="button"
+                onClick={closeApptModal}
+                disabled={apptSaving}
+                style={{
+                  background: "transparent", border: "none", cursor: "pointer",
+                  padding: "10px 12px", fontFamily: F, fontSize: 13, fontWeight: 700,
+                  color: "#6B7280",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveAppointment}
+                disabled={apptSaving}
+                style={{
+                  background: GREEN, color: "#fff", border: "none",
+                  borderRadius: 8, cursor: apptSaving ? "default" : "pointer",
+                  padding: "10px 20px", fontFamily: F, fontSize: 13, fontWeight: 800,
+                  letterSpacing: 0.2, textTransform: "uppercase",
+                  opacity: apptSaving ? 0.6 : 1,
+                }}
+              >
+                {apptSaving ? "Saving…" : status === "booked" ? "Update" : "Confirm"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
