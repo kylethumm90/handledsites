@@ -21,19 +21,48 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Site not found" }, { status: 404 });
   }
 
-  const { error } = await supabase.from("leads").insert({
-    business_id: site.business_id,
-    site_id,
-    source: "website_contact",
-    name,
-    phone: phone.replace(/\D/g, ""),
-    service_needed: service_needed || null,
-    notes: message || null,
-  });
+  const { data: lead, error } = await supabase
+    .from("leads")
+    .insert({
+      business_id: site.business_id,
+      site_id,
+      source: "website_contact",
+      name,
+      phone: phone.replace(/\D/g, ""),
+      service_needed: service_needed || null,
+      notes: message || null,
+    })
+    .select("id")
+    .single();
 
-  if (error) {
+  if (error || !lead) {
     console.error("Website contact insert error:", error);
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
+  }
+
+  // Log creation + optional message to The Story. Best-effort.
+  await supabase
+    .from("activity_log")
+    .insert({
+      business_id: site.business_id,
+      lead_id: lead.id,
+      type: "lead_created",
+      summary: service_needed
+        ? `New lead from contact form (${service_needed})`
+        : "New lead from contact form",
+    })
+    .then(() => {}, () => {});
+
+  if (message?.trim()) {
+    await supabase
+      .from("activity_log")
+      .insert({
+        business_id: site.business_id,
+        lead_id: lead.id,
+        type: "note",
+        summary: message.trim(),
+      })
+      .then(() => {}, () => {});
   }
 
   return NextResponse.json({ success: true });

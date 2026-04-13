@@ -38,23 +38,38 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Site not found" }, { status: 404 });
   }
 
-  const { error } = await supabase.from("leads").insert({
-    business_id: site.business_id,
-    site_id,
-    source: "quiz_funnel",
-    name,
-    phone,
-    email: email || null,
-    answers,
-  });
+  const { data: lead, error } = await supabase
+    .from("leads")
+    .insert({
+      business_id: site.business_id,
+      site_id,
+      source: "quiz_funnel",
+      name,
+      phone,
+      email: email || null,
+      answers,
+    })
+    .select("id")
+    .single();
 
-  if (error) {
+  if (error || !lead) {
     console.error("Quiz lead insert error:", error);
     return NextResponse.json(
       { error: "Something went wrong" },
       { status: 500 }
     );
   }
+
+  // Log creation to The Story. Best-effort — never fail the submission.
+  await supabase
+    .from("activity_log")
+    .insert({
+      business_id: site.business_id,
+      lead_id: lead.id,
+      type: "lead_created",
+      summary: "New lead from quiz funnel",
+    })
+    .then(() => {}, () => {});
 
   return NextResponse.json({ success: true });
 }

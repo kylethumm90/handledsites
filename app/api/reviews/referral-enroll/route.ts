@@ -128,6 +128,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Log the creation on the new lead's Story. Best-effort.
+    await supabase
+      .from("activity_log")
+      .insert({
+        business_id: business.id,
+        lead_id: newLead.id,
+        type: "lead_created",
+        summary: "New lead from review funnel referral",
+      })
+      .then(() => {}, () => {});
+
     customerId = newLead.id;
   }
 
