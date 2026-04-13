@@ -694,10 +694,9 @@ export default function ReviewClient({
           {rating >= 4 && (
             <div
               style={{
-                display: "flex",
-                flexWrap: "wrap",
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
                 gap: 8,
-                justifyContent: "center",
                 marginBottom: 16,
               }}
             >
@@ -709,17 +708,19 @@ export default function ReviewClient({
                     type="button"
                     onClick={() => toggleHighlight(label)}
                     style={{
-                      padding: "8px 14px",
+                      padding: "10px 12px",
                       borderRadius: 9999,
                       border: selected ? `1px solid ${accent}` : "1px solid #D1D5DB",
                       background: selected ? accent : "#FFFFFF",
                       color: selected ? "#FFFFFF" : "#111827",
-                      fontSize: 13,
+                      fontSize: 12,
                       fontWeight: 500,
                       cursor: "pointer",
                       transition:
                         "background-color 150ms ease, color 150ms ease, border-color 150ms ease",
                       lineHeight: 1.2,
+                      textAlign: "center",
+                      width: "100%",
                     }}
                   >
                     {label}
