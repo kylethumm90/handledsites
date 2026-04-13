@@ -182,3 +182,18 @@ CREATE INDEX idx_contractor_sessions_hash ON contractor_sessions (session_hash);
 -- ALTER TABLE review_responses ADD COLUMN lead_id UUID REFERENCES leads(id) ON DELETE SET NULL;
 -- CREATE INDEX idx_review_responses_lead_id ON review_responses (lead_id) WHERE lead_id IS NOT NULL;
 
+-- ============================================
+-- Multi-select highlight chips on the review funnel feedback step
+-- ============================================
+
+-- The positive-rating feedback step now shows 10 preset chips above the free
+-- text box ("Finished ahead of schedule", "Went above and beyond", etc.) so
+-- happy reviewers can tap specifics even when they don't want to type. The
+-- tapped labels are stored as a text[] alongside the feedback and passed to
+-- the AI rewriter so it can mention them in the generated review. Nullable so
+-- legacy rows stay valid.
+--
+-- Run as migration:
+--
+-- ALTER TABLE review_responses ADD COLUMN highlights TEXT[];
+

@@ -46,6 +46,23 @@ const EMOJIS = [
   { emoji: "😤", label: "Frustrated", value: 1 },
 ];
 
+// Preset multi-select chips shown on the positive-rating feedback step. Tapped
+// labels are sent to the AI rewriter alongside any free-text feedback so the
+// generated review has concrete qualities to mention even when the reviewer
+// doesn't type anything.
+const HIGHLIGHT_OPTIONS = [
+  "Finished ahead of schedule",
+  "Walked me through every step",
+  "Handled all the paperwork",
+  "Worked around my schedule",
+  "Crew was clean and respectful",
+  "Made the process easy",
+  "Would recommend to family",
+  "Went above and beyond",
+  "Great value for the price",
+  "Followed up after the job",
+];
+
 const STEP_PROGRESS: Record<Step, number> = {
   rating: 33,
   questions: 66,
@@ -73,6 +90,7 @@ export default function ReviewClient({
   const [professionalism, setProfessionalism] = useState("");
   const [communication, setCommunication] = useState("");
   const [feedback, setFeedback] = useState("");
+  const [highlights, setHighlights] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [generatedReview, setGeneratedReview] = useState<string | null>(null);
   const [isPositive, setIsPositive] = useState(false);
@@ -165,6 +183,12 @@ export default function ReviewClient({
     } catch {}
   };
 
+  const toggleHighlight = (label: string) => {
+    setHighlights((prev) =>
+      prev.includes(label) ? prev.filter((h) => h !== label) : [...prev, label]
+    );
+  };
+
   const handleRating = (value: number) => {
     setSelectedEmoji(value);
     setRating(value);
@@ -178,7 +202,17 @@ export default function ReviewClient({
       const res = await fetch("/api/review/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ site_id: siteId, rating, professionalism, communication, feedback, rep_id: repId || undefined, rep_name: repName || undefined, lead_id: existingLead?.id || undefined }),
+        body: JSON.stringify({
+          site_id: siteId,
+          rating,
+          professionalism,
+          communication,
+          feedback,
+          highlights,
+          rep_id: repId || undefined,
+          rep_name: repName || undefined,
+          lead_id: existingLead?.id || undefined,
+        }),
       });
       const data = await res.json();
       setIsPositive(data.is_positive);
@@ -657,12 +691,49 @@ export default function ReviewClient({
               ? `What did ${businessName} do that stood out?`
               : "What could we have done better?"}
           </h2>
+          {rating >= 4 && (
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 8,
+                justifyContent: "center",
+                marginBottom: 16,
+              }}
+            >
+              {HIGHLIGHT_OPTIONS.map((label) => {
+                const selected = highlights.includes(label);
+                return (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() => toggleHighlight(label)}
+                    style={{
+                      padding: "8px 14px",
+                      borderRadius: 9999,
+                      border: selected ? `1px solid ${accent}` : "1px solid #D1D5DB",
+                      background: selected ? accent : "#FFFFFF",
+                      color: selected ? "#FFFFFF" : "#111827",
+                      fontSize: 13,
+                      fontWeight: 500,
+                      cursor: "pointer",
+                      transition:
+                        "background-color 150ms ease, color 150ms ease, border-color 150ms ease",
+                      lineHeight: 1.2,
+                    }}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
           <textarea
             value={feedback}
             onChange={(e) => setFeedback(e.target.value)}
             placeholder={
               rating >= 4
-                ? "Tell us what made it great..."
+                ? "Anything else you'd like to share?"
                 : "We'd love to know how we can improve..."
             }
             rows={4}
@@ -684,7 +755,6 @@ export default function ReviewClient({
               e.currentTarget.style.borderColor = "#D1D5DB";
               e.currentTarget.style.boxShadow = "none";
             }}
-            autoFocus
           />
           <CtaButton onClick={handleSubmit} disabled={submitting} style={{ marginTop: 12 }}>
             {submitting ? "Submitting..." : "Continue"}

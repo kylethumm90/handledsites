@@ -4,7 +4,8 @@ import Anthropic from "@anthropic-ai/sdk";
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const { site_id, rating, feedback, professionalism, communication, rep_id, rep_name, lead_id } = body;
+  const { site_id, rating, feedback, highlights, professionalism, communication, rep_id, rep_name, lead_id } = body;
+  const hasHighlights = Array.isArray(highlights) && highlights.length > 0;
 
   if (!site_id || !rating) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -38,7 +39,7 @@ export async function POST(request: NextRequest) {
   let generatedReview: string | null = null;
 
   // Generate review for happy customers
-  if (isPositive && feedback?.trim()) {
+  if (isPositive && (feedback?.trim() || hasHighlights)) {
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (apiKey) {
       try {
@@ -67,8 +68,8 @@ Rules:
               role: "user",
               content: `The customer rated their experience ${rating}/5.
 Professionalism: ${professionalism || "not answered"}
-Communication: ${communication || "not answered"}
-Additional feedback: "${feedback}"`,
+Communication: ${communication || "not answered"}${hasHighlights ? `\nWhat stood out to them: ${highlights.join(", ")}` : ""}
+Additional feedback: "${feedback || ""}"`,
             },
           ],
         });
@@ -87,6 +88,7 @@ Additional feedback: "${feedback}"`,
     site_id,
     rating,
     feedback: feedback?.trim() || null,
+    highlights: hasHighlights ? highlights : null,
     generated_review: generatedReview,
     is_positive: isPositive,
     professionalism: professionalism || null,
