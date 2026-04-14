@@ -550,18 +550,33 @@ function normalizeHeader(raw: string): string {
 }
 
 // Map "Full Name, Phone Number, Email" → indices for our known fields.
-// Returns null if no `name` column could be located.
-function mapHeaders(headerRow: string[]): Record<keyof ParsedContact, number> | null {
+// Always returns a mapping (-1 means "no match"); the UI lets the user
+// correct any field manually, so we never hard-fail here.
+function autoMapHeaders(headerRow: string[]): Record<keyof ParsedContact, number> {
   const normalized = headerRow.map(normalizeHeader);
-  const mapping = {} as Record<keyof ParsedContact, number>;
+  const mapping: Record<keyof ParsedContact, number> = {
+    name: -1,
+    phone: -1,
+    email: -1,
+    service_needed: -1,
+    notes: -1,
+  };
   (Object.keys(HEADER_ALIASES) as (keyof ParsedContact)[]).forEach((field) => {
     const aliases = HEADER_ALIASES[field];
     const idx = normalized.findIndex((h) => aliases.includes(h));
     mapping[field] = idx;
   });
-  if (mapping.name < 0) return null;
   return mapping;
 }
+
+// Fields exposed in the mapping UI, in display order. Only `name` is required.
+const FIELD_DEFS: { key: keyof ParsedContact; label: string; required: boolean }[] = [
+  { key: "name", label: "Name", required: true },
+  { key: "phone", label: "Phone", required: false },
+  { key: "email", label: "Email", required: false },
+  { key: "service_needed", label: "Service", required: false },
+  { key: "notes", label: "Notes", required: false },
+];
 
 function projectRow(
   row: string[],
@@ -699,7 +714,15 @@ function CsvImportView({
   onImported: (leads: Lead[]) => void;
 }) {
   const [fileName, setFileName] = useState<string | null>(null);
-  const [contacts, setContacts] = useState<ParsedContact[] | null>(null);
+  const [headers, setHeaders] = useState<string[] | null>(null);
+  const [dataRows, setDataRows] = useState<string[][] | null>(null);
+  const [mapping, setMapping] = useState<Record<keyof ParsedContact, number>>({
+    name: -1,
+    phone: -1,
+    email: -1,
+    service_needed: -1,
+    notes: -1,
+  });
   const [parseError, setParseError] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
@@ -707,7 +730,8 @@ function CsvImportView({
   const handleFile = async (file: File) => {
     setParseError(null);
     setImportError(null);
-    setContacts(null);
+    setHeaders(null);
+    setDataRows(null);
     setFileName(file.name);
     try {
       const text = await file.text();
@@ -716,22 +740,11 @@ function CsvImportView({
         setParseError("CSV is empty or only has a header row.");
         return;
       }
-      const mapping = mapHeaders(rows[0]);
-      if (!mapping) {
-        setParseError(
-          "Couldn't find a 'name' column. Make sure your CSV has a header row.",
-        );
-        return;
-      }
-      const parsed = rows
-        .slice(1)
-        .map((r) => projectRow(r, mapping))
-        .filter((c) => c.name.length > 0);
-      if (parsed.length === 0) {
-        setParseError("No rows had a name.");
-        return;
-      }
-      setContacts(parsed);
+      const header = rows[0];
+      const data = rows.slice(1);
+      setHeaders(header);
+      setDataRows(data);
+      setMapping(autoMapHeaders(header));
     } catch (err) {
       setParseError(
         err instanceof Error ? err.message : "Could not read file.",
@@ -739,8 +752,24 @@ function CsvImportView({
     }
   };
 
+  // Derive contacts from the current mapping. Re-projects on every mapping
+  // change so the preview + count stay in sync with the dropdowns.
+  const contacts: ParsedContact[] = dataRows
+    ? dataRows.map((r) => projectRow(r, mapping)).filter((c) => c.name.length > 0)
+    : [];
+
+  const nameMissing = mapping.name < 0;
+  const hasFile = headers !== null && dataRows !== null;
+
   const handleImport = async () => {
-    if (!contacts || contacts.length === 0) return;
+    if (nameMissing) {
+      setImportError("Pick which column has the contact name.");
+      return;
+    }
+    if (contacts.length === 0) {
+      setImportError("No rows have a value in the selected name column.");
+      return;
+    }
     setImporting(true);
     setImportError(null);
     try {
@@ -765,13 +794,8 @@ function CsvImportView({
   return (
     <>
       <p className="mb-3 text-xs text-gray-500 leading-relaxed">
-        Upload a CSV with a header row. We&apos;ll look for columns named{" "}
-        <span className="font-mono text-gray-700">name</span>,{" "}
-        <span className="font-mono text-gray-700">phone</span>,{" "}
-        <span className="font-mono text-gray-700">email</span>,{" "}
-        <span className="font-mono text-gray-700">service</span>, and{" "}
-        <span className="font-mono text-gray-700">notes</span>. Only{" "}
-        <span className="font-mono text-gray-700">name</span> is required.
+        Upload a CSV with a header row. You&apos;ll pick which columns map to{" "}
+        name, phone, email, service, and notes. Only name is required.
       </p>
 
       <label className="flex w-full cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-gray-300 bg-gray-50 px-4 py-6 text-center hover:border-gray-400 hover:bg-gray-100">
@@ -798,7 +822,41 @@ function CsvImportView({
         </div>
       )}
 
-      {contacts && contacts.length > 0 && (
+      {hasFile && headers && (
+        <div className="mt-3 rounded-lg border border-gray-200 bg-white">
+          <div className="border-b border-gray-100 px-3 py-2">
+            <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+              Map columns
+            </span>
+          </div>
+          <div className="space-y-2 p-3">
+            {FIELD_DEFS.map(({ key, label, required }) => (
+              <div key={key} className="flex items-center gap-3">
+                <span className="w-16 shrink-0 text-xs text-gray-600">
+                  {label}
+                  {required && <span className="text-red-500"> *</span>}
+                </span>
+                <select
+                  value={mapping[key]}
+                  onChange={(e) =>
+                    setMapping({ ...mapping, [key]: Number(e.target.value) })
+                  }
+                  className="flex-1 min-w-0 rounded-lg border border-gray-200 px-2 py-1.5 text-xs text-gray-800 focus:border-gray-400 focus:outline-none"
+                >
+                  <option value={-1}>— Skip —</option>
+                  {headers.map((h, i) => (
+                    <option key={i} value={i}>
+                      {h.trim() || `Column ${i + 1}`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {hasFile && contacts.length > 0 && (
         <div className="mt-3 rounded-lg border border-gray-200 bg-white">
           <div className="flex items-center justify-between border-b border-gray-100 px-3 py-2">
             <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
@@ -808,7 +866,7 @@ function CsvImportView({
               {contacts.length} contact{contacts.length === 1 ? "" : "s"}
             </span>
           </div>
-          <div className="max-h-40 overflow-y-auto">
+          <div className="max-h-32 overflow-y-auto">
             {contacts.slice(0, 5).map((c, i) => (
               <div
                 key={i}
@@ -829,6 +887,12 @@ function CsvImportView({
         </div>
       )}
 
+      {hasFile && nameMissing && (
+        <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          Pick which column has the contact name to continue.
+        </div>
+      )}
+
       {importError && (
         <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
           {importError}
@@ -837,12 +901,12 @@ function CsvImportView({
 
       <button
         onClick={handleImport}
-        disabled={!contacts || contacts.length === 0 || importing}
+        disabled={!hasFile || nameMissing || contacts.length === 0 || importing}
         className="mt-4 w-full rounded-lg bg-gray-900 py-2.5 text-sm font-semibold text-white hover:bg-gray-800 disabled:opacity-50"
       >
         {importing
           ? "Importing..."
-          : contacts
+          : hasFile && !nameMissing
             ? `Import ${contacts.length} contact${contacts.length === 1 ? "" : "s"}`
             : "Import contacts"}
       </button>
