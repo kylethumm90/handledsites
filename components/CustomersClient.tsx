@@ -458,6 +458,10 @@ export default function CustomersClient({ leads: initialLeads, trade }: Props) {
               setLeads([lead, ...leads]);
               setShowAdd(false);
             }}
+            onBulkAdded={(newLeads) => {
+              setLeads([...newLeads, ...leads]);
+              setShowAdd(false);
+            }}
           />
         )}
       </div>
@@ -465,15 +469,133 @@ export default function CustomersClient({ leads: initialLeads, trade }: Props) {
   );
 }
 
+// =============================================================================
+// CSV parser (minimal RFC 4180 — handles quoted fields, escaped quotes, CRLF)
+// =============================================================================
+function parseCsv(text: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let field = "";
+  let inQuotes = false;
+  let i = 0;
+  while (i < text.length) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"') {
+        if (text[i + 1] === '"') {
+          field += '"';
+          i += 2;
+          continue;
+        }
+        inQuotes = false;
+        i++;
+        continue;
+      }
+      field += c;
+      i++;
+      continue;
+    }
+    if (c === '"') {
+      inQuotes = true;
+      i++;
+      continue;
+    }
+    if (c === ",") {
+      row.push(field);
+      field = "";
+      i++;
+      continue;
+    }
+    if (c === "\r") {
+      i++;
+      continue;
+    }
+    if (c === "\n") {
+      row.push(field);
+      rows.push(row);
+      row = [];
+      field = "";
+      i++;
+      continue;
+    }
+    field += c;
+    i++;
+  }
+  if (field !== "" || row.length > 0) {
+    row.push(field);
+    rows.push(row);
+  }
+  // Drop fully-blank rows so trailing newlines don't count as contacts.
+  return rows.filter((r) => r.some((col) => col.trim() !== ""));
+}
+
+const HEADER_ALIASES: Record<keyof ParsedContact, string[]> = {
+  name: ["name", "fullname", "firstname", "contactname", "customername", "clientname"],
+  phone: ["phone", "phonenumber", "mobile", "cell", "tel", "telephone"],
+  email: ["email", "emailaddress", "mail"],
+  service_needed: ["service", "serviceneeded", "job", "jobtype", "work"],
+  notes: ["notes", "comments", "memo", "remarks"],
+};
+
+type ParsedContact = {
+  name: string;
+  phone: string;
+  email: string;
+  service_needed: string;
+  notes: string;
+};
+
+function normalizeHeader(raw: string): string {
+  return raw.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+// Map "Full Name, Phone Number, Email" → indices for our known fields.
+// Returns null if no `name` column could be located.
+function mapHeaders(headerRow: string[]): Record<keyof ParsedContact, number> | null {
+  const normalized = headerRow.map(normalizeHeader);
+  const mapping = {} as Record<keyof ParsedContact, number>;
+  (Object.keys(HEADER_ALIASES) as (keyof ParsedContact)[]).forEach((field) => {
+    const aliases = HEADER_ALIASES[field];
+    const idx = normalized.findIndex((h) => aliases.includes(h));
+    mapping[field] = idx;
+  });
+  if (mapping.name < 0) return null;
+  return mapping;
+}
+
+function projectRow(
+  row: string[],
+  mapping: Record<keyof ParsedContact, number>,
+): ParsedContact {
+  const pick = (key: keyof ParsedContact) => {
+    const idx = mapping[key];
+    if (idx < 0) return "";
+    return (row[idx] || "").trim();
+  };
+  return {
+    name: pick("name"),
+    phone: pick("phone"),
+    email: pick("email"),
+    service_needed: pick("service_needed"),
+    notes: pick("notes"),
+  };
+}
+
+// =============================================================================
+// Add contact modal
+// =============================================================================
 function AddContactModal({
   trade,
   onClose,
   onAdded,
+  onBulkAdded,
 }: {
   trade: string;
   onClose: () => void;
   onAdded: (lead: Lead) => void;
+  onBulkAdded: (leads: Lead[]) => void;
 }) {
+  const [mode, setMode] = useState<"single" | "csv">("single");
   const [saving, setSaving] = useState(false);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -514,33 +636,226 @@ function AddContactModal({
       <div className="fixed inset-0 bg-black/40" onClick={onClose} />
       <div className="relative w-full max-w-md rounded-t-2xl bg-white p-5 shadow-xl sm:rounded-2xl">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-gray-900">Add contact</h2>
+          <h2 className="text-base font-semibold text-gray-900">
+            {mode === "single" ? "Add contact" : "Import from CSV"}
+          </h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="space-y-3">
-          <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Name *" className={inputClass} autoFocus />
-          <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone" className={inputClass} />
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" className={inputClass} />
-          {services.length > 0 && (
-            <select value={serviceNeeded} onChange={(e) => setServiceNeeded(e.target.value)} className={inputClass}>
-              <option value="">Service needed</option>
-              {services.map((s) => (<option key={s} value={s}>{s}</option>))}
-            </select>
-          )}
-          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes" rows={2} className={inputClass} />
-        </div>
+        {mode === "single" ? (
+          <>
+            <div className="space-y-3">
+              <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Name *" className={inputClass} autoFocus />
+              <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone" className={inputClass} />
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" className={inputClass} />
+              {services.length > 0 && (
+                <select value={serviceNeeded} onChange={(e) => setServiceNeeded(e.target.value)} className={inputClass}>
+                  <option value="">Service needed</option>
+                  {services.map((s) => (<option key={s} value={s}>{s}</option>))}
+                </select>
+              )}
+              <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes" rows={2} className={inputClass} />
+            </div>
 
-        <button
-          onClick={handleSave}
-          disabled={saving || !name.trim()}
-          className="mt-4 w-full rounded-lg bg-gray-900 py-2.5 text-sm font-semibold text-white hover:bg-gray-800 disabled:opacity-50"
-        >
-          {saving ? "Saving..." : "Add contact"}
-        </button>
+            <button
+              onClick={handleSave}
+              disabled={saving || !name.trim()}
+              className="mt-4 w-full rounded-lg bg-gray-900 py-2.5 text-sm font-semibold text-white hover:bg-gray-800 disabled:opacity-50"
+            >
+              {saving ? "Saving..." : "Add contact"}
+            </button>
+
+            <div className="mt-3 text-center">
+              <button
+                type="button"
+                onClick={() => setMode("csv")}
+                className="text-xs text-gray-400 underline-offset-2 hover:text-gray-600 hover:underline"
+              >
+                Or import from CSV
+              </button>
+            </div>
+          </>
+        ) : (
+          <CsvImportView
+            onBack={() => setMode("single")}
+            onImported={onBulkAdded}
+          />
+        )}
       </div>
     </div>
+  );
+}
+
+// =============================================================================
+// CSV import view (inside AddContactModal when mode === "csv")
+// =============================================================================
+function CsvImportView({
+  onBack,
+  onImported,
+}: {
+  onBack: () => void;
+  onImported: (leads: Lead[]) => void;
+}) {
+  const [fileName, setFileName] = useState<string | null>(null);
+  const [contacts, setContacts] = useState<ParsedContact[] | null>(null);
+  const [parseError, setParseError] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+
+  const handleFile = async (file: File) => {
+    setParseError(null);
+    setImportError(null);
+    setContacts(null);
+    setFileName(file.name);
+    try {
+      const text = await file.text();
+      const rows = parseCsv(text);
+      if (rows.length < 2) {
+        setParseError("CSV is empty or only has a header row.");
+        return;
+      }
+      const mapping = mapHeaders(rows[0]);
+      if (!mapping) {
+        setParseError(
+          "Couldn't find a 'name' column. Make sure your CSV has a header row.",
+        );
+        return;
+      }
+      const parsed = rows
+        .slice(1)
+        .map((r) => projectRow(r, mapping))
+        .filter((c) => c.name.length > 0);
+      if (parsed.length === 0) {
+        setParseError("No rows had a name.");
+        return;
+      }
+      setContacts(parsed);
+    } catch (err) {
+      setParseError(
+        err instanceof Error ? err.message : "Could not read file.",
+      );
+    }
+  };
+
+  const handleImport = async () => {
+    if (!contacts || contacts.length === 0) return;
+    setImporting(true);
+    setImportError(null);
+    try {
+      const res = await fetch("/api/contractor/customers/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contacts }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setImportError(json.error || "Import failed");
+        setImporting(false);
+        return;
+      }
+      onImported(json.leads as Lead[]);
+    } catch {
+      setImportError("Network error");
+      setImporting(false);
+    }
+  };
+
+  return (
+    <>
+      <p className="mb-3 text-xs text-gray-500 leading-relaxed">
+        Upload a CSV with a header row. We&apos;ll look for columns named{" "}
+        <span className="font-mono text-gray-700">name</span>,{" "}
+        <span className="font-mono text-gray-700">phone</span>,{" "}
+        <span className="font-mono text-gray-700">email</span>,{" "}
+        <span className="font-mono text-gray-700">service</span>, and{" "}
+        <span className="font-mono text-gray-700">notes</span>. Only{" "}
+        <span className="font-mono text-gray-700">name</span> is required.
+      </p>
+
+      <label className="flex w-full cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-gray-300 bg-gray-50 px-4 py-6 text-center hover:border-gray-400 hover:bg-gray-100">
+        <input
+          type="file"
+          accept=".csv,text/csv"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) handleFile(file);
+          }}
+        />
+        <span className="text-sm font-medium text-gray-700">
+          {fileName ?? "Choose CSV file"}
+        </span>
+        <span className="mt-1 text-xs text-gray-400">
+          {fileName ? "Tap to replace" : "Tap to pick a file"}
+        </span>
+      </label>
+
+      {parseError && (
+        <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+          {parseError}
+        </div>
+      )}
+
+      {contacts && contacts.length > 0 && (
+        <div className="mt-3 rounded-lg border border-gray-200 bg-white">
+          <div className="flex items-center justify-between border-b border-gray-100 px-3 py-2">
+            <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+              Preview
+            </span>
+            <span className="text-xs text-gray-400">
+              {contacts.length} contact{contacts.length === 1 ? "" : "s"}
+            </span>
+          </div>
+          <div className="max-h-40 overflow-y-auto">
+            {contacts.slice(0, 5).map((c, i) => (
+              <div
+                key={i}
+                className="flex items-baseline justify-between border-b border-gray-50 px-3 py-2 text-xs last:border-b-0"
+              >
+                <span className="font-medium text-gray-800 truncate">{c.name}</span>
+                <span className="ml-3 truncate text-gray-400">
+                  {c.phone || c.email || "—"}
+                </span>
+              </div>
+            ))}
+            {contacts.length > 5 && (
+              <div className="px-3 py-2 text-xs text-gray-400">
+                +{contacts.length - 5} more…
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {importError && (
+        <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+          {importError}
+        </div>
+      )}
+
+      <button
+        onClick={handleImport}
+        disabled={!contacts || contacts.length === 0 || importing}
+        className="mt-4 w-full rounded-lg bg-gray-900 py-2.5 text-sm font-semibold text-white hover:bg-gray-800 disabled:opacity-50"
+      >
+        {importing
+          ? "Importing..."
+          : contacts
+            ? `Import ${contacts.length} contact${contacts.length === 1 ? "" : "s"}`
+            : "Import contacts"}
+      </button>
+
+      <div className="mt-3 text-center">
+        <button
+          type="button"
+          onClick={onBack}
+          className="text-xs text-gray-400 underline-offset-2 hover:text-gray-600 hover:underline"
+        >
+          Back to single contact
+        </button>
+      </div>
+    </>
   );
 }
