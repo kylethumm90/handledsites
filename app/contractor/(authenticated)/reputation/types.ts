@@ -79,3 +79,50 @@ export type AlertsData = {
   resolvedThisMonth: ResolvedAlertItem[];
   resolvedProgress: { resolved: number; total: number };
 };
+
+// =============================================================================
+// Network tab
+// =============================================================================
+
+export type NetworkStats = {
+  activeReferrers: number;
+  referralsThisMonth: number;
+  revenueCents: number; // emphasized stat
+  avgValueCents: number;
+};
+
+export type NetworkReferrer = {
+  id: string;
+  rank: number; // 1-based
+  name: string;
+  referralCount: number;
+  revenueCents: number;
+  sinceLabel: string; // e.g. "Since Mar '24"
+};
+
+export type ReferralActivityStatus = "closed" | "booked" | "contacted";
+
+export type ReferralActivity = {
+  id: string;
+  referrerName: string;
+  referredName: string;
+  jobLabel: string;
+  status: ReferralActivityStatus;
+  timestamp: string; // ISO
+};
+
+export type StellaQueueItem = {
+  id: string;
+  customerName: string;
+  sentimentScore: number; // 0-100
+  scheduledLabel: string; // e.g. "Today 4PM"
+};
+
+export type NetworkData = {
+  stats: NetworkStats;
+  leaderboard: NetworkReferrer[];
+  leaderboardTotal: number;
+  recentActivity: ReferralActivity[];
+  stellaQueue: StellaQueueItem[];
+  stellaScheduledCount: number;
+};

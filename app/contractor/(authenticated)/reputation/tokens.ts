@@ -25,6 +25,9 @@ export const TOKENS: CSSProperties = {
   ["--success-soft" as string]: "#E4F1E4",
   ["--cta-coral" as string]: "#E8603A",
   ["--cta-coral-dark" as string]: "#C74A24",
+  ["--coral-soft" as string]: "#FDF0EB",
+  ["--rust" as string]: "#9A4A28",
+  ["--rust-soft" as string]: "#F5E6DD",
   // Fonts
   ["--font-display" as string]: "'Space Grotesk', system-ui, sans-serif",
   ["--font-body" as string]: "'Inter', system-ui, sans-serif",

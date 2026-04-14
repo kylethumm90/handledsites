@@ -39,7 +39,7 @@ const TABS: Tab[] = [
     key: "network",
     label: "Network",
     icon: <Handshake size={18} strokeWidth={1.5} />,
-    // TODO: wire /reputation/network route
+    href: `${BASE}/network`,
   },
 ];
 

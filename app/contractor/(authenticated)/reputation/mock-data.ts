@@ -1,4 +1,4 @@
-import type { AlertsData, ReputationDashboardData } from "./types";
+import type { AlertsData, NetworkData, ReputationDashboardData } from "./types";
 
 // Mock data mirrors the provided mockup exactly. Swap this import in
 // `page.tsx` for a Supabase fetcher once reputation tables exist.
@@ -92,4 +92,117 @@ export const MOCK_ALERTS: AlertsData = {
     },
   ],
   resolvedProgress: { resolved: 6, total: 7 },
+};
+
+// =============================================================================
+// Network tab mock
+// =============================================================================
+const HOUR = 60 * 60 * 1000;
+const DAY = 24 * HOUR;
+
+export const MOCK_NETWORK: NetworkData = {
+  stats: {
+    activeReferrers: 14,
+    referralsThisMonth: 23,
+    revenueCents: 4_280_000,
+    avgValueCents: 186_100,
+  },
+  leaderboard: [
+    {
+      id: "ref-jessica-thumm",
+      rank: 1,
+      name: "Jessica Thumm",
+      referralCount: 42,
+      revenueCents: 2_440_000,
+      sinceLabel: "Since Mar '24",
+    },
+    {
+      id: "ref-marcus-rivera",
+      rank: 2,
+      name: "Marcus Rivera",
+      referralCount: 38,
+      revenueCents: 1_820_000,
+      sinceLabel: "Since Jun '24",
+    },
+    {
+      id: "ref-linda-park",
+      rank: 3,
+      name: "Linda Park",
+      referralCount: 29,
+      revenueCents: 1_460_000,
+      sinceLabel: "Since Jan '24",
+    },
+    {
+      id: "ref-david-chen",
+      rank: 4,
+      name: "David Chen",
+      referralCount: 18,
+      revenueCents: 810_000,
+      sinceLabel: "Since Aug '24",
+    },
+    {
+      id: "ref-rachel-torres",
+      rank: 5,
+      name: "Rachel Torres",
+      referralCount: 12,
+      revenueCents: 520_000,
+      sinceLabel: "Since Oct '24",
+    },
+  ],
+  leaderboardTotal: 14,
+  recentActivity: [
+    {
+      id: "act-jt-mike",
+      referrerName: "Jessica Thumm",
+      referredName: "Mike Knoll",
+      jobLabel: "Residential Clean",
+      status: "closed",
+      timestamp: new Date(Date.now() - 2 * HOUR).toISOString(),
+    },
+    {
+      id: "act-mr-amanda",
+      referrerName: "Marcus Rivera",
+      referredName: "Amanda Shaw",
+      jobLabel: "Solar Install",
+      status: "booked",
+      timestamp: new Date(Date.now() - 9 * HOUR).toISOString(),
+    },
+    {
+      id: "act-lp-tom",
+      referrerName: "Linda Park",
+      referredName: "Tom Webster",
+      jobLabel: "HVAC Repair",
+      status: "contacted",
+      timestamp: new Date(Date.now() - 1 * DAY).toISOString(),
+    },
+    {
+      id: "act-dc-sarah",
+      referrerName: "David Chen",
+      referredName: "Sarah Kim",
+      jobLabel: "Roof Replacement",
+      status: "closed",
+      timestamp: new Date(Date.now() - 2 * DAY).toISOString(),
+    },
+  ],
+  stellaQueue: [
+    {
+      id: "sq-jessica-thumm",
+      customerName: "Jessica Thumm",
+      sentimentScore: 92,
+      scheduledLabel: "Today 4PM",
+    },
+    {
+      id: "sq-patricia-woods",
+      customerName: "Patricia Woods",
+      sentimentScore: 88,
+      scheduledLabel: "Tomorrow",
+    },
+    {
+      id: "sq-brett-jenkins",
+      customerName: "Brett Jenkins",
+      sentimentScore: 95,
+      scheduledLabel: "Tomorrow",
+    },
+  ],
+  stellaScheduledCount: 5,
 };
