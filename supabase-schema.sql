@@ -280,3 +280,49 @@ CREATE INDEX idx_contractor_sessions_hash ON contractor_sessions (session_hash);
 --  WHERE l.id = sub.lead_id
 --    AND l.sentiment_score IS NULL;
 
+-- ============================================
+-- Pipeline redesign: 'contacted' stage, value, and speed-to-lead tracking
+-- ============================================
+--
+-- The Pipeline screen (components/PipelineClient.tsx) adopts a mobile-
+-- first layout with four stage tiles (New / Contacted / Appt set / Done)
+-- and a single "Manual" vs "Ava is live" mode chip. Three data points
+-- the old UI didn't track are now required:
+--
+--   1. A "contacted" stage between "lead" and "booked", so the tile
+--      for leads the contractor has responded to but not yet booked is
+--      a first-class bucket. leads.status is plain TEXT (no enum/check
+--      constraint), so no schema change is needed to accept the new
+--      value — the app just starts writing 'contacted'.
+--
+--   2. leads.estimated_value_cents drives the $72.1k pipeline total
+--      and the weekly delta chip. Nullable so legacy leads keep working
+--      and the UI degrades to $0 when no values are present yet.
+--
+--   3. leads.first_response_at is stamped the first time a lead moves
+--      out of "lead" status (into contacted, booked, or customer).
+--      leads.speed_to_lead_seconds is a generated column that computes
+--      first_response_at - created_at in seconds — atomic, safe to
+--      average, and never rewritten on subsequent status edits.
+--
+-- businesses.ava_enabled is the per-account toggle that, combined with
+-- the `ava` plan feature flag, flips the Pipeline UI into live mode.
+-- Defaulting to false means the column can be backfilled today without
+-- changing any contractor's experience until the AI responder is ready.
+--
+-- Run as migration:
+--
+-- ALTER TABLE leads
+--   ADD COLUMN IF NOT EXISTS estimated_value_cents INTEGER,
+--   ADD COLUMN IF NOT EXISTS first_response_at     TIMESTAMPTZ,
+--   ADD COLUMN IF NOT EXISTS speed_to_lead_seconds INTEGER GENERATED ALWAYS AS
+--     (EXTRACT(EPOCH FROM (first_response_at - created_at))::INTEGER) STORED,
+--   ADD COLUMN IF NOT EXISTS last_activity_at      TIMESTAMPTZ;
+--
+-- CREATE INDEX IF NOT EXISTS idx_leads_first_response_null
+--   ON leads (business_id, created_at)
+--   WHERE first_response_at IS NULL;
+--
+-- ALTER TABLE businesses
+--   ADD COLUMN IF NOT EXISTS ava_enabled BOOLEAN NOT NULL DEFAULT FALSE;
+

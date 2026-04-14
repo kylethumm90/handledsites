@@ -10,7 +10,7 @@ import { formatPhone } from "@/lib/utils";
 type Props = {
   lead: Lead;
   timeline: ActivityLogEntry[];
-  counts: { lead: number; booked: number; customer: number };
+  counts: { lead: number; contacted: number; booked: number; customer: number };
   existingReferralCode?: string | null;
   referrerName?: string | null;
   referrerId?: string | null;
@@ -26,10 +26,11 @@ const DARK = "#1F2937";
 const GREY_BG = "#F3F4F6";
 const GREY_BORDER = "#D1D5DB";
 
-type Stage = "lead" | "booked" | "customer";
+type Stage = "lead" | "contacted" | "booked" | "customer";
 
 const STAGE_META: Record<Stage, { label: string; color: string }> = {
   lead: { label: "New", color: AMBER },
+  contacted: { label: "Contacted", color: DARK },
   booked: { label: "Appt Set", color: BLUE },
   customer: { label: "Sold", color: GREEN },
 };
@@ -145,9 +146,9 @@ export default function CustomerDetailClient({ lead, timeline: initialTimeline, 
     setApptError("");
   };
 
-  // Confirm the appointment form. If the lead is still in "lead" stage, this
-  // also flips status to "booked". If the lead is already "booked" (reschedule),
-  // it just updates appointment_at.
+  // Confirm the appointment form. If the lead is still pre-booked
+  // (lead or contacted), this also flips status to "booked". If the lead
+  // is already "booked" (reschedule), it just updates appointment_at.
   const handleSaveAppointment = async () => {
     if (!apptDate || !apptTime) {
       setApptError("Date and time are required.");
@@ -321,6 +322,7 @@ export default function CustomerDetailClient({ lead, timeline: initialTimeline, 
           color: "#92400E",
         }}>
           {status === "lead" && "⚡ Wants a quote. Ready to book."}
+          {status === "contacted" && "💬 Reached out. Waiting to hear back."}
           {status === "booked" && "📅 Appointment set. Confirm before the day."}
           {status === "customer" && "✅ Sold. Time to get the review."}
         </div>
@@ -329,8 +331,12 @@ export default function CustomerDetailClient({ lead, timeline: initialTimeline, 
       {/* Stage actions */}
       <div style={{ padding: "0 20px 20px" }}>
 
-        {/* NEW */}
-        {status === "lead" && (<>
+        {/* NEW + CONTACTED share the same action set — the difference is
+            whether first_response_at has been stamped. Contacted leads have
+            already been reached out to, so the speed-to-lead timer is
+            frozen; the contractor is now chasing the next step (appointment
+            or decline). Copy stays the same so muscle memory is preserved. */}
+        {(status === "lead" || status === "contacted") && (<>
           {lead.phone && (
             <a href={`tel:${lead.phone}`} style={{
               display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
@@ -883,6 +889,7 @@ export default function CustomerDetailClient({ lead, timeline: initialTimeline, 
       }}>
         {([
           { key: "lead" as Stage, label: "New", color: AMBER, count: counts.lead },
+          { key: "contacted" as Stage, label: "Contacted", color: DARK, count: counts.contacted },
           { key: "booked" as Stage, label: "Appt Set", color: BLUE, count: counts.booked },
           { key: "customer" as Stage, label: "Sold", color: GREEN, count: counts.customer },
         ]).map((tab) => {
