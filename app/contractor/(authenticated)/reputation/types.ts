@@ -48,3 +48,34 @@ export type ReputationDashboardData = {
   funnel: FunnelStage[];
   overallConversionPct: number;
 };
+
+// =============================================================================
+// Alerts tab
+// =============================================================================
+
+export type AlertSeverity = "critical" | "warning";
+
+export type OpenAlert = {
+  id: string;
+  customerName: string;
+  customerRefId: string; // e.g. "BW-0021"
+  jobLabel: string; // e.g. "Roof Replacement"
+  severity: AlertSeverity;
+  sentimentScore: number; // 0-100
+  quote: string;
+};
+
+export type ResolvedAlertItem = {
+  id: string;
+  customerName: string;
+  actionLabel: string; // e.g. "Called — review updated"
+};
+
+export type AlertsData = {
+  criticalCount: number;
+  warningCount: number;
+  resolvedCount: number;
+  openAlerts: OpenAlert[];
+  resolvedThisMonth: ResolvedAlertItem[];
+  resolvedProgress: { resolved: number; total: number };
+};

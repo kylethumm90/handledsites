@@ -3,12 +3,9 @@
 import {
   AlertTriangle,
   Archive,
-  Bell,
   Handshake,
-  LayoutGrid,
   MessageSquare,
   Megaphone,
-  Share2,
   TrendingUp,
   UserPlus,
 } from "lucide-react";
@@ -18,54 +15,7 @@ import type {
   RecoveryAlert,
   ReputationDashboardData,
 } from "./types";
-
-// =============================================================================
-// Command Console tokens (scoped to this page only — no global changes)
-// =============================================================================
-const TOKENS: React.CSSProperties = {
-  // Colors
-  ["--primary" as string]: "#012D1D",
-  ["--primary-container" as string]: "#1B4332",
-  ["--primary-fixed-dim" as string]: "#2D5A3D",
-  ["--surface" as string]: "#F9F9F8",
-  ["--surface-low" as string]: "#F3F4F3",
-  ["--surface-lowest" as string]: "#FFFFFF",
-  ["--surface-high" as string]: "#E7E8E7",
-  ["--outline" as string]: "#8A918C",
-  ["--outline-variant" as string]: "#C1C8C2",
-  ["--on-surface" as string]: "#1A1A1A",
-  ["--on-surface-variant" as string]: "#414844",
-  ["--alert" as string]: "#B3261E",
-  ["--alert-soft" as string]: "#FDF2F2",
-  // Fonts
-  ["--font-display" as string]: "'Space Grotesk', system-ui, sans-serif",
-  ["--font-body" as string]: "'Inter', system-ui, sans-serif",
-  ["--font-mono" as string]: "'Space Grotesk', ui-monospace, monospace",
-};
-
-const HAIRLINE = "0.5px solid var(--outline-variant)";
-
-const DISPLAY: React.CSSProperties = {
-  fontFamily: "var(--font-display)",
-  letterSpacing: "-0.02em",
-};
-const LABEL: React.CSSProperties = {
-  fontFamily: "var(--font-display)",
-  fontSize: 9,
-  fontWeight: 600,
-  letterSpacing: "0.08em",
-  textTransform: "uppercase",
-  color: "var(--on-surface-variant)",
-};
-const METRIC_VALUE: React.CSSProperties = {
-  fontFamily: "var(--font-display)",
-  fontSize: 28,
-  fontWeight: 600,
-  fontVariantNumeric: "tabular-nums",
-  letterSpacing: "-0.03em",
-  color: "var(--on-surface)",
-  lineHeight: 1,
-};
+import { DISPLAY, HAIRLINE, LABEL, METRIC_VALUE } from "./tokens";
 
 // =============================================================================
 // Helpers
@@ -103,66 +53,48 @@ export default function ReputationDashboardClient({
 }) {
   const { metrics, criticalRecovery, recentActivity, funnel, overallConversionPct } = data;
 
+  // The outer token/column wrapper and the bottom tab bar are both provided
+  // by the reputation layout (layout.tsx). This component renders only the
+  // dashboard body content.
   return (
-    <div
-      style={{
-        ...TOKENS,
-        fontFamily: "var(--font-body)",
-        color: "var(--on-surface)",
-        paddingBottom: 72,
-      }}
-    >
-      <div style={{ maxWidth: 420, margin: "0 auto" }}>
-        {/* ================================================================ */}
-        {/* BODY                                                              */}
-        {/* (No custom header — the (authenticated) layout provides the      */}
-        {/*  shared contractor top nav.)                                     */}
-        {/* ================================================================ */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-          {/* METRICS GRID ---------------------------------------------- */}
-          <MetricsGrid metrics={metrics} />
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      {/* METRICS GRID ---------------------------------------------- */}
+      <MetricsGrid metrics={metrics} />
 
-          {/* CRITICAL RECOVERY ---------------------------------------- */}
-          <section>
-            <SectionHeader
-              dotColor="var(--alert)"
-              label={`CRITICAL RECOVERY (${metrics.recoveryAlertCount})`}
-            />
-            {criticalRecovery.map((alert) => (
-              <RecoveryCard key={alert.id} alert={alert} />
-            ))}
-          </section>
+      {/* CRITICAL RECOVERY ---------------------------------------- */}
+      <section>
+        <SectionHeader
+          dotColor="var(--alert)"
+          label={`CRITICAL RECOVERY (${metrics.recoveryAlertCount})`}
+        />
+        {criticalRecovery.map((alert) => (
+          <RecoveryCard key={alert.id} alert={alert} />
+        ))}
+      </section>
 
-          {/* RECENT ACTIVITY ------------------------------------------ */}
-          <section>
-            <SectionHeader dotColor="var(--on-surface)" label="RECENT ACTIVITY" />
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                background: "var(--outline-variant)",
-                gap: "0.5px",
-                border: HAIRLINE,
-              }}
-            >
-              {recentActivity.map((item) => (
-                <ActivityRow key={item.id} item={item} />
-              ))}
-            </div>
-          </section>
-
-          {/* GROWTH FUNNEL -------------------------------------------- */}
-          <section>
-            <SectionHeader dotColor="var(--on-surface)" label="GROWTH FUNNEL EFFICIENCY" />
-            <FunnelView stages={funnel} overallConversionPct={overallConversionPct} />
-          </section>
+      {/* RECENT ACTIVITY ------------------------------------------ */}
+      <section>
+        <SectionHeader dotColor="var(--on-surface)" label="RECENT ACTIVITY" />
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            background: "var(--outline-variant)",
+            gap: "0.5px",
+            border: HAIRLINE,
+          }}
+        >
+          {recentActivity.map((item) => (
+            <ActivityRow key={item.id} item={item} />
+          ))}
         </div>
-      </div>
+      </section>
 
-      {/* ================================================================== */}
-      {/* BOTTOM TAB BAR                                                      */}
-      {/* ================================================================== */}
-      <BottomTabBar activeKey="dashboard" hasAlert={metrics.recoveryAlertCount > 0} />
+      {/* GROWTH FUNNEL -------------------------------------------- */}
+      <section>
+        <SectionHeader dotColor="var(--on-surface)" label="GROWTH FUNNEL EFFICIENCY" />
+        <FunnelView stages={funnel} overallConversionPct={overallConversionPct} />
+      </section>
     </div>
   );
 }
@@ -741,100 +673,3 @@ function Avatar({ name }: { name: string }) {
   );
 }
 
-// =============================================================================
-// Bottom tab bar (non-routing scaffold)
-// TODO: wire tab routes once additional reputation sub-pages exist
-// =============================================================================
-type TabKey = "dashboard" | "funnel" | "alerts" | "network";
-
-function BottomTabBar({
-  activeKey,
-  hasAlert,
-}: {
-  activeKey: TabKey;
-  hasAlert: boolean;
-}) {
-  const tabs: { key: TabKey; label: string; icon: React.ReactNode }[] = [
-    { key: "dashboard", label: "Dashboard", icon: <LayoutGrid size={18} strokeWidth={1.5} /> },
-    { key: "funnel", label: "Funnel", icon: <Share2 size={18} strokeWidth={1.5} /> },
-    { key: "alerts", label: "Alerts", icon: <Bell size={18} strokeWidth={1.5} /> },
-    { key: "network", label: "Network", icon: <Handshake size={18} strokeWidth={1.5} /> },
-  ];
-
-  return (
-    <nav
-      style={{
-        position: "fixed",
-        bottom: 0,
-        left: 0,
-        right: 0,
-        background: "var(--surface-lowest)",
-        borderTop: HAIRLINE,
-        display: "flex",
-        justifyContent: "center",
-        zIndex: 50,
-      }}
-    >
-      <div
-        style={{
-          width: "100%",
-          maxWidth: 420,
-          display: "grid",
-          gridTemplateColumns: "repeat(4, 1fr)",
-        }}
-      >
-        {tabs.map((tab) => {
-          const isActive = tab.key === activeKey;
-          return (
-            <button
-              key={tab.key}
-              type="button"
-              style={{
-                position: "relative",
-                background: "transparent",
-                border: "none",
-                padding: "12px 0 14px",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: 4,
-                color: isActive ? "var(--primary)" : "var(--on-surface-variant)",
-                cursor: "pointer",
-                borderTop: isActive ? "2px solid var(--primary)" : "2px solid transparent",
-                marginTop: "-0.5px",
-              }}
-            >
-              <div style={{ position: "relative" }}>
-                {tab.icon}
-                {tab.key === "alerts" && hasAlert && (
-                  <span
-                    style={{
-                      position: "absolute",
-                      top: -2,
-                      right: -3,
-                      width: 6,
-                      height: 6,
-                      background: "var(--alert)",
-                      border: "0.5px solid var(--surface-lowest)",
-                    }}
-                  />
-                )}
-              </div>
-              <span
-                style={{
-                  fontFamily: "var(--font-display)",
-                  fontSize: 9,
-                  fontWeight: 600,
-                  letterSpacing: "0.08em",
-                  textTransform: "uppercase",
-                }}
-              >
-                {tab.label}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-    </nav>
-  );
-}
