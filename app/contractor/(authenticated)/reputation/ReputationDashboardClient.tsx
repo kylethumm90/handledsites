@@ -8,7 +8,6 @@ import {
   LayoutGrid,
   MessageSquare,
   Megaphone,
-  Settings,
   Share2,
   TrendingUp,
   UserPlus,
@@ -108,8 +107,6 @@ export default function ReputationDashboardClient({
     <div
       style={{
         ...TOKENS,
-        minHeight: "100vh",
-        background: "var(--surface)",
         fontFamily: "var(--font-body)",
         color: "var(--on-surface)",
         paddingBottom: 72,
@@ -117,66 +114,11 @@ export default function ReputationDashboardClient({
     >
       <div style={{ maxWidth: 420, margin: "0 auto" }}>
         {/* ================================================================ */}
-        {/* HEADER BAR                                                        */}
-        {/* ================================================================ */}
-        <header
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: "16px 16px",
-            borderBottom: HAIRLINE,
-            background: "var(--surface-lowest)",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div
-              style={{
-                width: 20,
-                height: 20,
-                background: "var(--primary)",
-                color: "#fff",
-                fontFamily: "var(--font-display)",
-                fontSize: 10,
-                fontWeight: 700,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                letterSpacing: "-0.05em",
-              }}
-            >
-              {">_"}
-            </div>
-            <span
-              style={{
-                ...DISPLAY,
-                fontSize: 14,
-                fontWeight: 700,
-                letterSpacing: "0.02em",
-              }}
-            >
-              HANDLED.
-            </span>
-          </div>
-          <button
-            type="button"
-            aria-label="Settings"
-            style={{
-              background: "transparent",
-              border: "none",
-              padding: 4,
-              cursor: "pointer",
-              color: "var(--on-surface)",
-            }}
-          >
-            <Settings size={18} strokeWidth={1.5} />
-          </button>
-        </header>
-
-        {/* ================================================================ */}
         {/* BODY                                                              */}
+        {/* (No custom header — the (authenticated) layout provides the      */}
+        {/*  shared contractor top nav.)                                     */}
         {/* ================================================================ */}
-        <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 20 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           {/* METRICS GRID ---------------------------------------------- */}
           <MetricsGrid metrics={metrics} />
 
