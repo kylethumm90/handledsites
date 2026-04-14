@@ -2,14 +2,22 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Settings as SettingsIcon } from "lucide-react";
 import LogoutButton from "@/components/LogoutButton";
 import { PlanProvider } from "@/lib/plans";
 
-const TABS = [
+type Tab = {
+  label: string;
+  href: string;
+  icon?: "settings";
+};
+
+const TABS: Tab[] = [
   { label: "Dashboard", href: "/contractor/dashboard" },
-  { label: "Pipeline", href: "/contractor/customers" },
   { label: "Sites", href: "/contractor/sites" },
-  { label: "Settings", href: "/contractor/settings" },
+  { label: "Pipeline", href: "/contractor/customers" },
+  { label: "Reputation", href: "/contractor/reputation" },
+  { label: "Settings", href: "/contractor/settings", icon: "settings" },
 ];
 
 export default function ContractorAuthLayout({
@@ -63,12 +71,15 @@ export default function ContractorAuthLayout({
           }}>
             {TABS.map((tab) => {
               const isActive = pathname === tab.href || pathname.startsWith(tab.href + "/");
+              const isIconOnly = tab.icon === "settings";
               return (
                 <Link
                   key={tab.href}
                   href={tab.href}
+                  aria-label={isIconOnly ? tab.label : undefined}
+                  title={isIconOnly ? tab.label : undefined}
                   style={{
-                    padding: "5px 12px",
+                    padding: isIconOnly ? "5px 8px" : "5px 12px",
                     borderRadius: 8,
                     fontSize: 12,
                     fontWeight: isActive ? 600 : 400,
@@ -78,9 +89,13 @@ export default function ContractorAuthLayout({
                     textDecoration: "none",
                     transition: "all 0.25s cubic-bezier(0.25,0.1,0.25,1)",
                     whiteSpace: "nowrap",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    height: 26,
                   }}
                 >
-                  {tab.label}
+                  {isIconOnly ? <SettingsIcon size={14} strokeWidth={1.75} /> : tab.label}
                 </Link>
               );
             })}
