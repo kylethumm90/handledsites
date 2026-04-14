@@ -18,7 +18,7 @@ export async function PUT(
   const { data: lead } = await supabase
     .from("leads")
     .select(
-      "id, status, business_id, employee_id, appointment_at, job_completed_at, first_response_at"
+      "id, status, business_id, employee_id, appointment_at, first_response_at"
     )
     .eq("id", params.id)
     .eq("business_id", businessId)
@@ -37,8 +37,6 @@ export async function PUT(
     "tags",
     "employee_id",
     "appointment_at",
-    "job_completed_at",
-    "job_value_cents",
     "estimated_value_cents",
   ]);
   const updates: Record<string, unknown> = {};
@@ -76,8 +74,16 @@ export async function PUT(
   // Log status change. When moving to "booked" with an appointment_at in the
   // same update, inline the formatted date/time so The Story reads
   // "Appointment booked for Apr 18 at 2:30 PM" rather than a bare status flip.
+  const STATUS_LABELS: Record<string, string> = {
+    lead: "New",
+    contacted: "Contacted",
+    booked: "Appt Set",
+    customer: "Sold",
+  };
   if (updates.status && updates.status !== lead.status) {
-    let summary = `Status changed to ${updates.status}`;
+    const label =
+      STATUS_LABELS[updates.status as string] ?? (updates.status as string);
+    let summary = `Status changed to ${label}`;
     if (updates.status === "booked" && typeof updates.appointment_at === "string") {
       const d = new Date(updates.appointment_at);
       if (!isNaN(d.getTime())) {
@@ -114,29 +120,6 @@ export async function PUT(
         lead_id: params.id,
         type: "status_change",
         summary: `Appointment rescheduled to ${when}`,
-      });
-    }
-  }
-
-  // Log when a job transitions from not-done to done. This is the entry
-  // point to the reputation funnel (jobs_done stage). We only log on the
-  // initial transition so re-edits of the timestamp don't spam The Story.
-  if (
-    Object.prototype.hasOwnProperty.call(updates, "job_completed_at") &&
-    typeof updates.job_completed_at === "string" &&
-    !lead.job_completed_at
-  ) {
-    const d = new Date(updates.job_completed_at as string);
-    if (!isNaN(d.getTime())) {
-      const when = d.toLocaleString("en-US", {
-        month: "short",
-        day: "numeric",
-      });
-      await supabase.from("activity_log").insert({
-        business_id: businessId,
-        lead_id: params.id,
-        type: "job_completed",
-        summary: `Job marked complete on ${when}`,
       });
     }
   }

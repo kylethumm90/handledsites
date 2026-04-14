@@ -236,6 +236,10 @@ export default function CustomerDetailClient({ lead, timeline: initialTimeline, 
   const name = firstName(lead.name);
 
   const handleStatusChange = async (newStatus: Stage) => {
+    // Tapping the already-active tab is a no-op. The server wouldn't
+    // insert a status_change row anyway, and letting it through would
+    // append a phantom timeline entry that disappears on refresh.
+    if (newStatus === status) return;
     const oldStatus = status;
     setStatus(newStatus);
 
