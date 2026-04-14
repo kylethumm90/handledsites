@@ -3,10 +3,17 @@
 // data in a single line.
 
 export type ReputationMetrics = {
+  // NLP-derived sentiment over recent funnel feedback text (see
+  // app/api/review/submit/route.ts). NOT the star rating rescaled —
+  // a glowing-text 3-star should score high, an angry 4-star low.
   sentimentScore: number; // 0-100
   sentimentTrend: "up" | "down" | "flat";
   reviewsReceived: number; // numerator of review rate
   reviewsRequested: number; // denominator
+  // Public Google Places rating sourced from `businesses.google_rating`
+  // (populated by app/api/places/search/route.ts during onboarding).
+  // Distinct from sentiment — this is the headline number the outside
+  // world sees, not our internal feedback read.
   avgRating: number; // 0-5
   referralRevenueCents: number;
   recoveryAlertCount: number;
