@@ -535,7 +535,10 @@ const HEADER_ALIASES: Record<keyof ParsedContact, string[]> = {
   email: ["email", "emailaddress", "mail"],
   service_needed: ["service", "serviceneeded", "job", "jobtype", "work"],
   notes: ["notes", "comments", "memo", "remarks"],
+  status: ["status", "stage", "pipeline", "leadstatus", "customerstatus", "type"],
 };
+
+type PipelineStatus = "lead" | "booked" | "customer";
 
 type ParsedContact = {
   name: string;
@@ -543,7 +546,51 @@ type ParsedContact = {
   email: string;
   service_needed: string;
   notes: string;
+  // Raw status string from the CSV (pre-normalization). Empty when no
+  // status column is mapped; the view falls back to `defaultStatus` in
+  // that case.
+  status: string;
 };
+
+// Map a raw status cell value to one of our three pipeline statuses.
+// Returns null when the value is blank or doesn't match anything we
+// recognize, so callers can fall back to the user's default selection.
+function normalizePipelineStatus(raw: string): PipelineStatus | null {
+  const v = raw.toLowerCase().replace(/[^a-z]/g, "");
+  if (!v) return null;
+  if (["lead", "leads", "new", "prospect", "prospects", "inquiry", "open"].includes(v))
+    return "lead";
+  if (
+    [
+      "booked",
+      "scheduled",
+      "appointment",
+      "appt",
+      "confirmed",
+      "pending",
+    ].includes(v)
+  )
+    return "booked";
+  if (
+    [
+      "customer",
+      "customers",
+      "client",
+      "clients",
+      "sold",
+      "closed",
+      "closedwon",
+      "won",
+      "active",
+      "paid",
+      "complete",
+      "completed",
+      "done",
+    ].includes(v)
+  )
+    return "customer";
+  return null;
+}
 
 function normalizeHeader(raw: string): string {
   return raw.toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -560,6 +607,7 @@ function autoMapHeaders(headerRow: string[]): Record<keyof ParsedContact, number
     email: -1,
     service_needed: -1,
     notes: -1,
+    status: -1,
   };
   (Object.keys(HEADER_ALIASES) as (keyof ParsedContact)[]).forEach((field) => {
     const aliases = HEADER_ALIASES[field];
@@ -570,12 +618,15 @@ function autoMapHeaders(headerRow: string[]): Record<keyof ParsedContact, number
 }
 
 // Fields exposed in the mapping UI, in display order. Only `name` is required.
+// Status is optional — if unmapped or a row's value doesn't normalize, we
+// fall back to the `defaultStatus` toggle in the view.
 const FIELD_DEFS: { key: keyof ParsedContact; label: string; required: boolean }[] = [
   { key: "name", label: "Name", required: true },
   { key: "phone", label: "Phone", required: false },
   { key: "email", label: "Email", required: false },
   { key: "service_needed", label: "Service", required: false },
   { key: "notes", label: "Notes", required: false },
+  { key: "status", label: "Status", required: false },
 ];
 
 function projectRow(
@@ -593,6 +644,7 @@ function projectRow(
     email: pick("email"),
     service_needed: pick("service_needed"),
     notes: pick("notes"),
+    status: pick("status"),
   };
 }
 
@@ -722,7 +774,11 @@ function CsvImportView({
     email: -1,
     service_needed: -1,
     notes: -1,
+    status: -1,
   });
+  // Fallback status when no status column is mapped, or when a row's
+  // status value doesn't normalize to one of our three buckets.
+  const [defaultStatus, setDefaultStatus] = useState<PipelineStatus>("lead");
   const [parseError, setParseError] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
@@ -758,6 +814,18 @@ function CsvImportView({
     ? dataRows.map((r) => projectRow(r, mapping)).filter((c) => c.name.length > 0)
     : [];
 
+  // Resolve each contact's final pipeline status: use the mapped column
+  // value when it normalizes cleanly, otherwise fall back to the toggle.
+  const resolveStatus = (raw: string): PipelineStatus =>
+    normalizePipelineStatus(raw) ?? defaultStatus;
+
+  // Count how many rows fall into each bucket (for the preview summary).
+  const statusCounts: Record<PipelineStatus, number> = { lead: 0, booked: 0, customer: 0 };
+  contacts.forEach((c) => {
+    statusCounts[resolveStatus(c.status)]++;
+  });
+  const statusColumnMapped = mapping.status >= 0;
+
   const nameMissing = mapping.name < 0;
   const hasFile = headers !== null && dataRows !== null;
 
@@ -773,10 +841,20 @@ function CsvImportView({
     setImporting(true);
     setImportError(null);
     try {
+      // Stamp the resolved status onto each row before sending so the
+      // server doesn't need to re-implement the normalization logic.
+      const payload = contacts.map((c) => ({
+        name: c.name,
+        phone: c.phone,
+        email: c.email,
+        service_needed: c.service_needed,
+        notes: c.notes,
+        status: resolveStatus(c.status),
+      }));
       const res = await fetch("/api/contractor/customers/bulk", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contacts }),
+        body: JSON.stringify({ contacts: payload }),
       });
       const json = await res.json();
       if (!res.ok) {
@@ -856,6 +934,42 @@ function CsvImportView({
         </div>
       )}
 
+      {hasFile && (
+        <div className="mt-3 rounded-lg border border-gray-200 bg-white">
+          <div className="border-b border-gray-100 px-3 py-2">
+            <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+              Import as
+            </span>
+          </div>
+          <div className="p-3">
+            <div className="flex gap-1.5 rounded-lg bg-gray-100 p-1">
+              {(["lead", "booked", "customer"] as PipelineStatus[]).map((s) => {
+                const active = defaultStatus === s;
+                return (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setDefaultStatus(s)}
+                    className={`flex-1 rounded-md px-2 py-1.5 text-xs font-semibold uppercase tracking-wide transition ${
+                      active
+                        ? "bg-white text-gray-900 shadow-sm"
+                        : "text-gray-500 hover:text-gray-700"
+                    }`}
+                  >
+                    {s}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mt-2 text-[11px] leading-snug text-gray-400">
+              {statusColumnMapped
+                ? "Used as a fallback when a row's Status value is blank or unrecognized."
+                : "Applied to every imported row. Map a Status column above to use per-row values."}
+            </p>
+          </div>
+        </div>
+      )}
+
       {hasFile && contacts.length > 0 && (
         <div className="mt-3 rounded-lg border border-gray-200 bg-white">
           <div className="flex items-center justify-between border-b border-gray-100 px-3 py-2">
@@ -867,23 +981,45 @@ function CsvImportView({
             </span>
           </div>
           <div className="max-h-32 overflow-y-auto">
-            {contacts.slice(0, 5).map((c, i) => (
-              <div
-                key={i}
-                className="flex items-baseline justify-between border-b border-gray-50 px-3 py-2 text-xs last:border-b-0"
-              >
-                <span className="font-medium text-gray-800 truncate">{c.name}</span>
-                <span className="ml-3 truncate text-gray-400">
-                  {c.phone || c.email || "—"}
-                </span>
-              </div>
-            ))}
+            {contacts.slice(0, 5).map((c, i) => {
+              const resolved = resolveStatus(c.status);
+              return (
+                <div
+                  key={i}
+                  className="flex items-center justify-between border-b border-gray-50 px-3 py-2 text-xs last:border-b-0"
+                >
+                  <span className="min-w-0 flex-1 truncate font-medium text-gray-800">
+                    {c.name}
+                  </span>
+                  <span className="ml-3 truncate text-gray-400">
+                    {c.phone || c.email || "—"}
+                  </span>
+                  <span
+                    className={`ml-3 shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                      resolved === "customer"
+                        ? "bg-green-100 text-green-800"
+                        : resolved === "booked"
+                          ? "bg-indigo-100 text-indigo-800"
+                          : "bg-amber-100 text-amber-800"
+                    }`}
+                  >
+                    {resolved}
+                  </span>
+                </div>
+              );
+            })}
             {contacts.length > 5 && (
               <div className="px-3 py-2 text-xs text-gray-400">
                 +{contacts.length - 5} more…
               </div>
             )}
           </div>
+          {statusColumnMapped && (
+            <div className="border-t border-gray-100 px-3 py-2 text-[11px] text-gray-500">
+              {statusCounts.lead} lead · {statusCounts.booked} booked ·{" "}
+              {statusCounts.customer} customer
+            </div>
+          )}
         </div>
       )}
 

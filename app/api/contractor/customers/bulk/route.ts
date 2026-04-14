@@ -15,12 +15,28 @@ type IncomingContact = {
   email?: unknown;
   service_needed?: unknown;
   notes?: unknown;
+  status?: unknown;
 };
+
+type PipelineStatus = "lead" | "booked" | "customer";
+const VALID_STATUSES: readonly PipelineStatus[] = ["lead", "booked", "customer"];
 
 function clean(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
+}
+
+// Accept any of our three pipeline statuses from the client; anything
+// else falls back to "lead" so a bad row can't land in an unexpected bucket.
+function coerceStatus(value: unknown): PipelineStatus {
+  if (
+    typeof value === "string" &&
+    (VALID_STATUSES as readonly string[]).includes(value)
+  ) {
+    return value as PipelineStatus;
+  }
+  return "lead";
 }
 
 export async function POST(request: NextRequest) {
@@ -57,7 +73,7 @@ export async function POST(request: NextRequest) {
       service_needed: clean(r.service_needed),
       notes: clean(r.notes),
       source: "csv_import",
-      status: "lead" as const,
+      status: coerceStatus(r.status),
     }))
     .filter((r) => r.name && r.name.length > 0);
 
