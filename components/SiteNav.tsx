@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 
 const TOOLS = [
+  { label: "AI Visibility Scanner", href: "/tools/visibility-scanner" },
   { label: "Missed Call Calculator", href: "/tools/missed-call-calculator.html" },
   { label: "Review Link Generator", href: "/tools/review-link-generator" },
   { label: "Review Response Generator", href: "/tools/review-response-generator" },
