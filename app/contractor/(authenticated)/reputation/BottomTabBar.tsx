@@ -27,7 +27,7 @@ const TABS: Tab[] = [
     key: "funnel",
     label: "Funnel",
     icon: <Share2 size={18} strokeWidth={1.5} />,
-    // TODO: wire /reputation/funnel route
+    href: `${BASE}/funnel`,
   },
   {
     key: "alerts",

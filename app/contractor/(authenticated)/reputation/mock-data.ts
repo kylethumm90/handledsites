@@ -1,4 +1,9 @@
-import type { AlertsData, NetworkData, ReputationDashboardData } from "./types";
+import type {
+  AlertsData,
+  FunnelData,
+  NetworkData,
+  ReputationDashboardData,
+} from "./types";
 
 // Mock data mirrors the provided mockup exactly. Swap this import in
 // `page.tsx` for a Supabase fetcher once reputation tables exist.
@@ -205,4 +210,292 @@ export const MOCK_NETWORK: NetworkData = {
     },
   ],
   stellaScheduledCount: 5,
+};
+
+// =============================================================================
+// Funnel tab mock
+// =============================================================================
+
+function buildStages(
+  jobs: number,
+  feedback: number,
+  reviews: number,
+  partners: number,
+  referrals: number,
+) {
+  return [
+    { key: "jobs" as const, label: "Jobs Done", index: 1, count: jobs },
+    {
+      key: "feedback" as const,
+      label: "Feedback",
+      index: 2,
+      count: feedback,
+      conversionPct: Math.round((feedback / jobs) * 100),
+      dropOff: jobs - feedback,
+    },
+    {
+      key: "reviews" as const,
+      label: "Reviews",
+      index: 3,
+      count: reviews,
+      conversionPct: Math.round((reviews / feedback) * 100),
+      dropOff: feedback - reviews,
+    },
+    {
+      key: "partners" as const,
+      label: "Referral Partners",
+      index: 4,
+      count: partners,
+      conversionPct: Math.round((partners / reviews) * 100),
+      dropOff: reviews - partners,
+    },
+    {
+      key: "referrals" as const,
+      label: "Referrals",
+      index: 5,
+      count: referrals,
+      conversionPct: Math.round((referrals / partners) * 100),
+      dropOff: partners - referrals,
+    },
+  ];
+}
+
+export const MOCK_FUNNEL: FunnelData = {
+  periods: {
+    "7d": {
+      stages: buildStages(35, 22, 13, 4, 3),
+      totalConversionPct: 8.6,
+      deltaFromPrevPct: 0.4,
+      trendPoints: [
+        { label: "M", pct: 6.2 },
+        { label: "T", pct: 7.0 },
+        { label: "W", pct: 8.1 },
+        { label: "T", pct: 7.4 },
+        { label: "F", pct: 9.0 },
+        { label: "S", pct: 8.8 },
+        { label: "S", pct: 8.6, isCurrent: true },
+      ],
+      trendInsight:
+        "Feedback response rate dropped mid-week. Stella is adjusting follow-up timing.",
+    },
+    "30d": {
+      stages: buildStages(142, 88, 52, 14, 11),
+      totalConversionPct: 7.7,
+      deltaFromPrevPct: 1.2,
+      trendPoints: [
+        { label: "W1", pct: 6.5 },
+        { label: "W2", pct: 7.0 },
+        { label: "W3", pct: 7.4 },
+        { label: "W4", pct: 7.7, isCurrent: true },
+      ],
+      trendInsight:
+        "Your review conversion has improved 12% over the last 30 days.",
+    },
+    "90d": {
+      stages: buildStages(412, 258, 151, 39, 29),
+      totalConversionPct: 7.0,
+      deltaFromPrevPct: 0.8,
+      trendPoints: [
+        { label: "Jan", pct: 5.8 },
+        { label: "Feb", pct: 6.4 },
+        { label: "Mar", pct: 7.0, isCurrent: true },
+      ],
+      trendInsight:
+        "Your review conversion has improved 12% over the last 90 days.",
+    },
+    all: {
+      stages: buildStages(1840, 1102, 612, 158, 124),
+      totalConversionPct: 6.7,
+      deltaFromPrevPct: 0.3,
+      trendPoints: [
+        { label: "Q1", pct: 5.2 },
+        { label: "Q2", pct: 5.9 },
+        { label: "Q3", pct: 6.3 },
+        { label: "Q4", pct: 6.7, isCurrent: true },
+      ],
+      trendInsight:
+        "Lifetime review conversion trending up quarter over quarter.",
+    },
+  },
+  breakdown: [
+    {
+      key: "jobs",
+      label: "Jobs Done",
+      count: 142,
+      groups: [
+        {
+          label: "Completed",
+          count: 142,
+          customers: [
+            {
+              id: "jd-alex-kim",
+              name: "Alex Kim",
+              jobLabel: "Kitchen Remodel",
+              daysAtStage: 1,
+              nextAction: "Feedback request sending tonight",
+            },
+            {
+              id: "jd-nina-ross",
+              name: "Nina Ross",
+              jobLabel: "Deck Build",
+              daysAtStage: 0,
+              nextAction: "Feedback request sending tomorrow",
+            },
+          ],
+        },
+      ],
+    },
+    {
+      key: "feedback",
+      label: "Feedback",
+      count: 88,
+      groups: [
+        {
+          label: "Responded",
+          count: 22,
+          customers: [
+            {
+              id: "fb-jessica-thumm",
+              name: "Jessica Thumm",
+              jobLabel: "Bathroom Reno",
+              daysAtStage: 2,
+              nextAction: "Review request queued",
+            },
+          ],
+        },
+        {
+          label: "Waiting",
+          count: 12,
+          customers: [
+            {
+              id: "fb-marcus-rivera",
+              name: "Marcus Rivera",
+              jobLabel: "Solar Install",
+              daysAtStage: 3,
+              nextAction: "Follow-up scheduled tomorrow",
+            },
+          ],
+        },
+        {
+          label: "No Response",
+          count: 8,
+          customers: [
+            {
+              id: "fb-brian-walsh",
+              name: "Brian Walsh",
+              jobLabel: "Roof Replacement",
+              daysAtStage: 9,
+              nextAction: "Re-engagement in 3 days",
+            },
+          ],
+        },
+      ],
+    },
+    {
+      key: "reviews",
+      label: "Reviews",
+      count: 52,
+      groups: [
+        {
+          label: "Reviewed",
+          count: 12,
+          customers: [
+            {
+              id: "rv-linda-park",
+              name: "Linda Park",
+              jobLabel: "Window Replace",
+              daysAtStage: 4,
+              nextAction: "Thank-you sent",
+            },
+          ],
+        },
+        {
+          label: "Requested",
+          count: 8,
+          customers: [
+            {
+              id: "rv-sarah-jenkins",
+              name: "Sarah Jenkins",
+              jobLabel: "Window Installation",
+              daysAtStage: 5,
+              nextAction: "Reminder in 2 days",
+            },
+          ],
+        },
+        {
+          label: "Not Yet Asked",
+          count: 2,
+          customers: [
+            {
+              id: "rv-tom-webster",
+              name: "Tom Webster",
+              jobLabel: "HVAC Repair",
+              daysAtStage: 1,
+              nextAction: "Review request sending tomorrow",
+            },
+          ],
+        },
+      ],
+    },
+    {
+      key: "partners",
+      label: "Referral Partners",
+      count: 14,
+      groups: [
+        {
+          label: "Opted In",
+          count: 14,
+          customers: [
+            {
+              id: "rp-jessica-thumm",
+              name: "Jessica Thumm",
+              jobLabel: "Bathroom Reno",
+              daysAtStage: 11,
+              nextAction: "Referral ask scheduled",
+            },
+            {
+              id: "rp-marcus-rivera",
+              name: "Marcus Rivera",
+              jobLabel: "Solar Install",
+              daysAtStage: 8,
+              nextAction: "Referral ask tomorrow",
+            },
+          ],
+        },
+      ],
+    },
+    {
+      key: "referrals",
+      label: "Referrals",
+      count: 11,
+      groups: [
+        {
+          label: "Closed",
+          count: 6,
+          customers: [
+            {
+              id: "rf-mike-knoll",
+              name: "Mike Knoll",
+              jobLabel: "Residential Clean",
+              daysAtStage: 0,
+              nextAction: "Job scheduled",
+            },
+          ],
+        },
+        {
+          label: "In Progress",
+          count: 5,
+          customers: [
+            {
+              id: "rf-amanda-shaw",
+              name: "Amanda Shaw",
+              jobLabel: "Solar Install",
+              daysAtStage: 2,
+              nextAction: "Quote in review",
+            },
+          ],
+        },
+      ],
+    },
+  ],
 };

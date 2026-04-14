@@ -118,6 +118,68 @@ export type StellaQueueItem = {
   scheduledLabel: string; // e.g. "Today 4PM"
 };
 
+// =============================================================================
+// Funnel tab
+// =============================================================================
+
+export type FunnelPeriod = "7d" | "30d" | "90d" | "all";
+
+export type FunnelStageKey =
+  | "jobs"
+  | "feedback"
+  | "reviews"
+  | "partners"
+  | "referrals";
+
+export type FunnelStageSnapshot = {
+  key: FunnelStageKey;
+  label: string;
+  index: number; // 1..5
+  count: number;
+  conversionPct?: number; // vs previous stage
+  dropOff?: number; // loss vs previous stage
+};
+
+export type ConversionTrendPoint = {
+  label: string; // e.g. "W1"
+  pct: number;
+  isCurrent?: boolean;
+};
+
+export type FunnelPeriodData = {
+  stages: FunnelStageSnapshot[];
+  totalConversionPct: number;
+  deltaFromPrevPct: number; // can be negative
+  trendPoints: ConversionTrendPoint[];
+  trendInsight: string;
+};
+
+export type StageBreakdownCustomer = {
+  id: string;
+  name: string;
+  jobLabel: string;
+  daysAtStage: number;
+  nextAction: string;
+};
+
+export type StageBreakdownGroup = {
+  label: string;
+  count: number;
+  customers: StageBreakdownCustomer[];
+};
+
+export type StageBreakdownEntry = {
+  key: FunnelStageKey;
+  label: string;
+  count: number;
+  groups: StageBreakdownGroup[];
+};
+
+export type FunnelData = {
+  periods: Record<FunnelPeriod, FunnelPeriodData>;
+  breakdown: StageBreakdownEntry[];
+};
+
 export type NetworkData = {
   stats: NetworkStats;
   leaderboard: NetworkReferrer[];
