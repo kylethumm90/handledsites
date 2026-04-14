@@ -38,7 +38,7 @@ async function getEmployeeData(businessSlug: string, employeeSlug: string) {
   // Fetch business data
   const { data: business, error: bizError } = await supabase
     .from("businesses")
-    .select("name, logo_url, trade, city, state, services")
+    .select("name, logo_url, trade, city, state, services, google_rating, google_review_count")
     .eq("id", site.business_id)
     .single();
 
@@ -125,6 +125,8 @@ export default async function EmployeeCardPage({ params }: Props) {
           city: business.city,
           state: business.state,
           services: business.services || [],
+          google_rating: business.google_rating,
+          google_review_count: business.google_review_count,
         }}
         coverImage={coverImage}
         reviewFunnelUrl={reviewFunnelUrl}

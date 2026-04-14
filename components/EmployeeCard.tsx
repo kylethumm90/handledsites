@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Phone, MessageSquare, UserPlus, Calendar, Shield, Settings2, Star } from "lucide-react";
 import { SERVICE_ICONS } from "@/lib/icons";
 import { generateVCard, downloadVCard } from "@/lib/vcard";
+import ReviewStars from "@/components/ReviewStars";
 
 type Props = {
   employee: {
@@ -27,6 +28,8 @@ type Props = {
     city: string;
     state: string;
     services: string[];
+    google_rating: number | null;
+    google_review_count: number | null;
   };
   coverImage: string;
   reviewFunnelUrl?: string | null;
@@ -326,6 +329,12 @@ export default function EmployeeCard({ employee, business, coverImage, reviewFun
           })}
         </div>
       )}
+
+      {/* Reviews */}
+      <ReviewStars
+        reviewCount={business.google_review_count}
+        avgRating={business.google_rating}
+      />
 
       {/* About section */}
       {employee.bio && (
