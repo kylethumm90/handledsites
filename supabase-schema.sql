@@ -211,3 +211,72 @@ CREATE INDEX idx_contractor_sessions_hash ON contractor_sessions (session_hash);
 --
 -- ALTER TABLE leads ADD COLUMN appointment_at TIMESTAMPTZ;
 
+-- ============================================
+-- Reputation funnel: post-sale milestone columns on leads
+-- ============================================
+
+-- The reputation dashboard surfaces a five-stage post-sale funnel on top of
+-- the same `leads` table used by the pre-sale Pipeline view:
+--   jobs done → feedback → reviews → referral partners → referrals
+--
+-- Those five stages are parallel events (not a continuation of the status
+-- enum), so we denormalize them as nullable timestamp columns on the lead
+-- row. Each "stage count" becomes a cheap COUNT(*) FILTER on one table; each
+-- drop-off list ("who's stuck?") becomes a one-liner WHERE clause. The child
+-- tables (review_responses, referral_partners, activity_log) stay canonical
+-- for the actual content — these columns are read-side indexes.
+--
+-- Additive only. Pipeline view is not affected.
+--
+-- Run as migration:
+--
+-- ALTER TABLE leads
+--   ADD COLUMN job_completed_at      TIMESTAMPTZ,
+--   ADD COLUMN feedback_submitted_at TIMESTAMPTZ,
+--   ADD COLUMN review_submitted_at   TIMESTAMPTZ,
+--   ADD COLUMN referral_opted_in_at  TIMESTAMPTZ,
+--   ADD COLUMN sentiment_score       SMALLINT,
+--   ADD COLUMN job_value_cents       INTEGER,
+--   ADD COLUMN referred_by_lead_id   UUID REFERENCES leads(id);
+--
+-- CREATE INDEX idx_leads_business_job_done
+--   ON leads (business_id, job_completed_at DESC)
+--   WHERE job_completed_at IS NOT NULL;
+--
+-- CREATE INDEX idx_leads_referred_by
+--   ON leads (referred_by_lead_id)
+--   WHERE referred_by_lead_id IS NOT NULL;
+--
+-- Backfill from existing child tables (safe to run multiple times):
+--
+-- UPDATE leads l
+--    SET feedback_submitted_at = sub.first_at
+--   FROM (
+--     SELECT lead_id, MIN(created_at) AS first_at
+--     FROM review_responses
+--     WHERE lead_id IS NOT NULL
+--     GROUP BY lead_id
+--   ) sub
+--  WHERE l.id = sub.lead_id
+--    AND l.feedback_submitted_at IS NULL;
+--
+-- UPDATE leads l
+--    SET referral_opted_in_at = rp.created_at
+--   FROM referral_partners rp
+--  WHERE rp.customer_id = l.id
+--    AND l.referral_opted_in_at IS NULL;
+--
+-- -- Seed sentiment from the latest review_response rating (1-5 → 0-100).
+-- -- Replace with NLP-derived sentiment when that pipeline exists.
+-- UPDATE leads l
+--    SET sentiment_score = sub.score
+--   FROM (
+--     SELECT DISTINCT ON (lead_id)
+--            lead_id, (rating * 20)::smallint AS score
+--     FROM review_responses
+--     WHERE lead_id IS NOT NULL AND rating IS NOT NULL
+--     ORDER BY lead_id, created_at DESC
+--   ) sub
+--  WHERE l.id = sub.lead_id
+--    AND l.sentiment_score IS NULL;
+

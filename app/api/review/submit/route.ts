@@ -113,6 +113,38 @@ Additional feedback: "${feedback || ""}"`,
         summary,
       })
       .then(() => {}, () => {});
+
+    // Stamp the denormalized reputation-funnel columns on the lead row so
+    // the funnel counts + alerts queries don't need to re-aggregate against
+    // review_responses on every render. Best-effort — the review row is
+    // already persisted even if this follow-up update fails.
+    //
+    // - feedback_submitted_at: only set on the first response so re-submits
+    //   don't reset the clock.
+    // - sentiment_score: latest-wins. Currently derived from rating (1-5
+    //   → 0-100). Replace with NLP-derived sentiment on `feedback` when
+    //   that pipeline exists.
+    const sentimentScore =
+      typeof rating === "number" ? Math.round(rating * 20) : null;
+    await supabase
+      .from("leads")
+      .update({
+        feedback_submitted_at: new Date().toISOString(),
+        sentiment_score: sentimentScore,
+      })
+      .eq("id", lead_id)
+      .is("feedback_submitted_at", null)
+      .then(() => {}, () => {});
+
+    // Separate update for sentiment_score so we always refresh it on new
+    // responses (the guard above only runs on the first-ever submission).
+    if (sentimentScore != null) {
+      await supabase
+        .from("leads")
+        .update({ sentiment_score: sentimentScore })
+        .eq("id", lead_id)
+        .then(() => {}, () => {});
+    }
   }
 
   if (isPositive) {

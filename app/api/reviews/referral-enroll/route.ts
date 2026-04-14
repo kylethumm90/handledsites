@@ -174,6 +174,17 @@ export async function POST(request: NextRequest) {
     })
     .then(() => {}, () => {});
 
+  // Stamp the denormalized reputation-funnel column so the Network leaderboard
+  // and funnel counts don't have to join against referral_partners on every
+  // render. Idempotent: only stamps if currently null, so re-taps of the
+  // "Count me in" CTA don't reset the clock. Best-effort.
+  await supabase
+    .from("leads")
+    .update({ referral_opted_in_at: new Date().toISOString() })
+    .eq("id", customerId)
+    .is("referral_opted_in_at", null)
+    .then(() => {}, () => {});
+
   const base = process.env.NEXT_PUBLIC_BASE_URL?.replace(/\/$/, "") || "";
   const referralUrl = base
     ? `${base}/refer/${partner.referral_code}`

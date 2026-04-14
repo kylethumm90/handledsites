@@ -17,7 +17,9 @@ export async function PUT(
   // Verify lead belongs to this business
   const { data: lead } = await supabase
     .from("leads")
-    .select("id, status, business_id, employee_id, appointment_at")
+    .select(
+      "id, status, business_id, employee_id, appointment_at, job_completed_at"
+    )
     .eq("id", params.id)
     .eq("business_id", businessId)
     .single();
@@ -28,7 +30,16 @@ export async function PUT(
 
   const body = await request.json();
 
-  const ALLOWED = new Set(["status", "service_needed", "notes", "tags", "employee_id", "appointment_at"]);
+  const ALLOWED = new Set([
+    "status",
+    "service_needed",
+    "notes",
+    "tags",
+    "employee_id",
+    "appointment_at",
+    "job_completed_at",
+    "job_value_cents",
+  ]);
   const updates: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(body)) {
     if (ALLOWED.has(key)) updates[key] = value;
@@ -88,6 +99,29 @@ export async function PUT(
         lead_id: params.id,
         type: "status_change",
         summary: `Appointment rescheduled to ${when}`,
+      });
+    }
+  }
+
+  // Log when a job transitions from not-done to done. This is the entry
+  // point to the reputation funnel (jobs_done stage). We only log on the
+  // initial transition so re-edits of the timestamp don't spam The Story.
+  if (
+    Object.prototype.hasOwnProperty.call(updates, "job_completed_at") &&
+    typeof updates.job_completed_at === "string" &&
+    !lead.job_completed_at
+  ) {
+    const d = new Date(updates.job_completed_at as string);
+    if (!isNaN(d.getTime())) {
+      const when = d.toLocaleString("en-US", {
+        month: "short",
+        day: "numeric",
+      });
+      await supabase.from("activity_log").insert({
+        business_id: businessId,
+        lead_id: params.id,
+        type: "job_completed",
+        summary: `Job marked complete on ${when}`,
       });
     }
   }
