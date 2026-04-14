@@ -70,6 +70,9 @@ export default function PulseTable({ businesses }: { businesses: BusinessGroup[]
             <th className={`${thClass} text-right`}>Texts</th>
             <th className={`${thClass} text-right`}>Forms</th>
             <th className={`${thClass} text-right`}>Reviews</th>
+            <th className={`${thClass} text-right`}>Leads</th>
+            <th className={`${thClass} text-right`}>Referrers</th>
+            <th className={`${thClass} text-right`}>Referrals</th>
           </tr>
         </thead>
         <tbody>
@@ -115,6 +118,9 @@ export default function PulseTable({ businesses }: { businesses: BusinessGroup[]
                   <td className={numClass(biz.text_clicks)}>{biz.text_clicks}</td>
                   <td className={numClass(biz.form_submits)}>{biz.form_submits}</td>
                   <td className={numClass(biz.review_completes)}>{biz.review_completes}</td>
+                  <td className={numClass(biz.leads)}>{biz.leads}</td>
+                  <td className={numClass(biz.referrers)}>{biz.referrers}</td>
+                  <td className={numClass(biz.referrals_generated)}>{biz.referrals_generated}</td>
                 </tr>
 
                 {/* Expanded site rows */}
@@ -163,6 +169,9 @@ export default function PulseTable({ businesses }: { businesses: BusinessGroup[]
                     <td className={`px-4 py-2.5 text-right text-xs tabular-nums ${site.review_completes > 0 ? "text-gray-600" : "text-gray-300"}`}>
                       {site.review_completes}
                     </td>
+                    <td className="px-4 py-2.5" />
+                    <td className="px-4 py-2.5" />
+                    <td className="px-4 py-2.5" />
                   </tr>
                 ))}
               </Fragment>

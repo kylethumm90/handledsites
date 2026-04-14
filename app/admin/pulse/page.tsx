@@ -32,11 +32,24 @@ export type BusinessGroup = {
   text_clicks: number;
   form_submits: number;
   review_completes: number;
+  leads: number;
+  referrers: number;
+  referrals_generated: number;
 };
 
 async function getAllSiteStats(): Promise<{
   businesses: BusinessGroup[];
-  totals: { views: number; visitors: number; phone: number; text: number; forms: number; reviews: number };
+  totals: {
+    views: number;
+    visitors: number;
+    phone: number;
+    text: number;
+    forms: number;
+    reviews: number;
+    leads: number;
+    referrers: number;
+    referrals_generated: number;
+  };
 }> {
   const supabase = getSupabaseAdmin();
 
@@ -46,7 +59,20 @@ async function getAllSiteStats(): Promise<{
     .order("business_name");
 
   if (!sites || sites.length === 0) {
-    return { businesses: [], totals: { views: 0, visitors: 0, phone: 0, text: 0, forms: 0, reviews: 0 } };
+    return {
+      businesses: [],
+      totals: {
+        views: 0,
+        visitors: 0,
+        phone: 0,
+        text: 0,
+        forms: 0,
+        reviews: 0,
+        leads: 0,
+        referrers: 0,
+        referrals_generated: 0,
+      },
+    };
   }
 
   const siteIds = sites.map((s) => s.id);
@@ -67,6 +93,48 @@ async function getAllSiteStats(): Promise<{
     .select("site_id, event_type, visitor_id")
     .in("site_id", siteIds)
     .gte("created_at", `${todayStr}T00:00:00.000Z`);
+
+  // Fetch business-level counts (leads, referral partners, referrals) for the
+  // same 30-day window so they line up with the "Last 30 days" label.
+  const businessIds = Array.from(new Set(sites.map((s) => s.business_id)));
+  const windowStart = thirtyDaysAgo.toISOString();
+
+  const [leadsRes, partnersRes, referralsRes] = await Promise.all([
+    supabase
+      .from("leads")
+      .select("business_id")
+      .in("business_id", businessIds)
+      .eq("is_demo", false)
+      .gte("created_at", windowStart),
+    supabase
+      .from("referral_partners")
+      .select("business_id")
+      .in("business_id", businessIds)
+      .gte("created_at", windowStart),
+    supabase
+      .from("leads")
+      .select("business_id")
+      .in("business_id", businessIds)
+      .eq("is_demo", false)
+      .eq("source", "referral")
+      .gte("created_at", windowStart),
+  ]);
+
+  const leadsByBiz: Record<string, number> = {};
+  for (const row of leadsRes.data ?? []) {
+    if (!row.business_id) continue;
+    leadsByBiz[row.business_id] = (leadsByBiz[row.business_id] ?? 0) + 1;
+  }
+  const referrersByBiz: Record<string, number> = {};
+  for (const row of partnersRes.data ?? []) {
+    if (!row.business_id) continue;
+    referrersByBiz[row.business_id] = (referrersByBiz[row.business_id] ?? 0) + 1;
+  }
+  const referralsByBiz: Record<string, number> = {};
+  for (const row of referralsRes.data ?? []) {
+    if (!row.business_id) continue;
+    referralsByBiz[row.business_id] = (referralsByBiz[row.business_id] ?? 0) + 1;
+  }
 
   // Build per-site stats
   const siteStatsMap: Record<string, SiteStats> = {};
@@ -150,6 +218,9 @@ async function getAllSiteStats(): Promise<{
         text_clicks: 0,
         form_submits: 0,
         review_completes: 0,
+        leads: leadsByBiz[meta.business_id] ?? 0,
+        referrers: referrersByBiz[meta.business_id] ?? 0,
+        referrals_generated: referralsByBiz[meta.business_id] ?? 0,
       };
     }
     const biz = bizMap[meta.business_id];
@@ -171,6 +242,9 @@ async function getAllSiteStats(): Promise<{
     text: businesses.reduce((sum, b) => sum + b.text_clicks, 0),
     forms: businesses.reduce((sum, b) => sum + b.form_submits, 0),
     reviews: businesses.reduce((sum, b) => sum + b.review_completes, 0),
+    leads: businesses.reduce((sum, b) => sum + b.leads, 0),
+    referrers: businesses.reduce((sum, b) => sum + b.referrers, 0),
+    referrals_generated: businesses.reduce((sum, b) => sum + b.referrals_generated, 0),
   };
 
   return { businesses, totals };
@@ -186,7 +260,7 @@ export default async function PulseOverviewPage() {
       <h1 className="mb-6 text-xl font-semibold text-gray-900">Pulse</h1>
 
       {/* Totals row */}
-      <div className="mb-8 grid grid-cols-3 gap-3 sm:grid-cols-6">
+      <div className="mb-8 grid grid-cols-3 gap-3 sm:grid-cols-3 lg:grid-cols-9">
         {[
           { label: "Views", value: totals.views },
           { label: "Visitors", value: totals.visitors },
@@ -194,6 +268,9 @@ export default async function PulseOverviewPage() {
           { label: "Texts", value: totals.text },
           { label: "Forms", value: totals.forms },
           { label: "Reviews", value: totals.reviews },
+          { label: "Leads", value: totals.leads },
+          { label: "Referrers", value: totals.referrers },
+          { label: "Referrals", value: totals.referrals_generated },
         ].map((stat) => (
           <div key={stat.label} className="rounded-xl border border-gray-200 bg-white px-4 py-4">
             <p className="text-xs font-medium text-gray-500">{stat.label}</p>
