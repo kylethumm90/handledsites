@@ -326,3 +326,22 @@ CREATE INDEX idx_contractor_sessions_hash ON contractor_sessions (session_hash);
 -- ALTER TABLE businesses
 --   ADD COLUMN IF NOT EXISTS ava_enabled BOOLEAN NOT NULL DEFAULT FALSE;
 
+-- ============================================
+-- AI-generated lead summary (Claude Haiku 4.5)
+-- ============================================
+--
+-- The Pipeline lead card shows a one-sentence AI summary generated
+-- from every known signal on the lead (service, value, status,
+-- appointment, tags, notes, chatbot intake answers, recent activity
+-- log) in place of raw notes. Generation is lazy: when the contractor
+-- opens the pipeline, the client sequentially calls
+-- POST /api/contractor/customers/[id]/ai-summary for each lead where
+-- ai_summary IS NULL, and the API route caches the result back on the
+-- row so we don't pay for the same lead twice.
+--
+-- Run as migration:
+--
+-- ALTER TABLE leads
+--   ADD COLUMN IF NOT EXISTS ai_summary TEXT,
+--   ADD COLUMN IF NOT EXISTS ai_summary_generated_at TIMESTAMPTZ;
+

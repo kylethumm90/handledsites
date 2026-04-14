@@ -12,7 +12,7 @@
 // tree. No forked codepaths. Flipping the businesses.ava_enabled column
 // swaps the entire screen.
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Lead } from "@/lib/supabase";
@@ -21,7 +21,6 @@ import { initials, nameHue } from "@/lib/utils";
 import {
   STAGE_COLORS,
   computeStageCounts,
-  computePipelineValue,
   formatMoneyCompact,
   formatElapsed,
   waitingElapsedSeconds,
@@ -72,137 +71,76 @@ function Avatar({ name, size = 36 }: { name: string; size?: number }) {
   );
 }
 
-function StageTile({
-  label,
-  count,
-  color,
-  dim,
-}: {
-  label: string;
-  count: number;
-  color: string;
-  dim: boolean;
-}) {
-  return (
-    <div
-      style={{
-        flex: 1,
-        background: SURFACE,
-        border: `1px solid ${HAIRLINE}`,
-        borderRadius: 10,
-        padding: "12px 4px 10px",
-        textAlign: "center",
-        opacity: dim ? 0.65 : 1,
-      }}
-    >
-      <div
-        style={{
-          fontSize: 22,
-          fontWeight: 800,
-          color,
-          letterSpacing: "-0.02em",
-          lineHeight: 1,
-        }}
-      >
-        {count}
-      </div>
-      <div
-        style={{
-          fontSize: 11,
-          fontWeight: 500,
-          color: MUTED,
-          marginTop: 6,
-          letterSpacing: "-0.01em",
-        }}
-      >
-        {label}
-      </div>
-    </div>
-  );
-}
-
-function PipelineTotalBar({
-  totalCents,
-  thisWeekCents,
-  weekDeltaPct,
+// StageBoard: the four stage tiles sit on top of a single connected
+// distribution bar. No card chrome around either piece — the bar is
+// physically touching the bottom edge of the tiles so they read as one
+// object. Each tile's count is colored by stage; the bar segments
+// share those same colors and widths-by-count-share so the visual
+// relationship ("this chunk of the bar is that tile") is obvious.
+function StageBoard({
+  counts,
   segments,
 }: {
-  totalCents: number;
-  thisWeekCents: number;
-  weekDeltaPct: number | null;
+  counts: { new: number; contacted: number; apptSet: number; done: number };
   segments: { color: string; pct: number }[];
 }) {
-  const deltaColor =
-    weekDeltaPct == null
-      ? MUTED
-      : weekDeltaPct >= 0
-        ? "#16A34A"
-        : "#DC2626";
-  const deltaStr =
-    weekDeltaPct == null ? "" : `${weekDeltaPct >= 0 ? "+" : ""}${weekDeltaPct}%`;
+  const tiles: Array<{ label: string; count: number; color: string }> = [
+    { label: "New", count: counts.new, color: STAGE_COLORS.new },
+    { label: "Contacted", count: counts.contacted, color: STAGE_COLORS.contacted },
+    { label: "Appt set", count: counts.apptSet, color: STAGE_COLORS.apptSet },
+    { label: "Done", count: counts.done, color: STAGE_COLORS.done },
+  ];
 
   return (
     <div
       style={{
         background: SURFACE,
         border: `1px solid ${HAIRLINE}`,
-        borderRadius: 10,
-        padding: "12px 14px 14px",
+        borderRadius: 12,
+        overflow: "hidden",
       }}
     >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "baseline",
-          justifyContent: "space-between",
-          gap: 8,
-        }}
-      >
-        <div
-          style={{ fontSize: 12, color: MUTED, fontWeight: 500 }}
-        >
-          Pipeline
-        </div>
-        <div style={{ fontSize: 11, color: MUTED, fontWeight: 500 }}>
-          This week
-        </div>
-      </div>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "baseline",
-          justifyContent: "space-between",
-          gap: 8,
-          marginTop: 2,
-        }}
-      >
-        <div
-          style={{
-            fontSize: 22,
-            fontWeight: 800,
-            color: INK,
-            letterSpacing: "-0.03em",
-          }}
-        >
-          {formatMoneyCompact(totalCents)}
-        </div>
-        <div style={{ fontSize: 13, fontWeight: 600, color: INK }}>
-          {formatMoneyCompact(thisWeekCents)}{" "}
-          <span
-            style={{ color: deltaColor, fontWeight: 700, marginLeft: 2 }}
+      <div style={{ display: "flex" }}>
+        {tiles.map((tile, i) => (
+          <div
+            key={tile.label}
+            style={{
+              flex: 1,
+              padding: "14px 4px 12px",
+              textAlign: "center",
+              opacity: tile.count === 0 ? 0.5 : 1,
+              borderLeft: i === 0 ? "none" : `1px solid ${HAIRLINE}`,
+            }}
           >
-            {deltaStr}
-          </span>
-        </div>
+            <div
+              style={{
+                fontSize: 24,
+                fontWeight: 800,
+                color: tile.color,
+                letterSpacing: "-0.02em",
+                lineHeight: 1,
+              }}
+            >
+              {tile.count}
+            </div>
+            <div
+              style={{
+                fontSize: 11,
+                fontWeight: 500,
+                color: MUTED,
+                marginTop: 6,
+                letterSpacing: "-0.01em",
+              }}
+            >
+              {tile.label}
+            </div>
+          </div>
+        ))}
       </div>
-
-      {/* 4-segment progress bar. Segments are weighted by count share, not
-          value share — the bar is about "shape of the pipeline", not dollars. */}
+      {/* Flush distribution bar — count-share widths in stage colors. */}
       <div
         style={{
-          marginTop: 11,
           height: 5,
-          borderRadius: 3,
           background: "#E5E7EB",
           display: "flex",
           overflow: "hidden",
@@ -427,22 +365,28 @@ function LeadCard({
             {value}
           </div>
         )}
-        {lead.notes && (
-          <div
-            style={{
-              fontSize: 13,
-              color: INK,
-              marginTop: 6,
-              lineHeight: 1.35,
-              display: "-webkit-box",
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: "vertical",
-              overflow: "hidden",
-            }}
-          >
-            {lead.notes}
-          </div>
-        )}
+        {(() => {
+          // Prefer the Haiku-generated summary; fall back to raw notes
+          // while the summary is still being generated for new leads.
+          const description = lead.ai_summary || lead.notes;
+          if (!description) return null;
+          return (
+            <div
+              style={{
+                fontSize: 13,
+                color: INK,
+                marginTop: 6,
+                lineHeight: 1.35,
+                display: "-webkit-box",
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: "vertical",
+                overflow: "hidden",
+              }}
+            >
+              {description}
+            </div>
+          );
+        })()}
         <div
           style={{
             display: "flex",
@@ -600,18 +544,65 @@ export default function PipelineClient({ leads: initialLeads, trade, avaEnabled 
     return () => clearInterval(tick);
   }, []);
 
+  // Lazy AI summary backfill via Haiku 4.5. Any lead without an
+  // ai_summary gets one generated the first time it appears on
+  // screen. Requests run sequentially so a legacy backlog can't spike
+  // the API, and an `attempted` ref tracks ids we've already queued
+  // so re-renders (1Hz tick, new leads, etc.) don't re-enqueue them.
+  // As each summary lands we patch the lead in local state so the
+  // card updates in place without a refetch.
+  const attempted = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    let cancelled = false;
+
+    async function backfill() {
+      const queue = leads
+        .filter(
+          (l) => !l.ai_summary && !l.is_demo && !attempted.current.has(l.id),
+        )
+        .map((l) => l.id);
+      for (const id of queue) {
+        attempted.current.add(id);
+      }
+      for (const id of queue) {
+        if (cancelled) return;
+        try {
+          const res = await fetch(
+            `/api/contractor/customers/${id}/ai-summary`,
+            { method: "POST" },
+          );
+          if (!res.ok) continue;
+          const data = (await res.json()) as { ai_summary?: string };
+          if (cancelled || !data.ai_summary) continue;
+          setLeads((prev) =>
+            prev.map((l) =>
+              l.id === id
+                ? {
+                    ...l,
+                    ai_summary: data.ai_summary!,
+                    ai_summary_generated_at: new Date().toISOString(),
+                  }
+                : l,
+            ),
+          );
+        } catch {
+          // Silent: lead card falls back to raw notes.
+        }
+      }
+    }
+
+    void backfill();
+    return () => {
+      cancelled = true;
+    };
+  }, [leads]);
+
   const nonDemoLeads = useMemo(
     () => leads.filter((l) => !l.is_demo),
     [leads],
   );
 
   const counts = useMemo(() => computeStageCounts(nonDemoLeads), [nonDemoLeads]);
-  const value = useMemo(
-    () => computePipelineValue(nonDemoLeads, nowMs),
-    // intentionally don't recompute every tick — only when leads change:
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [nonDemoLeads],
-  );
 
   const total = counts.new + counts.contacted + counts.apptSet + counts.done;
   const segments = useMemo(() => {
@@ -733,42 +724,9 @@ export default function PipelineClient({ leads: initialLeads, trade, avaEnabled 
           </div>
         </div>
 
-        {/* Stage tiles */}
-        <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-          <StageTile
-            label="New"
-            count={counts.new}
-            color={STAGE_COLORS.new}
-            dim={counts.new === 0}
-          />
-          <StageTile
-            label="Contacted"
-            count={counts.contacted}
-            color={STAGE_COLORS.contacted}
-            dim={counts.contacted === 0}
-          />
-          <StageTile
-            label="Appt set"
-            count={counts.apptSet}
-            color={STAGE_COLORS.apptSet}
-            dim={counts.apptSet === 0}
-          />
-          <StageTile
-            label="Done"
-            count={counts.done}
-            color={STAGE_COLORS.done}
-            dim={counts.done === 0}
-          />
-        </div>
-
-        {/* Pipeline $ total + weekly delta + 4-segment progress bar */}
-        <div style={{ marginBottom: 12 }}>
-          <PipelineTotalBar
-            totalCents={value.totalCents}
-            thisWeekCents={value.thisWeekCents}
-            weekDeltaPct={value.weekDeltaPct}
-            segments={segments}
-          />
+        {/* Stage tiles with a connected distribution bar underneath */}
+        <div style={{ marginBottom: 14 }}>
+          <StageBoard counts={counts} segments={segments} />
         </div>
 
         {/* Alert cards — same slot, mode-aware content */}

@@ -163,6 +163,8 @@ export type Lead = {
   first_response_at: string | null;
   speed_to_lead_seconds: number | null;
   last_activity_at: string | null;
+  ai_summary: string | null;
+  ai_summary_generated_at: string | null;
   created_at: string;
 };
 
