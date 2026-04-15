@@ -25,6 +25,29 @@ export async function PUT(
     .single();
 
   if (!lead) {
+    // Self-diagnosis: does the lead exist at all? If yes, it belongs to a
+    // different business than the session — almost always a stale page
+    // (logged in as business A, clicked into a row that was fetched by a
+    // prior session). Tell the client to refresh instead of silently 404'ing.
+    const { data: anyLead } = await supabase
+      .from("leads")
+      .select("id, business_id")
+      .eq("id", params.id)
+      .maybeSingle();
+    if (anyLead && anyLead.business_id !== businessId) {
+      console.warn(
+        "Lead/session business mismatch:",
+        { leadId: params.id, leadBusiness: anyLead.business_id, sessionBusiness: businessId },
+      );
+      return NextResponse.json(
+        {
+          error:
+            "This lead belongs to a different business. Refresh the page and try again.",
+          code: "business_mismatch",
+        },
+        { status: 404 },
+      );
+    }
     return NextResponse.json({ error: "Lead not found" }, { status: 404 });
   }
 
