@@ -82,6 +82,23 @@ export async function POST(
         .join(" | ")}`,
     );
   }
+  // For CSV-imported leads, the rich source-of-truth data lives in
+  // raw_import_data (the columns the contractor flagged as AI context
+  // during the import wizard). Fold every non-empty key into the facts
+  // block so Claude can write a meaningful one-liner even when the
+  // canonical columns (service_needed, notes, etc.) are all null.
+  if (lead.raw_import_data && typeof lead.raw_import_data === "object") {
+    const entries = Object.entries(
+      lead.raw_import_data as Record<string, string>,
+    )
+      .filter(([, v]) => typeof v === "string" && v.trim().length > 0)
+      .slice(0, 20);
+    if (entries.length > 0) {
+      facts.push(
+        `CSV context:\n${entries.map(([k, v]) => `  ${k}: ${v}`).join("\n")}`,
+      );
+    }
+  }
 
   try {
     const client = new Anthropic({ apiKey });
