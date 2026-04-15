@@ -181,8 +181,12 @@ function secondaryActionFor(stage: StageKey): string {
   }
 }
 
-function fallbackAiContext(lead: Lead, stage: StageKey): string {
-  const summary = lead.ai_summary?.trim();
+function fallbackAiContext(
+  lead: Lead,
+  stage: StageKey,
+  liveSummary?: string | null,
+): string {
+  const summary = (liveSummary ?? lead.ai_summary)?.trim();
   if (summary) return summary;
   switch (stage) {
     case "new":
@@ -243,10 +247,18 @@ export default function ContactDetailModal({
   const [currentStatus, setCurrentStatus] = useState<LeadStatus>(lead.status);
   const [advancing, setAdvancing] = useState(false);
   const [advanceError, setAdvanceError] = useState<string | null>(null);
+  // Local mirror of the AI one-liner so the amber banner can update
+  // instantly when a note or status change regenerates it server-side.
+  // Resets whenever a different lead is opened or the underlying cached
+  // summary changes on the lead prop (e.g. after router.refresh()).
+  const [currentAiSummary, setCurrentAiSummary] = useState<string | null>(
+    lead.ai_summary ?? null,
+  );
   useEffect(() => {
     setCurrentStatus(lead.status);
     setAdvanceError(null);
-  }, [lead.id, lead.status]);
+    setCurrentAiSummary(lead.ai_summary ?? null);
+  }, [lead.id, lead.status, lead.ai_summary]);
 
   const resolvedStage = useMemo<StageKey>(() => {
     // Post-sale stages (recovery/feedback/reviewed/referrer) stick when the
@@ -272,7 +284,7 @@ export default function ContactDetailModal({
   const contractValue = formatContractValue(
     lead.job_value_cents ?? lead.estimated_value_cents,
   );
-  const aiContext = fallbackAiContext(lead, resolvedStage);
+  const aiContext = fallbackAiContext(lead, resolvedStage, currentAiSummary);
   // Primary CTA flips once the job is done: the contractor's next move is
   // no longer "pick up the phone" but "ask for a review". Keeps the modal's
   // top action aligned with where the lead is in the post-sale funnel.
@@ -304,6 +316,16 @@ export default function ContactDetailModal({
       });
       if (res.ok) {
         setCurrentStatus(next);
+        // Pick up the freshly-regenerated AI summary if the server
+        // returned one. It's stage-aware, so the banner now reads
+        // "next move" copy tailored to `next` instead of the previous
+        // stage the moment the button is pressed.
+        try {
+          const data = (await res.json()) as { ai_summary?: string | null };
+          if (data.ai_summary) setCurrentAiSummary(data.ai_summary);
+        } catch {
+          /* body wasn't JSON — that's fine, just don't update the summary */
+        }
         onUpdate?.();
       } else {
         // Surface the API's error message so failures aren't silent.
@@ -651,6 +673,7 @@ export default function ContactDetailModal({
             leadId={lead.id}
             activities={activities ?? []}
             onNoteAdded={onNoteAdded}
+            onAiSummaryUpdated={(summary) => setCurrentAiSummary(summary)}
           />
 
           </div>
@@ -1208,10 +1231,12 @@ function WhatHappenedTimeline({
   leadId,
   activities,
   onNoteAdded,
+  onAiSummaryUpdated,
 }: {
   leadId: string;
   activities: ActivityLogEntry[];
   onNoteAdded?: (entry: ActivityLogEntry) => void;
+  onAiSummaryUpdated?: (summary: string) => void;
 }) {
   const [composing, setComposing] = useState(false);
   const [draft, setDraft] = useState("");
@@ -1246,8 +1271,11 @@ function WhatHappenedTimeline({
         setSaveError(msg);
         return;
       }
-      const entry = (await res.json()) as ActivityLogEntry;
+      const entry = (await res.json()) as ActivityLogEntry & {
+        ai_summary?: string | null;
+      };
       onNoteAdded?.(entry);
+      if (entry.ai_summary) onAiSummaryUpdated?.(entry.ai_summary);
       setDraft("");
       setComposing(false);
     } catch (err) {

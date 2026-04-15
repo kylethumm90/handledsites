@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import { validateSessionFromRequest } from "@/lib/contractor-auth";
+import { regenerateAiSummary } from "@/lib/ai-summary";
 
 export async function POST(
   request: NextRequest,
@@ -47,5 +48,15 @@ export async function POST(
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
-  return NextResponse.json(entry);
+  // Regenerate the AI summary so it picks up this note. Best-effort —
+  // the helper returns null on failure (no API key, model error, etc.)
+  // and we just omit the ai_summary field from the response. The note
+  // save itself never fails because of a summary regen problem.
+  const ai_summary = await regenerateAiSummary({
+    supabase,
+    leadId: params.id,
+    businessId,
+  });
+
+  return NextResponse.json({ ...entry, ai_summary });
 }
