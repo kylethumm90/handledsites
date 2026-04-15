@@ -21,6 +21,11 @@ const AMBER = "#E0A800";
 const DANGER = "#B91C1C";
 const DANGER_BG = "#FEF2F2";
 const DANGER_BORDER = "#FECACA";
+const GREEN_BG = "#ECFDF5";
+const GREEN_BORDER = "#A7F3D0";
+const PURPLE = "#7C3AED";
+const PURPLE_BG = "#F5F3FF";
+const PURPLE_BORDER = "#DDD6FE";
 
 const FONT_STACK =
   "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', sans-serif";
@@ -421,6 +426,241 @@ function ColumnCard({
 }
 
 // ──────────────────────────────────────────────────────────────
+// Step 2 — AI context classification
+// ──────────────────────────────────────────────────────────────
+
+// Header substrings that mark a column as "system & tracking" — the
+// sort of thing a sales rep would never want sent to Claude.
+const SYSTEM_HEADER_RE =
+  /(^|[^a-z])(id|uuid|token|url|fbclid|gclid|wbraid|gbraid|utm|consent|ip|referrer|hash|session|cookie)($|[^a-z])/i;
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const URL_RE = /^https?:\/\//i;
+const LONG_NUM_RE = /^\d{10,}$/;
+
+function looksLikeSystemValue(value: string): boolean {
+  const v = value.trim();
+  if (!v) return false;
+  return UUID_RE.test(v) || URL_RE.test(v) || LONG_NUM_RE.test(v);
+}
+
+function classifyColumn(stat: ColumnStat): "recommended" | "system" {
+  if (SYSTEM_HEADER_RE.test(stat.header)) return "system";
+  if (stat.samples.length > 0 && stat.samples.every(looksLikeSystemValue)) {
+    return "system";
+  }
+  return "recommended";
+}
+
+// ──────────────────────────────────────────────────────────────
+// Step 2 — Context column card (custom checkbox + sample chips)
+// ──────────────────────────────────────────────────────────────
+function ContextColumnCard({
+  stat,
+  checked,
+  onToggle,
+}: {
+  stat: ColumnStat;
+  checked: boolean;
+  onToggle: () => void;
+}) {
+  const pct = stat.total > 0 ? stat.filled / stat.total : 0;
+  const fillColor = pct > 0.9 ? GREEN : pct > 0.5 ? AMBER : MUTED_LIGHT;
+  return (
+    <div
+      onClick={onToggle}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === " " || e.key === "Enter") {
+          e.preventDefault();
+          onToggle();
+        }
+      }}
+      style={{
+        border: `1px solid ${checked ? INK : HAIRLINE}`,
+        background: checked ? HAIRLINE_LIGHT : SURFACE,
+        borderRadius: 10,
+        padding: 14,
+        cursor: "pointer",
+        display: "flex",
+        gap: 12,
+        alignItems: "flex-start",
+        transition: "all 0.12s ease",
+      }}
+    >
+      {/* Custom checkbox */}
+      <div
+        style={{
+          width: 20,
+          height: 20,
+          borderRadius: 6,
+          background: checked ? INK : SURFACE,
+          border: `1.5px solid ${checked ? INK : HAIRLINE}`,
+          flexShrink: 0,
+          marginTop: 2,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          transition: "all 0.12s ease",
+        }}
+      >
+        {checked && (
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={SURFACE} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        )}
+      </div>
+
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+          <div
+            style={{
+              fontFamily: MONO_STACK,
+              fontSize: 13,
+              fontWeight: 600,
+              color: INK,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+            title={stat.header}
+          >
+            {stat.header}
+          </div>
+          <div
+            style={{
+              flexShrink: 0,
+              fontSize: 11,
+              fontWeight: 700,
+              color: fillColor,
+              background: checked ? SURFACE : HAIRLINE_LIGHT,
+              padding: "3px 8px",
+              borderRadius: 10,
+              letterSpacing: "0.02em",
+            }}
+          >
+            {stat.filled}/{stat.total} filled
+          </div>
+        </div>
+
+        {stat.samples.length > 0 && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
+            {stat.samples.slice(0, 3).map((sample, i) => (
+              <span
+                key={i}
+                title={sample}
+                style={{
+                  fontSize: 11,
+                  color: MUTED,
+                  background: checked ? SURFACE : HAIRLINE_LIGHT,
+                  border: `1px solid ${HAIRLINE}`,
+                  padding: "3px 8px",
+                  borderRadius: 999,
+                  maxWidth: 160,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                  fontFamily: MONO_STACK,
+                }}
+              >
+                {sample}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────
+// Step 3 — Execute payload builder
+//
+// The backend only accepts the canonical lead fields: name, email,
+// phone, tags, notes, service_needed, source. Our UI exposes a
+// richer set (first/last name, address, city, state, zip, etc.) so
+// we translate before sending:
+//   - first_name + last_name → combined into a synthetic __name row
+//     column, mapped to "name"
+//   - only first_name or only last_name → that header maps to "name"
+//   - email / phone / tags → direct passthrough
+//   - lead_source → "source"
+//   - address_line1, city, state, zip, assigned_to → auto-added to
+//     aiContextFields so the raw values land in raw_import_data
+//     without needing their own schema columns
+// ──────────────────────────────────────────────────────────────
+
+type BackendLeadField =
+  | "name"
+  | "email"
+  | "phone"
+  | "tags"
+  | "notes"
+  | "service_needed"
+  | "source";
+
+const SYNTHETIC_NAME_COL = "__name";
+
+function buildExecutePayload(
+  rows: Record<string, string>[],
+  uiMappings: Record<string, UIField | null>,
+  selectedAIContextFields: string[]
+): {
+  rows: Record<string, string>[];
+  columnMappings: Record<string, BackendLeadField>;
+  aiContextFields: string[];
+} {
+  const headerFor: Partial<Record<UIField, string>> = {};
+  for (const [header, field] of Object.entries(uiMappings)) {
+    if (field) headerFor[field] = header;
+  }
+
+  const columnMappings: Record<string, BackendLeadField> = {};
+
+  if (headerFor.email) columnMappings[headerFor.email] = "email";
+  if (headerFor.phone) columnMappings[headerFor.phone] = "phone";
+  if (headerFor.tags) columnMappings[headerFor.tags] = "tags";
+  if (headerFor.lead_source) columnMappings[headerFor.lead_source] = "source";
+
+  const firstHeader = headerFor.first_name;
+  const lastHeader = headerFor.last_name;
+
+  let transformedRows = rows;
+  if (firstHeader && lastHeader) {
+    transformedRows = rows.map((row) => {
+      const f = (row[firstHeader] ?? "").trim();
+      const l = (row[lastHeader] ?? "").trim();
+      return { ...row, [SYNTHETIC_NAME_COL]: [f, l].filter(Boolean).join(" ") };
+    });
+    columnMappings[SYNTHETIC_NAME_COL] = "name";
+  } else if (firstHeader) {
+    columnMappings[firstHeader] = "name";
+  } else if (lastHeader) {
+    columnMappings[lastHeader] = "name";
+  }
+
+  const extraContextFields: string[] = [];
+  const PASSTHROUGH_TO_CONTEXT: UIField[] = [
+    "address_line1",
+    "city",
+    "state",
+    "zip",
+    "assigned_to",
+  ];
+  for (const uf of PASSTHROUGH_TO_CONTEXT) {
+    const h = headerFor[uf];
+    if (h) extraContextFields.push(h);
+  }
+
+  const aiContextFields = Array.from(
+    new Set([...selectedAIContextFields, ...extraContextFields])
+  );
+
+  return { rows: transformedRows, columnMappings, aiContextFields };
+}
+
+// ──────────────────────────────────────────────────────────────
 // Main component
 // ──────────────────────────────────────────────────────────────
 export default function ImportWizardClient() {
@@ -429,6 +669,16 @@ export default function ImportWizardClient() {
   const [error, setError] = useState<string | null>(null);
   const [parseResult, setParseResult] = useState<ParseResult | null>(null);
   const [mappings, setMappings] = useState<Record<string, UIField | null>>({});
+  const [selectedContext, setSelectedContext] = useState<Set<string>>(new Set());
+
+  // Step 3 flow state.
+  const [importing, setImporting] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importResult, setImportResult] = useState<{
+    importId: string;
+    importedCount: number;
+    skipped: number;
+  } | null>(null);
 
   const handleFile = useCallback(async (file: File) => {
     setError(null);
@@ -515,10 +765,103 @@ export default function ImportWizardClient() {
   const hasContact = takenFields.has("email") || takenFields.has("phone");
   const canAdvance = Boolean(parseResult) && hasName && hasContact;
 
+  // Unmapped, non-empty columns — available as AI context in Step 2.
+  const unmappedColumns = useMemo(() => {
+    if (!parseResult) return [];
+    return parseResult.columnStats.filter(
+      (c) => c.filled > 0 && !mappings[c.header]
+    );
+  }, [parseResult, mappings]);
+
+  const { recommendedColumns, systemColumns } = useMemo(() => {
+    const rec: ColumnStat[] = [];
+    const sys: ColumnStat[] = [];
+    for (const c of unmappedColumns) {
+      if (classifyColumn(c) === "system") sys.push(c);
+      else rec.push(c);
+    }
+    return { recommendedColumns: rec, systemColumns: sys };
+  }, [unmappedColumns]);
+
+  // Mapping chips shown on the Step 3 green card. We deliberately surface
+  // the UI-facing label (e.g. "First name") rather than the CSV header so
+  // the review screen reads naturally.
+  const mappedContactChips = useMemo(() => {
+    const out: { field: UIField; label: string; header: string }[] = [];
+    for (const [header, field] of Object.entries(mappings)) {
+      if (!field) continue;
+      const meta = UI_FIELDS.find((f) => f.value === field);
+      if (!meta) continue;
+      out.push({ field, label: meta.label, header });
+    }
+    return out;
+  }, [mappings]);
+
   const resetFile = () => {
     setParseResult(null);
     setMappings({});
+    setSelectedContext(new Set());
     setError(null);
+    setImportError(null);
+    setImportResult(null);
+    setStep(1);
+  };
+
+  const toggleContext = (header: string) => {
+    setSelectedContext((prev) => {
+      const next = new Set(prev);
+      if (next.has(header)) next.delete(header);
+      else next.add(header);
+      return next;
+    });
+  };
+
+  const selectAllRecommended = () => {
+    setSelectedContext((prev) => {
+      const next = new Set(prev);
+      for (const c of recommendedColumns) next.add(c.header);
+      return next;
+    });
+  };
+
+  const handleImport = async () => {
+    if (!parseResult) return;
+    setImporting(true);
+    setImportError(null);
+    try {
+      const payload = buildExecutePayload(
+        parseResult.rows,
+        mappings,
+        Array.from(selectedContext)
+      );
+      const resp = await fetch("/api/contractor/import/execute", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          filename: parseResult.filename,
+          ...payload,
+        }),
+      });
+      if (!resp.ok) {
+        const body = await resp.json().catch(() => ({}));
+        throw new Error(body?.error || `Import failed (${resp.status})`);
+      }
+      const data = (await resp.json()) as {
+        importId: string;
+        importedCount: number;
+        skipped: number;
+      };
+      setImportResult(data);
+      // Note: the backend execute route already fires
+      // /generate-summaries with keepalive: true immediately after
+      // returning, so we intentionally do NOT fire it again here —
+      // doing so would double the Anthropic spend on large imports.
+      // The backend's self-trigger is the single source of truth.
+    } catch (err) {
+      setImportError(err instanceof Error ? err.message : "Import failed.");
+    } finally {
+      setImporting(false);
+    }
   };
 
   return (
@@ -702,20 +1045,134 @@ export default function ImportWizardClient() {
         </div>
       )}
 
-      {step === 2 && (
-        <div
-          style={{
-            padding: 48,
-            background: SURFACE,
-            border: `1px dashed ${HAIRLINE}`,
-            borderRadius: 12,
-            textAlign: "center",
-            color: MUTED,
-            fontSize: 14,
-          }}
-        >
-          Step 2 — AI context selection (coming next)
-          <div style={{ marginTop: 16 }}>
+      {step === 2 && parseResult && (
+        <div>
+          <div style={{ fontSize: 13, color: MUTED, marginBottom: 16, lineHeight: 1.5 }}>
+            Pick columns to send to Claude when generating the AI summary
+            for each contact. Good candidates: notes, status, tags, recent
+            activity. Skip anything that looks like a tracking ID.
+          </div>
+
+          {unmappedColumns.length === 0 ? (
+            <div
+              style={{
+                padding: 28,
+                background: SURFACE,
+                border: `1px dashed ${HAIRLINE}`,
+                borderRadius: 12,
+                textAlign: "center",
+                color: MUTED,
+                fontSize: 13,
+              }}
+            >
+              Every column was already mapped in Step 1 — nothing to send as
+              extra context. You can continue to review.
+            </div>
+          ) : (
+            <>
+              {/* Recommended */}
+              {recommendedColumns.length > 0 && (
+                <div style={{ marginBottom: 22 }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      marginBottom: 10,
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 700,
+                        color: MUTED_LIGHT,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.08em",
+                      }}
+                    >
+                      Recommended
+                    </div>
+                    <button
+                      onClick={selectAllRecommended}
+                      style={{
+                        background: "transparent",
+                        border: "none",
+                        padding: 0,
+                        fontSize: 12,
+                        fontWeight: 600,
+                        color: BLUE,
+                        cursor: "pointer",
+                        fontFamily: FONT_STACK,
+                      }}
+                    >
+                      Select all recommended
+                    </button>
+                  </div>
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+                      gap: 10,
+                    }}
+                  >
+                    {recommendedColumns.map((stat) => (
+                      <ContextColumnCard
+                        key={stat.header}
+                        stat={stat}
+                        checked={selectedContext.has(stat.header)}
+                        onToggle={() => toggleContext(stat.header)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* System & Tracking */}
+              {systemColumns.length > 0 && (
+                <div style={{ marginBottom: 22 }}>
+                  <div
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: MUTED_LIGHT,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.08em",
+                      marginBottom: 10,
+                    }}
+                  >
+                    System &amp; tracking
+                  </div>
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+                      gap: 10,
+                    }}
+                  >
+                    {systemColumns.map((stat) => (
+                      <ContextColumnCard
+                        key={stat.header}
+                        stat={stat}
+                        checked={selectedContext.has(stat.header)}
+                        onToggle={() => toggleContext(stat.header)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Footer buttons */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 10,
+              marginTop: 8,
+            }}
+          >
             <button
               onClick={() => setStep(1)}
               style={{
@@ -723,8 +1180,8 @@ export default function ImportWizardClient() {
                 border: `1px solid ${HAIRLINE}`,
                 color: INK,
                 borderRadius: 8,
-                padding: "9px 18px",
-                fontSize: 13,
+                padding: "11px 22px",
+                fontSize: 14,
                 fontWeight: 600,
                 cursor: "pointer",
                 fontFamily: FONT_STACK,
@@ -732,30 +1189,379 @@ export default function ImportWizardClient() {
             >
               Back
             </button>
+            <button
+              onClick={() => setStep(3)}
+              style={{
+                background: INK,
+                color: SURFACE,
+                border: "none",
+                borderRadius: 8,
+                padding: "11px 22px",
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: "pointer",
+                fontFamily: FONT_STACK,
+                letterSpacing: "-0.01em",
+              }}
+            >
+              Next
+            </button>
           </div>
         </div>
       )}
 
-      {step === 3 && (
-        <div
-          style={{
-            padding: 48,
-            background: SURFACE,
-            border: `1px dashed ${HAIRLINE}`,
-            borderRadius: 12,
-            textAlign: "center",
-            color: MUTED,
-            fontSize: 14,
-          }}
-        >
-          Step 3 — Review &amp; import (coming next)
+      {step === 3 && parseResult && !importResult && (
+        <div>
+          <div style={{ fontSize: 13, color: MUTED, marginBottom: 16, lineHeight: 1.5 }}>
+            Review what you&apos;re importing. Click Import to create contacts.
+          </div>
+
+          {/* Green card — mapped contact fields */}
+          <div
+            style={{
+              background: GREEN_BG,
+              border: `1px solid ${GREEN_BORDER}`,
+              borderRadius: 12,
+              padding: 16,
+              marginBottom: 12,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                fontSize: 12,
+                fontWeight: 700,
+                color: GREEN,
+                textTransform: "uppercase",
+                letterSpacing: "0.06em",
+                marginBottom: 10,
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={GREEN} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+              Mapped contact fields
+            </div>
+            {mappedContactChips.length === 0 ? (
+              <div style={{ fontSize: 13, color: MUTED }}>
+                No fields mapped.
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {mappedContactChips.map((chip) => (
+                  <span
+                    key={chip.header}
+                    title={`${chip.header} → ${chip.label}`}
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: INK_SOFT,
+                      background: SURFACE,
+                      border: `1px solid ${GREEN_BORDER}`,
+                      padding: "5px 10px",
+                      borderRadius: 999,
+                    }}
+                  >
+                    {chip.label}
+                    <span
+                      style={{
+                        color: MUTED,
+                        fontWeight: 500,
+                        marginLeft: 6,
+                        fontFamily: MONO_STACK,
+                        fontSize: 11,
+                      }}
+                    >
+                      {chip.header}
+                    </span>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Purple card — AI context fields */}
+          <div
+            style={{
+              background: PURPLE_BG,
+              border: `1px solid ${PURPLE_BORDER}`,
+              borderRadius: 12,
+              padding: 16,
+              marginBottom: 12,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                fontSize: 12,
+                fontWeight: 700,
+                color: PURPLE,
+                textTransform: "uppercase",
+                letterSpacing: "0.06em",
+                marginBottom: 10,
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={PURPLE} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+              </svg>
+              AI context ({selectedContext.size})
+            </div>
+            {selectedContext.size === 0 ? (
+              <div style={{ fontSize: 13, color: MUTED }}>
+                No extra context selected. AI summaries will use only the mapped
+                fields.
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {Array.from(selectedContext).map((header) => (
+                  <span
+                    key={header}
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: INK_SOFT,
+                      background: SURFACE,
+                      border: `1px solid ${PURPLE_BORDER}`,
+                      padding: "5px 10px",
+                      borderRadius: 999,
+                      fontFamily: MONO_STACK,
+                    }}
+                  >
+                    {header}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Skipped note */}
+          {(() => {
+            const totalCols = parseResult.columnStats.filter((c) => c.filled > 0).length;
+            const skippedCols = totalCols - mappedContactChips.length - selectedContext.size;
+            if (skippedCols <= 0) return null;
+            return (
+              <div
+                style={{
+                  fontSize: 12,
+                  color: MUTED,
+                  background: HAIRLINE_LIGHT,
+                  border: `1px solid ${HAIRLINE}`,
+                  borderRadius: 10,
+                  padding: "10px 14px",
+                  marginBottom: 16,
+                }}
+              >
+                {skippedCols} column{skippedCols === 1 ? "" : "s"} will be skipped
+                entirely — nothing from {skippedCols === 1 ? "it" : "them"} will
+                reach your contacts.
+              </div>
+            );
+          })()}
+
+          {importError && (
+            <div
+              style={{
+                marginBottom: 16,
+                padding: "10px 14px",
+                background: DANGER_BG,
+                border: `1px solid ${DANGER_BORDER}`,
+                borderRadius: 10,
+                color: DANGER,
+                fontSize: 13,
+                lineHeight: 1.4,
+              }}
+            >
+              {importError}
+            </div>
+          )}
+
+          {/* Footer buttons */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 10,
+            }}
+          >
+            <button
+              disabled={importing}
+              onClick={() => setStep(2)}
+              style={{
+                background: "transparent",
+                border: `1px solid ${HAIRLINE}`,
+                color: importing ? MUTED_LIGHT : INK,
+                borderRadius: 8,
+                padding: "11px 22px",
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: importing ? "not-allowed" : "pointer",
+                fontFamily: FONT_STACK,
+              }}
+            >
+              Back
+            </button>
+            <button
+              disabled={importing}
+              onClick={handleImport}
+              style={{
+                background: importing ? MUTED_LIGHT : INK,
+                color: SURFACE,
+                border: "none",
+                borderRadius: 8,
+                padding: "11px 26px",
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: importing ? "not-allowed" : "pointer",
+                fontFamily: FONT_STACK,
+                letterSpacing: "-0.01em",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+              }}
+            >
+              {importing && (
+                <span
+                  style={{
+                    width: 12,
+                    height: 12,
+                    borderRadius: 6,
+                    border: `2px solid ${SURFACE}`,
+                    borderTopColor: "transparent",
+                    animation: "iw-spin 0.8s linear infinite",
+                  }}
+                />
+              )}
+              {importing
+                ? "Importing…"
+                : `Import ${parseResult.totalRows.toLocaleString()} contact${parseResult.totalRows === 1 ? "" : "s"}`}
+            </button>
+          </div>
         </div>
       )}
 
-      {/* Suppress the unused-var warning on PAGE_TINT while it's only
-          referenced inside the JSX tree below — it's here to keep the
-          constant list complete for later steps. */}
-      <span style={{ display: "none", color: PAGE_TINT }} />
+      {step === 3 && importResult && (
+        <div
+          style={{
+            background: SURFACE,
+            border: `1px solid ${HAIRLINE}`,
+            borderRadius: 14,
+            padding: 40,
+            textAlign: "center",
+          }}
+        >
+          <div
+            style={{
+              width: 56,
+              height: 56,
+              borderRadius: 28,
+              background: GREEN_BG,
+              border: `1px solid ${GREEN_BORDER}`,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              margin: "0 auto 16px",
+            }}
+          >
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={GREEN} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          </div>
+          <div
+            style={{
+              fontSize: 20,
+              fontWeight: 800,
+              color: INK,
+              letterSpacing: "-0.02em",
+              marginBottom: 6,
+            }}
+          >
+            Imported {importResult.importedCount.toLocaleString()} contact
+            {importResult.importedCount === 1 ? "" : "s"}
+          </div>
+          <div style={{ fontSize: 13, color: MUTED, marginBottom: 6 }}>
+            {importResult.skipped > 0
+              ? `${importResult.skipped.toLocaleString()} row${importResult.skipped === 1 ? "" : "s"} were merged or skipped.`
+              : "All rows imported cleanly."}
+          </div>
+          <div
+            style={{
+              fontSize: 12,
+              color: PURPLE,
+              background: PURPLE_BG,
+              border: `1px solid ${PURPLE_BORDER}`,
+              borderRadius: 999,
+              padding: "6px 14px",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              marginTop: 10,
+              marginBottom: 22,
+            }}
+          >
+            <span
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: 4,
+                background: PURPLE,
+                animation: "iw-pulse 1.4s ease-in-out infinite",
+              }}
+            />
+            AI summaries generating in the background…
+          </div>
+          <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+            <button
+              onClick={resetFile}
+              style={{
+                background: "transparent",
+                border: `1px solid ${HAIRLINE}`,
+                color: INK,
+                borderRadius: 8,
+                padding: "11px 22px",
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: "pointer",
+                fontFamily: FONT_STACK,
+              }}
+            >
+              Import another
+            </button>
+            <a
+              href="/contractor/customers"
+              style={{
+                background: INK,
+                color: SURFACE,
+                border: "none",
+                borderRadius: 8,
+                padding: "11px 22px",
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: "pointer",
+                fontFamily: FONT_STACK,
+                textDecoration: "none",
+                display: "inline-flex",
+                alignItems: "center",
+                letterSpacing: "-0.01em",
+              }}
+            >
+              View contacts
+            </a>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes iw-spin { to { transform: rotate(360deg); } }
+        @keyframes iw-pulse {
+          0%, 100% { opacity: 0.4; transform: scale(0.9); }
+          50% { opacity: 1; transform: scale(1.15); }
+        }
+      `}</style>
     </div>
   );
 }
