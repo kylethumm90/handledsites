@@ -55,13 +55,14 @@ export type ColorToken = keyof typeof colors;
 // ---------------------------------------------------------------------------
 
 /**
- * CSS font-family stacks. These match the Google Font imports in
- * app/layout.tsx. Use `fonts.body` for body/UI copy and `fonts.mono`
+ * CSS font-family stacks. These reference the CSS variables exposed by
+ * next/font/google in app/layout.tsx (DM Sans and IBM Plex Mono), with
+ * system fallbacks. Use `fonts.body` for body/UI copy and `fonts.mono`
  * for numbers, counts, stage badges, timestamps, etc.
  */
 export const fonts = {
-  body: "'DM Sans', system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
-  mono: "'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace",
+  body: "var(--font-dm-sans), 'DM Sans', system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
+  mono: "var(--font-ibm-plex-mono), 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace",
 } as const;
 
 export const fontWeights = {
