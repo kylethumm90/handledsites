@@ -273,6 +273,14 @@ export default function ContactDetailModal({
     if (!next || advancing) return;
     setAdvancing(true);
     setAdvanceError(null);
+    // Log the exact id we're about to send so we can eyeball it in devtools
+    // when something goes wrong. Keeps the bug chase tight.
+    console.log("[advance] PUT", {
+      leadId: lead.id,
+      leadBusinessId: lead.business_id,
+      from: currentStatus,
+      to: next,
+    });
     try {
       const res = await fetch(`/api/contractor/customers/${lead.id}`, {
         method: "PUT",
@@ -286,13 +294,20 @@ export default function ContactDetailModal({
       } else {
         // Surface the API's error message so failures aren't silent.
         let msg = `Couldn't advance (HTTP ${res.status})`;
+        let debug: unknown = null;
         try {
-          const data = (await res.json()) as { error?: string };
+          const data = (await res.json()) as {
+            error?: string;
+            code?: string;
+            debug?: unknown;
+          };
           if (data.error) msg = data.error;
+          if (data.code) msg = `${msg} [${data.code}]`;
+          debug = data.debug ?? null;
         } catch {
           /* body wasn't JSON */
         }
-        console.error("advance failed:", msg);
+        console.error("advance failed:", msg, { debug, leadId: lead.id });
         setAdvanceError(msg);
       }
     } catch (err) {
