@@ -18,13 +18,19 @@ import {
 //   2. Dedupe against existing leads by email/phone for this business.
 //   3. Insert non-duplicate rows in chunks; merge raw_import_data into
 //      duplicates without overwriting their existing keys.
-//   4. Kick off AI summary generation non-blocking.
+//   4. Mark the import complete. AI summaries are generated lazily
+//      client-side as the contractor browses the pipeline — see the
+//      backfill effect in components/PipelineClient.tsx.
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
 const INSERT_CHUNK = 500;
-const MAX_ROWS = 50000;
+// Hard cap to bound cost exposure. The AI summary pass is now handled
+// entirely by the pipeline's client-side lazy backfill (one Claude call
+// per lead the contractor actually views), so a 2,500-row ceiling keeps
+// worst-case per-import spend predictable without needing a bulk run.
+const MAX_ROWS = 2500;
 
 type ExecuteBody = {
   filename?: unknown;
@@ -308,37 +314,15 @@ export async function POST(request: NextRequest) {
       );
   }
 
-  // 8. Fire-and-forget the AI summary generation. We do NOT await — the
-  //    client gets a response immediately and the background job writes
-  //    ai_summary onto each lead. keepalive: true tells the Node runtime
-  //    to flush the outgoing request even as this function terminates.
-  //    Cookie forwarding lets the summaries route reuse the same auth.
-  if (inserted.length > 0) {
-    try {
-      const url = new URL(
-        "/api/contractor/import/generate-summaries",
-        request.url
-      );
-      // eslint-disable-next-line @typescript-eslint/no-floating-promises
-      fetch(url.toString(), {
-        method: "POST",
-        keepalive: true,
-        headers: {
-          "content-type": "application/json",
-          cookie: request.headers.get("cookie") ?? "",
-        },
-        body: JSON.stringify({ importId: importBatchId }),
-      }).catch(() => {});
-    } catch {
-      // Never let a trigger failure affect the import response.
-    }
-  } else {
-    // Nothing to summarize — mark complete immediately.
-    await supabase
-      .from("contact_imports")
-      .update({ status: "complete" })
-      .eq("id", importBatchId);
-  }
+  // 8. Mark the import complete. Per-lead AI summaries are generated on
+  //    demand by the pipeline's client-side lazy backfill, so there's no
+  //    bulk Anthropic job to kick off here — that bounds cost to leads
+  //    the contractor actually views and keeps us under Vercel's
+  //    maxDuration regardless of import size.
+  await supabase
+    .from("contact_imports")
+    .update({ status: "complete" })
+    .eq("id", importBatchId);
 
   return NextResponse.json({
     importId: importBatchId,
