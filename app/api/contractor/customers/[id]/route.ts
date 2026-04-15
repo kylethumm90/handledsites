@@ -18,7 +18,7 @@ export async function PUT(
   const { data: lead } = await supabase
     .from("leads")
     .select(
-      "id, status, business_id, employee_id, appointment_at, first_response_at, closed_at, referral_code"
+      "id, status, business_id, employee_id, appointment_at, first_response_at, closed_at, referral_code, job_completed_at"
     )
     .eq("id", params.id)
     .eq("business_id", businessId)
