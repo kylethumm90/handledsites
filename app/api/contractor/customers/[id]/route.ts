@@ -65,14 +65,20 @@ export async function PUT(
   // Graduation to Reputation: stamp closed_at the first time a lead
   // transitions to "customer". The Pipeline "Done" tile filters on this
   // (last 30 days) and the Reputation Growth view reads the same column.
-  // Never overwritten on subsequent edits.
+  // Never overwritten on subsequent edits. Also stamp job_completed_at
+  // so the Post-Sale view on the new Pipeline screen has a clean "job
+  // completed at" timestamp to display in card info lines.
   const becomingCustomer =
     typeof updates.status === "string" &&
     updates.status === "customer" &&
     lead.status !== "customer" &&
     !lead.closed_at;
   if (becomingCustomer) {
-    updates.closed_at = new Date().toISOString();
+    const now = new Date().toISOString();
+    updates.closed_at = now;
+    if (!lead.job_completed_at) {
+      updates.job_completed_at = now;
+    }
   }
 
   const { error } = await supabase

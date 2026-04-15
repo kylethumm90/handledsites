@@ -106,7 +106,10 @@ export async function POST(request: NextRequest) {
 
     customerId = lead.id;
   } else {
-    // Fallback: no lead_id → create a new lead from the on-page form
+    // Fallback: no lead_id → create a new lead from the on-page form.
+    // Stamp job_completed_at since this person is enrolling as a referral
+    // partner — they by definition just had a job done.
+    const nowIso = new Date().toISOString();
     const { data: newLead, error: leadError } = await supabase
       .from("leads")
       .insert({
@@ -117,6 +120,7 @@ export async function POST(request: NextRequest) {
         phone,
         status: "customer",
         is_demo: false,
+        job_completed_at: nowIso,
       })
       .select("id")
       .single();
