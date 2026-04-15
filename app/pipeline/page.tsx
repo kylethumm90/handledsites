@@ -3,56 +3,53 @@
 /**
  * handled. — Pipeline screen
  *
- * For now this page renders only:
+ * Renders:
  *   1. Navy header bar with "handled." brand + company name
  *   2. Pipeline / Post-Sale full-width toggle
- *   3. Four stage boxes (tap to filter — wiring comes later)
+ *   3. Four stage boxes (tap to filter the card list)
+ *   4. Contact cards below, filtered by the active stage
  *
  * See docs/PRODUCT_SPEC.md and docs/mockups/pipeline-basic*.png.
  */
 
-import { useState } from "react";
-import { colors, fonts } from "@/lib/design-system";
+import { useMemo, useState } from "react";
+import { colors, fonts, type StageKey } from "@/lib/design-system";
+import { ContactCard, type Tier } from "@/components/pipeline/contact-card";
+import {
+  PIPELINE_CONTACTS,
+  POST_SALE_CONTACTS,
+} from "@/components/pipeline/sample-data";
 
 // ---------------------------------------------------------------------------
-// Types + placeholder data
+// Types + config
 // ---------------------------------------------------------------------------
 
 type View = "pipeline" | "post_sale";
 
-type StageKey =
-  // pipeline
-  | "new"
-  | "contacted"
-  | "appt_set"
-  | "job_done"
-  // post-sale
-  | "recovery"
-  | "feedback"
-  | "reviewed"
-  | "referrer";
-
-type Stage = {
+type StageConfig = {
   key: StageKey;
   label: string;
   color: string;
-  count: number;
 };
 
-// Placeholder counts; will be wired to real data later.
-const PIPELINE_STAGES: Stage[] = [
-  { key: "new", label: "New", color: colors.amber, count: 5 },
-  { key: "contacted", label: "Contacted", color: colors.blue, count: 3 },
-  { key: "appt_set", label: "Appt Set", color: colors.navy, count: 2 },
-  { key: "job_done", label: "Job Done", color: colors.green, count: 3 },
+const PIPELINE_STAGES: StageConfig[] = [
+  { key: "new", label: "New", color: colors.amber },
+  { key: "contacted", label: "Contacted", color: colors.blue },
+  { key: "appt_set", label: "Appt Set", color: colors.navy },
+  { key: "job_done", label: "Job Done", color: colors.green },
 ];
 
-const POST_SALE_STAGES: Stage[] = [
-  { key: "recovery", label: "Recovery", color: colors.red, count: 4 },
-  { key: "feedback", label: "Feedback", color: colors.amber, count: 2 },
-  { key: "reviewed", label: "Reviewed", color: colors.green, count: 8 },
-  { key: "referrer", label: "Referrer", color: colors.purple, count: 1 },
+const POST_SALE_STAGES: StageConfig[] = [
+  { key: "recovery", label: "Recovery", color: colors.red },
+  { key: "feedback", label: "Feedback", color: colors.amber },
+  { key: "reviewed", label: "Reviewed", color: colors.green },
+  { key: "referrer", label: "Referrer", color: colors.purple },
 ];
+
+// Current tier — will be driven by the authenticated contractor later.
+const CURRENT_TIER: Tier = "base";
+
+type StageWithCount = StageConfig & { count: number };
 
 // Placeholder — will come from the authenticated contractor later.
 const COMPANY_NAME = "Deerfield Plumbing Co";
@@ -65,7 +62,28 @@ export default function PipelinePage() {
   const [view, setView] = useState<View>("pipeline");
   const [selectedStage, setSelectedStage] = useState<StageKey | null>(null);
 
-  const stages = view === "pipeline" ? PIPELINE_STAGES : POST_SALE_STAGES;
+  const stageConfigs =
+    view === "pipeline" ? PIPELINE_STAGES : POST_SALE_STAGES;
+  const allContacts =
+    view === "pipeline" ? PIPELINE_CONTACTS : POST_SALE_CONTACTS;
+
+  // Live counts derived from the sample data.
+  const stagesWithCounts = useMemo(
+    () =>
+      stageConfigs.map((s) => ({
+        ...s,
+        count: allContacts.filter((c) => c.stage === s.key).length,
+      })),
+    [stageConfigs, allContacts],
+  );
+
+  const visibleContacts = useMemo(
+    () =>
+      selectedStage
+        ? allContacts.filter((c) => c.stage === selectedStage)
+        : allContacts,
+    [allContacts, selectedStage],
+  );
 
   const handleViewChange = (next: View) => {
     setView(next);
@@ -88,10 +106,27 @@ export default function PipelinePage() {
       <Header companyName={COMPANY_NAME} />
       <ViewToggle value={view} onChange={handleViewChange} />
       <StageRow
-        stages={stages}
+        stages={stagesWithCounts}
         selected={selectedStage}
         onSelect={handleStageTap}
       />
+
+      <section
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 12,
+          padding: 16,
+        }}
+      >
+        {visibleContacts.map((contact) => (
+          <ContactCard
+            key={contact.id}
+            contact={contact}
+            tier={CURRENT_TIER}
+          />
+        ))}
+      </section>
     </div>
   );
 }
@@ -217,7 +252,7 @@ function StageRow({
   selected,
   onSelect,
 }: {
-  stages: Stage[];
+  stages: StageWithCount[];
   selected: StageKey | null;
   onSelect: (key: StageKey) => void;
 }) {
@@ -249,7 +284,7 @@ function StageBox({
   showLeftBorder,
   onClick,
 }: {
-  stage: Stage;
+  stage: StageWithCount;
   active: boolean;
   showLeftBorder: boolean;
   onClick: () => void;
