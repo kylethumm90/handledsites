@@ -689,8 +689,10 @@ export default function ContactDetailModal({
           {/* Contact info card — quiet rows of metadata */}
           <ContactInfoCard lead={lead} />
 
-          {/* AI Details — expandable structured fields the AI extracted */}
-          <AiDetailsSection lead={lead} />
+          {/* AI Details — expandable structured fields the AI extracted.
+              Pass `effectiveLead` so fields the note-time extractor just
+              filled show up immediately without a reload. */}
+          <AiDetailsSection lead={effectiveLead} />
 
           {/* What Happened — quiet activity timeline */}
           <WhatHappenedTimeline
@@ -916,10 +918,46 @@ function PipelineFooter({
 function AiDetailsSection({ lead }: { lead: Lead }) {
   const [open, setOpen] = useState(false);
 
-  // Merge all the structured metadata the AI has on this lead. `answers`
-  // covers quiz-funnel responses; `raw_import_data` covers CSV import rows.
-  // Duplicate keys from answers win (funnel data is the freshest signal).
+  // Merge all the structured metadata the AI has on this lead. The core
+  // extracted fields (service / value / tags / notes) come first so they
+  // always read cleanly at the top — these are the fields the note-time
+  // extractor fills in from free-text notes, and the contractor needs a
+  // stable place to find them. Then `raw_import_data` (CSV import rows)
+  // and `answers` (quiz-funnel responses) fill in the rest. Duplicate
+  // keys from answers win (funnel data is the freshest signal).
   const fields = useMemo<Array<[string, string]>>(() => {
+    const ordered: Array<[string, string]> = [];
+    const usedKeys = new Set<string>();
+
+    const pushCore = (label: string, value: string | null | undefined) => {
+      if (value == null) return;
+      const str = String(value).trim();
+      if (!str) return;
+      ordered.push([label, str]);
+      usedKeys.add(label.toLowerCase());
+    };
+
+    if (lead.service_needed) pushCore("Service needed", lead.service_needed);
+    if (
+      lead.estimated_value_cents != null &&
+      Number.isFinite(lead.estimated_value_cents) &&
+      lead.estimated_value_cents > 0
+    ) {
+      const dollars = (lead.estimated_value_cents / 100).toLocaleString(
+        "en-US",
+        {
+          style: "currency",
+          currency: "USD",
+          maximumFractionDigits: 0,
+        },
+      );
+      pushCore("Estimated value", dollars);
+    }
+    if (lead.tags && lead.tags.length > 0) {
+      pushCore("Tags", lead.tags.join(", "));
+    }
+    if (lead.notes) pushCore("Notes", lead.notes);
+
     const merged: Record<string, string> = {};
     if (lead.raw_import_data) {
       for (const [k, v] of Object.entries(lead.raw_import_data)) {
@@ -931,8 +969,22 @@ function AiDetailsSection({ lead }: { lead: Lead }) {
         if (v != null && String(v).trim() !== "") merged[k] = String(v);
       }
     }
-    return Object.entries(merged);
-  }, [lead.answers, lead.raw_import_data]);
+    for (const [k, v] of Object.entries(merged)) {
+      // Skip anything that would duplicate a core field (e.g. a CSV column
+      // literally named "Service needed").
+      if (usedKeys.has(k.toLowerCase())) continue;
+      ordered.push([k, v]);
+    }
+
+    return ordered;
+  }, [
+    lead.service_needed,
+    lead.estimated_value_cents,
+    lead.tags,
+    lead.notes,
+    lead.answers,
+    lead.raw_import_data,
+  ]);
 
   if (fields.length === 0) return null;
 
