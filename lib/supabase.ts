@@ -140,7 +140,23 @@ export type SiteFull = Site & {
   logo_url: string | null;
 };
 
-export type LeadStatus = "lead" | "contacted" | "booked" | "customer";
+// Pipeline (pre-sale) lifecycle values.
+export type PipelineStatus = "lead" | "contacted" | "booked" | "customer";
+
+// Post-sale lifecycle values. Per docs/PRODUCT_SPEC.md, the same leads
+// table flows into a second four-stage rail (Stella's side of the
+// contact lifecycle) after the job is done. The DB column is a plain
+// TEXT field so extending this union doesn't require a migration —
+// seeded demo rows can set any of these values today.
+export type PostSaleStatus =
+  | "recovery"
+  | "feedback"
+  | "review_asked"
+  | "reviewed"
+  | "referral_asked"
+  | "referrer";
+
+export type LeadStatus = PipelineStatus | PostSaleStatus;
 
 export type Lead = {
   id: string;
@@ -169,6 +185,17 @@ export type Lead = {
   closed_at: string | null;
   raw_import_data: Record<string, string> | null;
   import_batch_id: string | null;
+  // Post-sale fields. These live in commented migration blocks in
+  // supabase-schema.sql and may or may not exist in a given env; the
+  // Pipeline screen reads them defensively (treats undefined as null)
+  // so seeded demo data can exercise the Post-Sale view without a
+  // schema change.
+  job_completed_at?: string | null;
+  feedback_submitted_at?: string | null;
+  review_submitted_at?: string | null;
+  referral_opted_in_at?: string | null;
+  sentiment_score?: number | null;
+  referred_by_lead_id?: string | null;
 };
 
 export type ContactImport = {

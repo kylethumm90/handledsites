@@ -29,6 +29,19 @@ const GREY_BORDER = "#D1D5DB";
 
 type Stage = "lead" | "contacted" | "booked" | "customer";
 
+// Narrow a LeadStatus (which now includes post-sale values) down to the
+// four pipeline stages the customer detail screen knows how to render.
+// Post-sale leads map to "customer" (job is already done from this
+// screen's perspective); anything unrecognized defaults to "lead".
+function toStage(status: string): Stage {
+  if (status === "lead" || status === "contacted" || status === "booked" || status === "customer") {
+    return status;
+  }
+  // recovery / feedback / review_asked / reviewed / referral_asked / referrer
+  // are all post-sale — the underlying job is complete.
+  return "customer";
+}
+
 const STAGE_META: Record<Stage, { label: string; color: string }> = {
   lead: { label: "New", color: AMBER },
   contacted: { label: "Contacted", color: DARK },
@@ -105,7 +118,7 @@ function renderEntrySummary(
 
 export default function CustomerDetailClient({ lead, timeline: initialTimeline, counts, existingReferralCode, referrerName, referrerId, employees, reviewFunnelSlug }: Props) {
   const router = useRouter();
-  const [status, setStatus] = useState<Stage>(lead.status);
+  const [status, setStatus] = useState<Stage>(toStage(lead.status));
   const [timeline, setTimeline] = useState(initialTimeline);
   const [referralCode, setReferralCode] = useState<string | null>(existingReferralCode || null);
   const [referralLoading, setReferralLoading] = useState(false);

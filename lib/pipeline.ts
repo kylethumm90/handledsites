@@ -4,19 +4,34 @@
 // already-contacted ones. Pure functions only — no React, no JSX, so the
 // same helpers can be used in server components and unit tests.
 
-import type { Lead } from "@/lib/supabase";
+import type { Lead, LeadStatus, PostSaleStatus } from "@/lib/supabase";
 
-// ── Stage colors (source of truth for tiles, progress bar, card footers) ──
-// Matches the mockup exactly:
-//   New       → red        (pressure)
-//   Contacted → neutral    (acknowledged, not urgent)
-//   Appt set  → green      (money in motion)
-//   Done      → blue       (closed, resting)
+// ── View mode ─────────────────────────────────────────────────────────
+// The Pipeline screen has two modes per docs/PRODUCT_SPEC.md Screen 2:
+// pre-sale ("pipeline") and post-sale. Same contacts table, same cards,
+// different four-stage rails.
+export type PipelineView = "pipeline" | "post_sale";
+
+// ── Pipeline (pre-sale) stage colors — source of truth for tiles ──────
+// Per docs/PRODUCT_SPEC.md: New amber → Contacted blue → Appt Set navy
+// → Job Done green.
 export const STAGE_COLORS = {
-  new: "#DC2626",
-  contacted: "#111827",
-  apptSet: "#16A34A",
-  done: "#2F6FED",
+  new: "#E8922A",
+  contacted: "#2563EB",
+  apptSet: "#1E2A3A",
+  done: "#16A34A",
+} as const;
+
+// ── Post-sale stage colors ────────────────────────────────────────────
+// Per docs/PRODUCT_SPEC.md: Recovery red → Feedback amber → Reviewed
+// green → Referrer purple. Recovery is always red because it's the
+// "customer is unhappy" bucket; Referrer is purple to visually separate
+// it from the pre-sale pipeline entirely.
+export const POST_SALE_STAGE_COLORS = {
+  recovery: "#DC2626",
+  feedback: "#E8922A",
+  reviewed: "#16A34A",
+  referrer: "#7C3AED",
 } as const;
 
 export type StageCounts = {
@@ -24,6 +39,13 @@ export type StageCounts = {
   contacted: number;
   apptSet: number;
   done: number;
+};
+
+export type PostSaleCounts = {
+  recovery: number;
+  feedback: number;
+  reviewed: number;
+  referrer: number;
 };
 
 export function computeStageCounts(leads: Lead[]): StageCounts {
@@ -35,6 +57,48 @@ export function computeStageCounts(leads: Lead[]): StageCounts {
     else if (lead.status === "customer") counts.done++;
   }
   return counts;
+}
+
+// Roll the six post-sale statuses into the four visible buckets on the
+// Post-Sale rail. `review_asked` counts as still in the "feedback"
+// column (we've asked, we haven't heard back yet); `referral_asked`
+// rolls up with "referrer" (we've teed up the ask, awaiting response).
+export function computePostSaleStageCounts(leads: Lead[]): PostSaleCounts {
+  const counts: PostSaleCounts = { recovery: 0, feedback: 0, reviewed: 0, referrer: 0 };
+  for (const lead of leads) {
+    switch (lead.status) {
+      case "recovery":
+        counts.recovery++;
+        break;
+      case "feedback":
+      case "review_asked":
+        counts.feedback++;
+        break;
+      case "reviewed":
+        counts.reviewed++;
+        break;
+      case "referrer":
+      case "referral_asked":
+        counts.referrer++;
+        break;
+    }
+  }
+  return counts;
+}
+
+// All the statuses that belong to the Post-Sale rail. Used to filter
+// the lead list when the Post-Sale view is active.
+export const POST_SALE_STATUSES: readonly PostSaleStatus[] = [
+  "recovery",
+  "feedback",
+  "review_asked",
+  "reviewed",
+  "referral_asked",
+  "referrer",
+] as const;
+
+export function isPostSaleStatus(status: LeadStatus): status is PostSaleStatus {
+  return (POST_SALE_STATUSES as readonly string[]).includes(status);
 }
 
 // ── Pipeline $ value ───────────────────────────────────────────────────
@@ -104,8 +168,12 @@ export function isWaitingOnYou(lead: Lead): boolean {
 // responded to OR last_activity_at is older than `hours`. Used for the
 // Ava-mode "can't move forward" alert — we don't surface this in manual
 // mode because the "waiting on you" card already covers it.
+// Post-sale statuses (recovery, feedback, reviewed, referrer, …) are
+// not "pipeline stale" — they belong to the Post-Sale rail and have
+// their own attention triggers.
 export function isStale(lead: Lead, nowMs: number = Date.now(), hours = 48): boolean {
   if (lead.status === "customer") return false;
+  if (isPostSaleStatus(lead.status)) return false;
   const cutoff = nowMs - hours * 60 * 60 * 1000;
   const last = lead.last_activity_at ? Date.parse(lead.last_activity_at) : Date.parse(lead.created_at);
   return !Number.isNaN(last) && last < cutoff;
