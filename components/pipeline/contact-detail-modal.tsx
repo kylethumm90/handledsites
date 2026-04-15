@@ -4,8 +4,21 @@
  * handled. — ContactDetailModal
  *
  * Centered overlay modal that opens when a contact card on the Pipeline
- * screen is tapped. Body sections are filled in subsequent passes; this
- * file is currently the shell only (backdrop + animation + close).
+ * screen is tapped. Soft, paper-like, mobile-first. Square corners,
+ * DM Sans body + IBM Plex Mono for data, colors from design-system.ts.
+ *
+ * Sections (top → bottom):
+ *   1. Top bar        — back, stage label, handled. watermark
+ *   2. Name section   — avatar + name + job type / contract value
+ *   3. AI context hint
+ *   4. Primary CTA    — CALL [FIRST NAME]
+ *   5. Secondary CTAs — TEXT + contextual action
+ *   6. Contact info card
+ *   7. AI Details     — expandable raw fields
+ *   8. What Happened  — activity timeline
+ *
+ * The modal is presentation-only. The caller fetches activity_log entries
+ * and passes them via `activities`.
  *
  * See docs/PRODUCT_SPEC.md "Contact Detail Modal" section and the
  * reference mockup at docs/mockups/pipeline-contact-modal.png.
@@ -259,6 +272,9 @@ export default function ContactDetailModal({
             maxWidth: 640,
             maxHeight: "85vh",
             overflowY: "auto",
+            // Momentum scroll on iOS Safari
+            WebkitOverflowScrolling: "touch",
+            overscrollBehavior: "contain",
             backgroundColor: colors.white,
             border: `1px solid ${colors.border}`,
             borderRadius: 0,
@@ -336,7 +352,7 @@ export default function ContactDetailModal({
               display: "flex",
               alignItems: "center",
               gap: 14,
-              padding: "20px 20px 18px",
+              padding: "20px 20px 20px",
               backgroundColor: colors.white,
             }}
           >
@@ -413,7 +429,7 @@ export default function ContactDetailModal({
               style={{
                 margin: "0 20px",
                 padding: "10px 12px",
-                backgroundColor: "#FEFCF8",
+                backgroundColor: colors.amberBgSoft,
                 borderLeft: `2px solid ${colors.amber}`,
                 color: colors.muted,
                 fontFamily: fonts.body,
@@ -426,7 +442,7 @@ export default function ContactDetailModal({
           ) : null}
 
           {/* Primary CTA — full-width navy "CALL [FIRST NAME]" */}
-          <div style={{ padding: "16px 20px 0" }}>
+          <div style={{ padding: "20px 20px 0" }}>
             <button
               type="button"
               style={{
@@ -650,6 +666,13 @@ function AiDetailsSection({ lead }: { lead: Lead }) {
 // Contact info card
 // ---------------------------------------------------------------------------
 
+type InfoRowData = {
+  icon: string;
+  label: string;
+  pill?: string;
+  mono?: boolean;
+};
+
 function ContactInfoCard({ lead }: { lead: Lead }) {
   const phone = formatPhone(lead.phone);
   const email = lead.email?.trim() || "";
@@ -674,12 +697,28 @@ function ContactInfoCard({ lead }: { lead: Lead }) {
     reviewLine = `Sentiment flagged · ${(lead.sentiment_score / 20).toFixed(1)}/5`;
   }
 
-  const hasAnything =
-    phone || email || sourceLabel || createdLabel || appointmentLabel || reviewLine;
-  if (!hasAnything) return null;
+  // Build the row list once so we can cleanly drop the last divider.
+  const rows: InfoRowData[] = [];
+  if (phone) rows.push({ icon: "☏", label: phone, pill: "CALL", mono: true });
+  if (email) rows.push({ icon: "✉", label: email, pill: "EMAIL" });
+  if (sourceLabel || createdLabel) {
+    rows.push({
+      icon: "◎",
+      label: [sourceLabel, createdLabel].filter(Boolean).join(" · "),
+    });
+  }
+  if (isReferral) {
+    rows.push({ icon: "↗", label: "Referred by a previous customer" });
+  }
+  if (appointmentLabel) {
+    rows.push({ icon: "◷", label: `Appointment · ${appointmentLabel}` });
+  }
+  if (reviewLine) rows.push({ icon: "★", label: reviewLine });
+
+  if (rows.length === 0) return null;
 
   return (
-    <div style={{ padding: "4px 20px 20px" }}>
+    <div style={{ padding: "0 20px 20px" }}>
       <div
         style={{
           backgroundColor: colors.white,
@@ -688,34 +727,13 @@ function ContactInfoCard({ lead }: { lead: Lead }) {
           padding: "4px 14px",
         }}
       >
-        {phone ? (
+        {rows.map((row, i) => (
           <InfoRow
-            icon="☏"
-            label={phone}
-            pill="CALL"
-            mono
+            key={`${row.icon}-${row.label}`}
+            {...row}
+            isLast={i === rows.length - 1}
           />
-        ) : null}
-        {email ? (
-          <InfoRow
-            icon="✉"
-            label={email}
-            pill="EMAIL"
-          />
-        ) : null}
-        {sourceLabel || createdLabel ? (
-          <InfoRow
-            icon="◎"
-            label={[sourceLabel, createdLabel].filter(Boolean).join(" · ")}
-          />
-        ) : null}
-        {isReferral ? (
-          <InfoRow icon="↗" label="Referred by a previous customer" />
-        ) : null}
-        {appointmentLabel ? (
-          <InfoRow icon="◷" label={`Appointment · ${appointmentLabel}`} />
-        ) : null}
-        {reviewLine ? <InfoRow icon="★" label={reviewLine} /> : null}
+        ))}
       </div>
     </div>
   );
@@ -726,12 +744,8 @@ function InfoRow({
   label,
   pill,
   mono,
-}: {
-  icon: string;
-  label: string;
-  pill?: string;
-  mono?: boolean;
-}) {
+  isLast,
+}: InfoRowData & { isLast?: boolean }) {
   return (
     <div
       style={{
@@ -739,7 +753,7 @@ function InfoRow({
         alignItems: "center",
         gap: 10,
         padding: "10px 0",
-        borderBottom: `1px solid ${colors.borderLight}`,
+        borderBottom: isLast ? "none" : `1px solid ${colors.borderLight}`,
         fontFamily: fonts.body,
         fontSize: 13,
         color: colors.muted,
@@ -895,7 +909,7 @@ function WhatHappenedTimeline({
         {activities.map((entry, i) => {
           const alert = isAlertEntry(entry);
           const dotColor = entryBaseColor(entry);
-          const textColor = alert ? "#B48A8A" : colors.muted;
+          const textColor = alert ? colors.alertMuted : colors.muted;
           return (
             <div
               key={entry.id || `${entry.type}-${i}`}

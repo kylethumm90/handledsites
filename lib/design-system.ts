@@ -37,6 +37,7 @@ export const colors = {
 
   // Light "bg" variants used for hint banners, badge backgrounds, etc.
   amberBg: "#FFF8EF", // AI context hint background
+  amberBgSoft: "#FEFCF8", // softer "barely warm" variant used in detail panels
   greenBg: "#F0FDF4",
   redBg: "#FEF2F2", // recovery / negative background
   blueBg: "#EFF6FF",
@@ -46,6 +47,9 @@ export const colors = {
   // Muted text
   muted: "#6B7280",
   mutedLight: "#9CA3AF",
+  // Desaturated red used for alert copy that should whisper, not yell
+  // (e.g. "No response — waiting 14 hours" in the timeline).
+  alertMuted: "#B48A8A",
 } as const;
 
 export type ColorToken = keyof typeof colors;
