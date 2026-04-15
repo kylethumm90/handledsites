@@ -12,7 +12,7 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
-import type { Lead } from "@/lib/supabase";
+import type { ActivityLogEntry, Lead } from "@/lib/supabase";
 import { colors, fonts, stageColors, type StageKey } from "@/lib/design-system";
 import { pipelineStageFor, postSaleStageFor } from "@/lib/pipeline-v2";
 
@@ -23,6 +23,12 @@ type Props = {
    * post-sale stage for customers, pipeline stage otherwise.
    */
   stage?: StageKey;
+  /**
+   * Ordered activity_log entries for this lead (newest first or oldest first;
+   * either is fine — the renderer displays in the order given). The modal is
+   * presentation-only; the caller fetches these and passes them in.
+   */
+  activities?: ActivityLogEntry[];
   onClose: () => void;
 };
 
@@ -175,7 +181,12 @@ function withAlpha(hex: string, alpha: "1A" | "4D"): string {
   return hex;
 }
 
-export default function ContactDetailModal({ lead, stage, onClose }: Props) {
+export default function ContactDetailModal({
+  lead,
+  stage,
+  activities,
+  onClose,
+}: Props) {
   const resolvedStage = useMemo<StageKey>(
     () => stage ?? deriveStage(lead),
     [stage, lead],
@@ -492,6 +503,9 @@ export default function ContactDetailModal({ lead, stage, onClose }: Props) {
 
           {/* AI Details — expandable structured fields the AI extracted */}
           <AiDetailsSection lead={lead} />
+
+          {/* What Happened — quiet activity timeline */}
+          <WhatHappenedTimeline activities={activities ?? []} />
         </div>
       </div>
     </>
@@ -780,3 +794,178 @@ function InfoRow({
   );
 }
 
+// ---------------------------------------------------------------------------
+// What Happened — activity timeline
+// ---------------------------------------------------------------------------
+
+/**
+ * Is this entry an "alert" — something the contractor should feel, not just
+ * a log line? These are rendered in a muted alert color (red-ish) instead of
+ * the normal muted gray.
+ */
+function isAlertEntry(entry: ActivityLogEntry): boolean {
+  const type = entry.type?.toLowerCase() || "";
+  if (
+    type.includes("alert") ||
+    type.includes("warning") ||
+    type.includes("recovery") ||
+    type === "no_response"
+  ) {
+    return true;
+  }
+  const summary = entry.summary?.toLowerCase() || "";
+  return (
+    summary.startsWith("no response") ||
+    summary.includes("waiting ") ||
+    summary.includes("flagged")
+  );
+}
+
+/**
+ * Map an activity type / agent to a base dot color. Kept in sync with the
+ * palette used by the old CustomerDetailClient so existing entries look
+ * consistent when a lead is opened in the new modal.
+ */
+function entryBaseColor(entry: ActivityLogEntry): string {
+  if (isAlertEntry(entry)) return colors.red;
+  if (entry.agent) return colors.green; // Ava / Stella actions
+  const type = entry.type?.toLowerCase() || "";
+  if (type === "review_request_sent") return colors.amber;
+  if (type === "review_received") return colors.green;
+  if (type === "referral_opt_in") return colors.purple;
+  if (type === "referral_partner_created") return colors.purple;
+  if (type === "employee_assigned") return colors.blue;
+  if (type === "status_change") return colors.blue;
+  if (type === "lead_created") return colors.amber;
+  const summary = entry.summary?.toLowerCase() || "";
+  if (summary.includes("intent") || summary.includes("wants")) return colors.amber;
+  return colors.blue;
+}
+
+function formatTimelineStamp(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function WhatHappenedTimeline({
+  activities,
+}: {
+  activities: ActivityLogEntry[];
+}) {
+  if (activities.length === 0) return null;
+
+  return (
+    <div style={{ padding: "0 20px 24px" }}>
+      <div
+        style={{
+          fontFamily: fonts.body,
+          fontSize: 9,
+          fontWeight: 600,
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
+          color: colors.mutedLight,
+          marginBottom: 12,
+        }}
+      >
+        What Happened
+      </div>
+
+      <div style={{ position: "relative" }}>
+        {/* Vertical connector line running through the dots.
+            Line center at x=5.75 aligns with dot center at x=6. */}
+        <div
+          aria-hidden
+          style={{
+            position: "absolute",
+            left: 5,
+            top: 6,
+            bottom: 6,
+            width: 1.5,
+            backgroundColor: colors.borderLight,
+          }}
+        />
+
+        {activities.map((entry, i) => {
+          const alert = isAlertEntry(entry);
+          const dotColor = entryBaseColor(entry);
+          const textColor = alert ? "#B48A8A" : colors.muted;
+          return (
+            <div
+              key={entry.id || `${entry.type}-${i}`}
+              style={{
+                position: "relative",
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 14,
+                paddingLeft: 0,
+                paddingBottom: i === activities.length - 1 ? 0 : 14,
+              }}
+            >
+              {/* Dot — a white "donut" wrapper masks the connector line so
+                  the softened colored dot reads cleanly. No shadows. */}
+              <span
+                aria-hidden
+                style={{
+                  position: "relative",
+                  zIndex: 1,
+                  width: 12,
+                  height: 12,
+                  flexShrink: 0,
+                  marginTop: 2,
+                  backgroundColor: colors.white,
+                  borderRadius: "50%",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <span
+                  style={{
+                    width: 10,
+                    height: 10,
+                    backgroundColor: dotColor,
+                    // Soften: 30-40% opacity per design spec.
+                    opacity: alert ? 0.4 : 0.35,
+                    borderRadius: "50%",
+                  }}
+                />
+              </span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div
+                  style={{
+                    fontFamily: fonts.body,
+                    fontSize: 13,
+                    lineHeight: 1.4,
+                    color: textColor,
+                    wordBreak: "break-word",
+                  }}
+                >
+                  {entry.summary}
+                </div>
+                <div
+                  style={{
+                    marginTop: 2,
+                    fontFamily: fonts.mono,
+                    fontSize: 10,
+                    letterSpacing: "0.02em",
+                    color: colors.mutedLight,
+                    fontVariantNumeric: "tabular-nums",
+                  }}
+                >
+                  {formatTimelineStamp(entry.created_at)}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
