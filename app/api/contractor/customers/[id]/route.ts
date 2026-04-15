@@ -29,26 +29,52 @@ export async function PUT(
     // different business than the session — almost always a stale page
     // (logged in as business A, clicked into a row that was fetched by a
     // prior session). Tell the client to refresh instead of silently 404'ing.
-    const { data: anyLead } = await supabase
+    const { data: anyLead, error: anyLeadErr } = await supabase
       .from("leads")
       .select("id, business_id")
       .eq("id", params.id)
       .maybeSingle();
+
+    console.warn("[customers PUT] 404 diagnostic", {
+      leadId: params.id,
+      sessionBusiness: businessId,
+      anyLeadFound: !!anyLead,
+      anyLeadBusiness: anyLead?.business_id ?? null,
+      anyLeadErr: anyLeadErr?.message ?? null,
+    });
+
     if (anyLead && anyLead.business_id !== businessId) {
-      console.warn(
-        "Lead/session business mismatch:",
-        { leadId: params.id, leadBusiness: anyLead.business_id, sessionBusiness: businessId },
-      );
       return NextResponse.json(
         {
           error:
             "This lead belongs to a different business. Refresh the page and try again.",
           code: "business_mismatch",
+          debug: {
+            leadBusiness: anyLead.business_id,
+            sessionBusiness: businessId,
+          },
         },
         { status: 404 },
       );
     }
-    return NextResponse.json({ error: "Lead not found" }, { status: 404 });
+    if (anyLead && anyLead.business_id === businessId) {
+      // Should not happen — first query already filtered on this pair.
+      return NextResponse.json(
+        {
+          error: "Lead found but first query missed — possible replica lag.",
+          code: "ghost_lead",
+        },
+        { status: 500 },
+      );
+    }
+    return NextResponse.json(
+      {
+        error: "Lead not found",
+        code: "not_in_table",
+        debug: { leadId: params.id, sessionBusiness: businessId },
+      },
+      { status: 404 },
+    );
   }
 
   const body = await request.json();
