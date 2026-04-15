@@ -87,7 +87,7 @@ type ParseResult = {
 // Constants
 // ──────────────────────────────────────────────────────────────
 const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
-const MAX_ROWS = 50000;
+const MAX_ROWS = 2500;
 
 // Auto-suggest patterns for column → UI field matching.
 const SUGGEST_PATTERNS: { field: UIField; patterns: RegExp[] }[] = [
@@ -315,7 +315,7 @@ function DropZone({
         Drop your CSV here
       </div>
       <div style={{ fontSize: 13, color: MUTED }}>
-        or click to choose a file. Up to 10 MB / 50,000 rows.
+        or click to choose a file. Up to 10 MB / 2,500 rows.
       </div>
     </div>
   );
@@ -718,7 +718,9 @@ export default function ImportWizardClient() {
         return;
       }
       if (rows.length > MAX_ROWS) {
-        setError(`Too many rows (${rows.length.toLocaleString()}). Max is 50,000.`);
+        setError(
+          `Too many rows (${rows.length.toLocaleString()}). Max is ${MAX_ROWS.toLocaleString()}.`
+        );
         setUploading(false);
         return;
       }
@@ -853,11 +855,9 @@ export default function ImportWizardClient() {
         skipped: number;
       };
       setImportResult(data);
-      // Note: the backend execute route already fires
-      // /generate-summaries with keepalive: true immediately after
-      // returning, so we intentionally do NOT fire it again here —
-      // doing so would double the Anthropic spend on large imports.
-      // The backend's self-trigger is the single source of truth.
+      // AI summaries are generated on demand by the pipeline's lazy
+      // backfill (one Claude call per lead the contractor actually
+      // views), so no bulk job is kicked off here.
     } catch (err) {
       setImportError(err instanceof Error ? err.message : "Import failed.");
     } finally {

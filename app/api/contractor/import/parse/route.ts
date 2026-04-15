@@ -12,7 +12,7 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
-const MAX_ROWS = 50000;
+const MAX_ROWS = 2500;
 const PREVIEW_ROWS = 500;
 const SAMPLES_PER_COLUMN = 3;
 
