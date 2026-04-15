@@ -804,7 +804,7 @@ export default function CustomerDetailClient({ lead, timeline: initialTimeline, 
             fontSize: 10, fontWeight: 800, color: "#9CA3AF",
             textTransform: "uppercase", letterSpacing: 2,
           }}>
-            The Story
+            Timeline
           </div>
           {!addingNote && (
             <button
