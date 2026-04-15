@@ -18,7 +18,7 @@ export async function PUT(
   const { data: lead } = await supabase
     .from("leads")
     .select(
-      "id, status, business_id, employee_id, appointment_at, first_response_at"
+      "id, status, business_id, employee_id, appointment_at, first_response_at, closed_at, referral_code"
     )
     .eq("id", params.id)
     .eq("business_id", businessId)
@@ -60,6 +60,19 @@ export async function PUT(
     !lead.first_response_at
   ) {
     updates.first_response_at = new Date().toISOString();
+  }
+
+  // Graduation to Reputation: stamp closed_at the first time a lead
+  // transitions to "customer". The Pipeline "Done" tile filters on this
+  // (last 30 days) and the Reputation Growth view reads the same column.
+  // Never overwritten on subsequent edits.
+  const becomingCustomer =
+    typeof updates.status === "string" &&
+    updates.status === "customer" &&
+    lead.status !== "customer" &&
+    !lead.closed_at;
+  if (becomingCustomer) {
+    updates.closed_at = new Date().toISOString();
   }
 
   const { error } = await supabase
@@ -148,6 +161,41 @@ export async function PUT(
       type: "employee_assigned",
       summary,
     });
+  }
+
+  // Referral payout: when a lead that came in via a referral code closes,
+  // resolve the referrer (referral_partners.referral_code -> customer_id)
+  // and create a pending referral_rewards row at the business's configured
+  // reward amount. The UNIQUE(referred_lead_id) constraint makes this
+  // idempotent — re-flipping status to customer does nothing.
+  if (becomingCustomer && lead.referral_code) {
+    const { data: business } = await supabase
+      .from("businesses")
+      .select("referral_enabled, referral_reward_amount_cents, referral_reward_type")
+      .eq("id", businessId)
+      .single();
+    if (
+      business?.referral_enabled &&
+      business.referral_reward_amount_cents &&
+      business.referral_reward_type
+    ) {
+      const { data: partner } = await supabase
+        .from("referral_partners")
+        .select("customer_id")
+        .eq("business_id", businessId)
+        .eq("referral_code", lead.referral_code)
+        .maybeSingle();
+      if (partner?.customer_id) {
+        await supabase.from("referral_rewards").insert({
+          business_id: businessId,
+          referrer_lead_id: partner.customer_id,
+          referred_lead_id: params.id,
+          amount_cents: business.referral_reward_amount_cents,
+          reward_type: business.referral_reward_type,
+          status: "pending",
+        });
+      }
+    }
   }
 
   return NextResponse.json({ success: true });
