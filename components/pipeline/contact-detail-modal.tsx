@@ -234,8 +234,10 @@ export default function ContactDetailModal({
   // caller opens the modal on a different lead.
   const [currentStatus, setCurrentStatus] = useState<LeadStatus>(lead.status);
   const [advancing, setAdvancing] = useState(false);
+  const [advanceError, setAdvanceError] = useState<string | null>(null);
   useEffect(() => {
     setCurrentStatus(lead.status);
+    setAdvanceError(null);
   }, [lead.id, lead.status]);
 
   const resolvedStage = useMemo<StageKey>(() => {
@@ -270,18 +272,32 @@ export default function ContactDetailModal({
     const next = NEXT_STATUS[currentStatus];
     if (!next || advancing) return;
     setAdvancing(true);
+    setAdvanceError(null);
     try {
       const res = await fetch(`/api/contractor/customers/${lead.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
         body: JSON.stringify({ status: next }),
       });
       if (res.ok) {
         setCurrentStatus(next);
         onUpdate?.();
+      } else {
+        // Surface the API's error message so failures aren't silent.
+        let msg = `Couldn't advance (HTTP ${res.status})`;
+        try {
+          const data = (await res.json()) as { error?: string };
+          if (data.error) msg = data.error;
+        } catch {
+          /* body wasn't JSON */
+        }
+        console.error("advance failed:", msg);
+        setAdvanceError(msg);
       }
-    } catch {
-      // Swallow — the button simply unblocks and the user can retry.
+    } catch (err) {
+      console.error("advance threw:", err);
+      setAdvanceError("Network error — check your connection and try again.");
     } finally {
       setAdvancing(false);
     }
@@ -612,6 +628,7 @@ export default function ContactDetailModal({
             currentStatus={currentStatus}
             resolvedStage={resolvedStage}
             advancing={advancing}
+            advanceError={advanceError}
             onAdvance={handleAdvance}
           />
         </div>
@@ -628,11 +645,13 @@ function PipelineFooter({
   currentStatus,
   resolvedStage,
   advancing,
+  advanceError,
   onAdvance,
 }: {
   currentStatus: LeadStatus;
   resolvedStage: StageKey;
   advancing: boolean;
+  advanceError: string | null;
   onAdvance: () => void;
 }) {
   const inPipeline = isPipelineStage(resolvedStage);
@@ -769,6 +788,22 @@ function PipelineFooter({
         >
           {advancing ? "SAVING…" : `${nextLabel} →`}
         </button>
+      ) : null}
+
+      {/* Error surface — quiet, muted red line under the button */}
+      {advanceError ? (
+        <div
+          style={{
+            marginTop: 10,
+            fontFamily: fonts.body,
+            fontSize: 12,
+            color: colors.alertMuted,
+            lineHeight: 1.4,
+            textAlign: "center",
+          }}
+        >
+          {advanceError}
+        </div>
       ) : null}
 
       {/* Post-sale / terminal state — quiet informational line */}
