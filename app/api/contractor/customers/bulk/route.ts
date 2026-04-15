@@ -18,8 +18,8 @@ type IncomingContact = {
   status?: unknown;
 };
 
-type PipelineStatus = "lead" | "booked" | "customer";
-const VALID_STATUSES: readonly PipelineStatus[] = ["lead", "booked", "customer"];
+type PipelineStatus = "lead" | "contacted" | "booked" | "customer";
+const VALID_STATUSES: readonly PipelineStatus[] = ["lead", "contacted", "booked", "customer"];
 
 function clean(value: unknown): string | null {
   if (typeof value !== "string") return null;

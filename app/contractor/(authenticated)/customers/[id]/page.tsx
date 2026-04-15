@@ -28,7 +28,7 @@ export default async function CustomerDetailPage({
   if (!lead) notFound();
 
   // Fetch activity log and pipeline counts in parallel
-  const [{ data: timeline }, leadCount, bookedCount, customerCount] = await Promise.all([
+  const [{ data: timeline }, leadCount, contactedCount, bookedCount, customerCount] = await Promise.all([
     supabase
       .from("activity_log")
       .select("*")
@@ -39,6 +39,13 @@ export default async function CustomerDetailPage({
       .select("id", { count: "exact", head: true })
       .eq("business_id", businessId)
       .eq("status", "lead")
+      .eq("is_demo", false)
+      .then(({ count }) => count ?? 0),
+    supabase
+      .from("leads")
+      .select("id", { count: "exact", head: true })
+      .eq("business_id", businessId)
+      .eq("status", "contacted")
       .eq("is_demo", false)
       .then(({ count }) => count ?? 0),
     supabase
@@ -106,7 +113,7 @@ export default async function CustomerDetailPage({
     <CustomerDetailClient
       lead={lead as Lead}
       timeline={(timeline || []) as ActivityLogEntry[]}
-      counts={{ lead: leadCount, booked: bookedCount, customer: customerCount }}
+      counts={{ lead: leadCount, contacted: contactedCount, booked: bookedCount, customer: customerCount }}
       existingReferralCode={referralPartner?.referral_code || null}
       referrerName={referrerName}
       referrerId={referrerId}
