@@ -71,16 +71,34 @@ const STAGE_LABELS: Record<StageKey, string> = {
 export function ContactCard({
   contact,
   tier = "base",
+  onSelect,
 }: {
   contact: Contact;
   tier?: Tier;
+  /** Fired when the card body is tapped. CTA buttons stopPropagation so
+   *  CALL / TEXT / contextual actions don't trigger navigation. */
+  onSelect?: (id: string) => void;
 }) {
   const stage = stageColors[contact.stage];
   const isRecovery = contact.recovery === true || contact.stage === "recovery";
   const accent = isRecovery ? colors.red : stage.fg;
+  const clickable = typeof onSelect === "function";
 
   return (
     <article
+      role={clickable ? "button" : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      onClick={clickable ? () => onSelect!(contact.id) : undefined}
+      onKeyDown={
+        clickable
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onSelect!(contact.id);
+              }
+            }
+          : undefined
+      }
       style={{
         backgroundColor: colors.white,
         border: `1px solid ${colors.border}`,
@@ -89,6 +107,7 @@ export function ContactCard({
         display: "flex",
         flexDirection: "column",
         gap: 12,
+        cursor: clickable ? "pointer" : "default",
       }}
     >
       {/* Header row — avatar, name + info, stage badge */}
@@ -358,6 +377,7 @@ function PrimaryButton({
   return (
     <button
       type="button"
+      onClick={(e) => e.stopPropagation()}
       style={{
         minHeight: 44,
         padding: "12px 16px",
@@ -383,6 +403,7 @@ function SecondaryButton({ label, color }: { label: string; color: string }) {
   return (
     <button
       type="button"
+      onClick={(e) => e.stopPropagation()}
       style={{
         minHeight: 44,
         padding: "12px 16px",

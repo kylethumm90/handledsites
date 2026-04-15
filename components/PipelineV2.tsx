@@ -15,8 +15,8 @@
  * the standalone /pipeline demo. We start with the view toggle.
  */
 
-import { useMemo, useState } from "react";
-import type { Lead } from "@/lib/supabase";
+import { useEffect, useMemo, useState } from "react";
+import type { ActivityLogEntry, Lead } from "@/lib/supabase";
 import { useCurrentPlan } from "@/lib/plans";
 import { colors, fonts, type StageKey } from "@/lib/design-system";
 import { UpsellHint } from "@/components/ui/primitives";
@@ -25,6 +25,7 @@ import {
   type Contact,
   type Tier,
 } from "@/components/pipeline/contact-card";
+import ContactDetailModal from "@/components/pipeline/contact-detail-modal";
 import { leadToContact } from "@/lib/pipeline-v2";
 
 type View = "pipeline" | "post_sale";
@@ -65,11 +66,56 @@ export default function PipelineV2({
   const plan = useCurrentPlan();
   const [view, setView] = useState<View>("pipeline");
   const [selectedStage, setSelectedStage] = useState<StageKey | null>(null);
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
+  // Activities cache keyed by lead id so re-opening the modal is instant.
+  const [activitiesByLead, setActivitiesByLead] = useState<
+    Record<string, ActivityLogEntry[]>
+  >({});
 
   // Tier is driven by (plan has Ava) AND (business has flipped Ava on).
   // Matches the "both flags must be true" rule used by PipelineClient.
   const tier: Tier =
     plan.features.ava && avaEnabled ? "ai_team" : "base";
+
+  const leadsById = useMemo(() => {
+    const out = new Map<string, Lead>();
+    for (const l of leads) out.set(l.id, l);
+    return out;
+  }, [leads]);
+
+  const selectedLead = selectedLeadId
+    ? leadsById.get(selectedLeadId) ?? null
+    : null;
+
+  // Fetch activity_log entries for the selected lead the first time the
+  // modal opens on that lead. Subsequent opens reuse the cached array.
+  useEffect(() => {
+    if (!selectedLeadId) return;
+    if (activitiesByLead[selectedLeadId]) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/contractor/customers/${selectedLeadId}/activities`,
+          { cache: "no-store" },
+        );
+        if (!res.ok) return;
+        const data = (await res.json()) as {
+          activities?: ActivityLogEntry[];
+        };
+        if (cancelled) return;
+        setActivitiesByLead((prev) => ({
+          ...prev,
+          [selectedLeadId]: data.activities ?? [],
+        }));
+      } catch {
+        // Silent — the modal still renders with an empty timeline.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedLeadId, activitiesByLead]);
 
   // Build ContactCard-shaped objects from real leads, once per view/tier.
   const contacts = useMemo<Contact[]>(() => {
@@ -157,7 +203,12 @@ export default function PipelineV2({
             <EmptyState view={view} />
           ) : (
             visibleContacts.map((contact) => (
-              <ContactCard key={contact.id} contact={contact} tier={tier} />
+              <ContactCard
+                key={contact.id}
+                contact={contact}
+                tier={tier}
+                onSelect={(id) => setSelectedLeadId(id)}
+              />
             ))
           )}
 
@@ -172,8 +223,30 @@ export default function PipelineV2({
 
         {tier === "base" ? <BottomUpsell view={view} /> : null}
       </div>
+
+      {selectedLead ? (
+        <ContactDetailModal
+          lead={selectedLead}
+          // Respect the caller's current view so a "customer" lead opened
+          // from the Pipeline tab still shows as Job Done, not Feedback.
+          stage={
+            view === "pipeline"
+              ? stageFromView("pipeline", selectedLead)
+              : stageFromView("post_sale", selectedLead)
+          }
+          activities={activitiesByLead[selectedLead.id]}
+          onClose={() => setSelectedLeadId(null)}
+        />
+      ) : null}
     </div>
   );
+}
+
+// Mirror the same stage derivation leadToContact uses, in one line, so the
+// modal's top bar color matches the card the user tapped.
+function stageFromView(view: View, lead: Lead): StageKey | undefined {
+  const c = leadToContact(lead, { view, aiTeamLive: false });
+  return c?.stage;
 }
 
 // ---------------------------------------------------------------------------
