@@ -16,6 +16,14 @@ export async function POST(request: NextRequest) {
   }
 
   const supabase = getSupabaseAdmin();
+
+  // Estimated value is optional. Accept either a pre-computed cents int
+  // or a dollars float; coerce and bail to null for anything else.
+  let estimatedValueCents: number | null = null;
+  if (typeof body.estimated_value_cents === "number" && body.estimated_value_cents > 0) {
+    estimatedValueCents = Math.round(body.estimated_value_cents);
+  }
+
   const { data: lead, error } = await supabase
     .from("leads")
     .insert({
@@ -25,6 +33,7 @@ export async function POST(request: NextRequest) {
       email: body.email?.trim() || null,
       service_needed: body.service_needed || null,
       notes: body.notes?.trim() || null,
+      estimated_value_cents: estimatedValueCents,
       source: "manual",
       status: "lead",
     })
