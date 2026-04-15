@@ -195,6 +195,19 @@ Feedback: "${feedback || ""}"`,
         .eq("id", lead_id)
         .then(() => {}, () => {});
     }
+
+    // Stamp review_submitted_at the first time a positive review lands so
+    // the Post-Sale "Reviewed" stage on the new Pipeline screen has a
+    // precise signal instead of approximating via sentiment. Negative
+    // feedback rows intentionally do NOT stamp this column.
+    if (isPositive) {
+      await supabase
+        .from("leads")
+        .update({ review_submitted_at: new Date().toISOString() })
+        .eq("id", lead_id)
+        .is("review_submitted_at", null)
+        .then(() => {}, () => {});
+    }
   }
 
   if (isPositive) {

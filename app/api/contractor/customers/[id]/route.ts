@@ -18,13 +18,36 @@ export async function PUT(
   const { data: lead } = await supabase
     .from("leads")
     .select(
-      "id, status, business_id, employee_id, appointment_at, first_response_at, closed_at, referral_code"
+      "id, status, business_id, employee_id, appointment_at, first_response_at, closed_at, referral_code, job_completed_at"
     )
     .eq("id", params.id)
     .eq("business_id", businessId)
     .single();
 
   if (!lead) {
+    // Self-diagnosis: does the lead exist at all? If yes, it belongs to a
+    // different business than the session — almost always a stale page
+    // (logged in as business A, clicked into a row that was fetched by a
+    // prior session). Tell the client to refresh instead of silently 404'ing.
+    const { data: anyLead } = await supabase
+      .from("leads")
+      .select("id, business_id")
+      .eq("id", params.id)
+      .maybeSingle();
+    if (anyLead && anyLead.business_id !== businessId) {
+      console.warn(
+        "Lead/session business mismatch:",
+        { leadId: params.id, leadBusiness: anyLead.business_id, sessionBusiness: businessId },
+      );
+      return NextResponse.json(
+        {
+          error:
+            "This lead belongs to a different business. Refresh the page and try again.",
+          code: "business_mismatch",
+        },
+        { status: 404 },
+      );
+    }
     return NextResponse.json({ error: "Lead not found" }, { status: 404 });
   }
 
@@ -65,14 +88,20 @@ export async function PUT(
   // Graduation to Reputation: stamp closed_at the first time a lead
   // transitions to "customer". The Pipeline "Done" tile filters on this
   // (last 30 days) and the Reputation Growth view reads the same column.
-  // Never overwritten on subsequent edits.
+  // Never overwritten on subsequent edits. Also stamp job_completed_at
+  // so the Post-Sale view on the new Pipeline screen has a clean "job
+  // completed at" timestamp to display in card info lines.
   const becomingCustomer =
     typeof updates.status === "string" &&
     updates.status === "customer" &&
     lead.status !== "customer" &&
     !lead.closed_at;
   if (becomingCustomer) {
-    updates.closed_at = new Date().toISOString();
+    const now = new Date().toISOString();
+    updates.closed_at = now;
+    if (!lead.job_completed_at) {
+      updates.job_completed_at = now;
+    }
   }
 
   const { error } = await supabase

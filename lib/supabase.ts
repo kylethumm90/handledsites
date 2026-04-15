@@ -169,6 +169,18 @@ export type Lead = {
   closed_at: string | null;
   raw_import_data: Record<string, string> | null;
   import_batch_id: string | null;
+  // Post-sale reputation funnel (all nullable — see supabase-schema.sql
+  // "Reputation funnel: post-sale milestone columns on leads"). Parallel
+  // event timestamps, not a status progression. Drive the Post-Sale view
+  // on the Pipeline screen. sentiment_score is 0-100 (rating * 20 or
+  // Claude-derived); < 60 flags the lead as a recovery candidate.
+  job_completed_at: string | null;
+  feedback_submitted_at: string | null;
+  review_submitted_at: string | null;
+  referral_opted_in_at: string | null;
+  sentiment_score: number | null;
+  job_value_cents: number | null;
+  referred_by_lead_id: string | null;
 };
 
 export type ContactImport = {

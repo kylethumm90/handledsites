@@ -10,6 +10,18 @@
   --muted: #8A8070;
   --border: #D6CCBC;
   --border-light: #E8E0D4;
+
+  /* handled. app design system (see lib/design-system.ts) */
+  --handled-navy: #1E2A3A;
+  --handled-amber: #E8922A;
+  --handled-bg: #F7F7F5;
+  --handled-white: #FFFFFF;
+  --handled-border: #E8E8E4;
+  --handled-border-light: #F0F0EC;
+  --handled-green: #16A34A;
+  --handled-red: #DC2626;
+  --handled-blue: #2563EB;
+  --handled-purple: #7C3AED;
 }
 
 body {
