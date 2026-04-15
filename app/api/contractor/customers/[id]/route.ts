@@ -14,16 +14,11 @@ export async function PUT(
 
   const supabase = getSupabaseAdmin();
 
-  // Verify lead belongs to this business. Keep the column list tight — and
-  // in particular, never reference columns from the post-sale denormalization
-  // block (job_completed_at, feedback_submitted_at, etc.) here. That block
-  // is not yet live in every environment, and selecting a missing column
-  // causes Supabase to error the whole query — which we'd then silently treat
-  // as "lead not found".
+  // Verify lead belongs to this business.
   const { data: lead, error: leadErr } = await supabase
     .from("leads")
     .select(
-      "id, status, business_id, employee_id, appointment_at, first_response_at, closed_at, referral_code"
+      "id, status, business_id, employee_id, appointment_at, first_response_at, closed_at, referral_code, job_completed_at"
     )
     .eq("id", params.id)
     .eq("business_id", businessId)
@@ -120,18 +115,20 @@ export async function PUT(
   // Graduation to Reputation: stamp closed_at the first time a lead
   // transitions to "customer". The Pipeline "Done" tile filters on this
   // (last 30 days) and the Reputation Growth view reads the same column.
-  // Never overwritten on subsequent edits.
-  //
-  // NOTE: We used to also stamp job_completed_at here for the Post-Sale view,
-  // but that column lives in the post-sale denormalization block which isn't
-  // live in every environment yet. Re-enable once the migration ships.
+  // Never overwritten on subsequent edits. Also stamp job_completed_at so
+  // the Post-Sale view has a clean "job completed at" timestamp for card
+  // info lines and the reputation funnel counts.
   const becomingCustomer =
     typeof updates.status === "string" &&
     updates.status === "customer" &&
     lead.status !== "customer" &&
     !lead.closed_at;
   if (becomingCustomer) {
-    updates.closed_at = new Date().toISOString();
+    const now = new Date().toISOString();
+    updates.closed_at = now;
+    if (!lead.job_completed_at) {
+      updates.job_completed_at = now;
+    }
   }
 
   const { error } = await supabase
