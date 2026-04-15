@@ -58,7 +58,14 @@ type LeadLike = Lead & {
 /** Structured fields the model can optionally pull from free-text notes. */
 export type ExtractedLeadFields = {
   service_needed?: string;
-  estimated_value_cents?: number;
+  /**
+   * One-time job value in US DOLLARS (not cents). The model is bad at unit
+   * conversions, so we ask it for dollars and multiply by 100 server-side
+   * in `applyExtractedFields`. Must be a one-time contract value, NOT a
+   * recurring bill / monthly cost / annual subscription — see the
+   * EXTRACTION RULES in the system prompt.
+   */
+  estimated_value_dollars?: number;
   tags?: string[];
 };
 
@@ -217,12 +224,27 @@ export async function regenerateAiSummary({
         "  'already captured' fields — leave them alone.",
         "- If a free-text note clearly mentions a job type and the Service line is missing,",
         "  set `extracted.service_needed` (sentence case, short, e.g. 'Roof replacement').",
-        "- If a free-text note clearly mentions a dollar value (like '$250 bill' or 'quoted 4500')",
-        "  and the Estimated value line is missing, set `extracted.estimated_value_cents`",
-        "  in US CENTS. $250 becomes 25000. $4500 becomes 450000.",
+        "",
+        "ESTIMATED VALUE — read this carefully, this field is tricky:",
+        "- `estimated_value_dollars` is the ONE-TIME contract / job value the contractor will",
+        "  bill the customer for the work. Dollars, not cents — $250 is `250`, $4500 is `4500`.",
+        "- Only set it if the note states a ONE-TIME job quote / estimate / contract amount",
+        "  (e.g. 'quoted 4500', 'bid $12k', 'contract total 8200', 'estimate of $250').",
+        "- DO NOT extract recurring / periodic amounts. If the note says '$500/month', 'per month',",
+        "  'monthly bill', '$X/yr', 'annually', '/mo', 'subscription', 'maintenance plan', the value",
+        "  is NOT a job value. Leave `estimated_value_dollars` unset.",
+        "- DO NOT extract the customer's utility bills, energy bills, power bills, water bills,",
+        "  rent, mortgage, or any cost the customer PAYS to someone else. Those describe the",
+        "  customer's situation (useful for sizing a solar install, for example) but they are NOT",
+        "  the contractor's job value. Put them in `tags` instead (e.g. 'power-bill-500-mo').",
+        "- If a value is ambiguous about one-time vs recurring, DO NOT extract it. Leave it empty.",
+        "",
+        "TAGS:",
         "- If a free-text note mentions qualifications/attributes that would help filter later",
-        "  (credit score, property type, roof orientation, urgency), include them in",
-        "  `extracted.tags` as short lowercase strings (e.g. 'credit-700', 'south-facing').",
+        "  (credit score, property type, roof orientation, urgency, utility bill size), include",
+        "  them in `extracted.tags` as short lowercase kebab-case strings",
+        "  (e.g. 'credit-700', 'south-facing', 'power-bill-500-mo').",
+        "",
         "- If a fact is ambiguous or not clearly stated, DO NOT extract it. Guessing is worse",
         "  than leaving a field empty.",
         "- If there's nothing to extract, omit the `extracted` object entirely.",
@@ -253,10 +275,10 @@ export async function regenerateAiSummary({
                     description:
                       "Short sentence-case service name, e.g. 'Roof replacement', 'Water heater install'. Only set if the Service line is missing from the facts.",
                   },
-                  estimated_value_cents: {
+                  estimated_value_dollars: {
                     type: "integer",
                     description:
-                      "Estimated job value in US cents. $250 -> 25000, $4500 -> 450000. Only set if the Estimated value line is missing from the facts.",
+                      "One-time contract / job value in US DOLLARS (not cents). $250 -> 250, $4500 -> 4500. ONLY set this if the note clearly states a one-time job quote / estimate / contract total. NEVER extract recurring amounts like '$500/month', 'per month', 'monthly bill', utility / power / water / energy bills, subscriptions, or maintenance plans — those describe the customer's situation, not the contractor's job value. When in doubt, leave empty and put context in `tags` instead.",
                   },
                   tags: {
                     type: "array",
@@ -365,14 +387,20 @@ export async function applyExtractedFields({
     filled.push("service");
   }
 
-  // Estimated value — fill only if currently null / 0.
+  // Estimated value — fill only if currently null / 0. The model returns
+  // whole US dollars (it's bad at cents math); we convert to cents server-
+  // side so there's no way a unit mistake like "$500 -> 500000 cents"
+  // survives. We also clamp to a sanity range: < $50 is almost certainly
+  // noise; > $500k is almost certainly a hallucinated figure or the model
+  // re-doing the cents math anyway. Values outside the range are dropped.
   if (
-    typeof extracted.estimated_value_cents === "number" &&
-    Number.isFinite(extracted.estimated_value_cents) &&
-    extracted.estimated_value_cents > 0 &&
+    typeof extracted.estimated_value_dollars === "number" &&
+    Number.isFinite(extracted.estimated_value_dollars) &&
+    extracted.estimated_value_dollars >= 50 &&
+    extracted.estimated_value_dollars <= 500000 &&
     (lead.estimated_value_cents == null || lead.estimated_value_cents === 0)
   ) {
-    const cents = Math.round(extracted.estimated_value_cents);
+    const cents = Math.round(extracted.estimated_value_dollars * 100);
     updates.estimated_value_cents = cents;
     patch.estimated_value_cents = cents;
     filled.push("value");
