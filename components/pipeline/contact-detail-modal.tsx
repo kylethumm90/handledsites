@@ -11,7 +11,7 @@
  * reference mockup at docs/mockups/pipeline-contact-modal.png.
  */
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Lead } from "@/lib/supabase";
 import { colors, fonts, stageColors, type StageKey } from "@/lib/design-system";
 import { pipelineStageFor, postSaleStageFor } from "@/lib/pipeline-v2";
@@ -489,9 +489,146 @@ export default function ContactDetailModal({ lead, stage, onClose }: Props) {
 
           {/* Contact info card — quiet rows of metadata */}
           <ContactInfoCard lead={lead} />
+
+          {/* AI Details — expandable structured fields the AI extracted */}
+          <AiDetailsSection lead={lead} />
         </div>
       </div>
     </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// AI Details — discreet expandable block of raw extracted fields
+// ---------------------------------------------------------------------------
+
+function AiDetailsSection({ lead }: { lead: Lead }) {
+  const [open, setOpen] = useState(false);
+
+  // Merge all the structured metadata the AI has on this lead. `answers`
+  // covers quiz-funnel responses; `raw_import_data` covers CSV import rows.
+  // Duplicate keys from answers win (funnel data is the freshest signal).
+  const fields = useMemo<Array<[string, string]>>(() => {
+    const merged: Record<string, string> = {};
+    if (lead.raw_import_data) {
+      for (const [k, v] of Object.entries(lead.raw_import_data)) {
+        if (v != null && String(v).trim() !== "") merged[k] = String(v);
+      }
+    }
+    if (lead.answers) {
+      for (const [k, v] of Object.entries(lead.answers)) {
+        if (v != null && String(v).trim() !== "") merged[k] = String(v);
+      }
+    }
+    return Object.entries(merged);
+  }, [lead.answers, lead.raw_import_data]);
+
+  if (fields.length === 0) return null;
+
+  return (
+    <div style={{ padding: "0 20px 20px" }}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        style={{
+          width: "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 8,
+          padding: "10px 12px",
+          backgroundColor: colors.white,
+          border: `1px solid ${colors.borderLight}`,
+          borderRadius: 0,
+          cursor: "pointer",
+          fontFamily: fonts.body,
+          fontSize: 12,
+          fontWeight: 600,
+          color: colors.muted,
+          letterSpacing: "0.04em",
+          textTransform: "uppercase",
+        }}
+      >
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+          <span aria-hidden style={{ color: colors.amber, fontSize: 13 }}>
+            ⚡
+          </span>
+          AI Details — {fields.length}{" "}
+          {fields.length === 1 ? "field" : "fields"}
+        </span>
+        <span
+          aria-hidden
+          style={{
+            display: "inline-block",
+            color: colors.mutedLight,
+            fontSize: 12,
+            transform: open ? "rotate(90deg)" : "rotate(0deg)",
+            transition: "transform 120ms ease",
+          }}
+        >
+          ›
+        </span>
+      </button>
+
+      {open ? (
+        <div
+          style={{
+            marginTop: -1,
+            backgroundColor: colors.white,
+            border: `1px solid ${colors.borderLight}`,
+            borderTop: "none",
+            padding: "4px 12px",
+          }}
+        >
+          {fields.map(([key, value], i) => (
+            <div
+              key={key}
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 12,
+                padding: "8px 0",
+                borderBottom:
+                  i === fields.length - 1
+                    ? "none"
+                    : `1px solid ${colors.borderLight}`,
+              }}
+            >
+              <span
+                style={{
+                  flexShrink: 0,
+                  minWidth: 110,
+                  fontFamily: fonts.mono,
+                  fontSize: 10,
+                  fontWeight: 500,
+                  letterSpacing: "0.04em",
+                  textTransform: "uppercase",
+                  color: colors.mutedLight,
+                  lineHeight: 1.4,
+                  paddingTop: 1,
+                }}
+              >
+                {key}
+              </span>
+              <span
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  fontFamily: fonts.body,
+                  fontSize: 13,
+                  color: colors.muted,
+                  lineHeight: 1.4,
+                  wordBreak: "break-word",
+                }}
+              >
+                {value}
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </div>
   );
 }
 
