@@ -328,6 +328,18 @@ export default function CustomerDetailClient({ lead, timeline: initialTimeline, 
             {service}
           </div>
         )}
+        {lead.ai_summary && (
+          <div style={{
+            fontSize: 13,
+            color: "#6B7280",
+            marginTop: 6,
+            fontWeight: 400,
+            fontStyle: "italic",
+            lineHeight: 1.45,
+          }}>
+            {lead.ai_summary}
+          </div>
+        )}
 
         {/* Alert banner */}
         <div style={{
