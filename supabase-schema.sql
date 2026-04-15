@@ -280,3 +280,41 @@ CREATE INDEX idx_contractor_sessions_hash ON contractor_sessions (session_hash);
 --  WHERE l.id = sub.lead_id
 --    AND l.sentiment_score IS NULL;
 
+
+-- ============================================================
+-- CSV contact import (2026-04)
+-- ============================================================
+
+ALTER TABLE leads
+  ADD COLUMN IF NOT EXISTS raw_import_data JSONB,
+  ADD COLUMN IF NOT EXISTS import_batch_id UUID;
+-- ai_summary TEXT already exists on leads.
+
+CREATE INDEX IF NOT EXISTS idx_leads_import_batch
+  ON leads(import_batch_id)
+  WHERE import_batch_id IS NOT NULL;
+
+CREATE TABLE IF NOT EXISTS contact_imports (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+  filename TEXT NOT NULL,
+  total_rows INT NOT NULL,
+  imported_rows INT NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'pending'
+    CHECK (status IN ('pending','processing','complete','failed')),
+  column_mappings JSONB NOT NULL,
+  ai_context_fields TEXT[] NOT NULL DEFAULT '{}',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_contact_imports_business
+  ON contact_imports(business_id, created_at DESC);
+
+ALTER TABLE contact_imports ENABLE ROW LEVEL SECURITY;
+
+-- Deny-all for anon/authenticated. Server routes use the service role
+-- (which bypasses RLS) and enforce scoping in-code via .eq("business_id").
+CREATE POLICY "contact_imports_no_anon_select"
+  ON contact_imports FOR SELECT TO anon, authenticated USING (false);
+CREATE POLICY "contact_imports_no_anon_write"
+  ON contact_imports FOR ALL TO anon, authenticated USING (false) WITH CHECK (false);
