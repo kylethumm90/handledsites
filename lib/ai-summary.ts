@@ -23,6 +23,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { pipelineStageFor, postSaleStageFor } from "@/lib/pipeline-v2";
 import type { Lead } from "@/lib/supabase";
 import type { StageKey } from "@/lib/design-system";
+import {
+  LEAD_FIELD_CATALOG,
+  customFieldsToolSchema,
+  validateAndPatchCustomFields,
+  type LeadCustomFields,
+} from "@/lib/lead-fields";
 
 const MODEL = "claude-haiku-4-5-20251001";
 
@@ -67,6 +73,12 @@ export type ExtractedLeadFields = {
    */
   estimated_value_dollars?: number;
   tags?: string[];
+  /**
+   * Universal catalog-driven custom fields. Keys must match the
+   * LEAD_FIELD_CATALOG in lib/lead-fields.ts. Fill-empty-only is enforced
+   * server-side in applyExtractedFields + validateAndPatchCustomFields.
+   */
+  custom_fields?: Record<string, unknown>;
 };
 
 /** Combined result returned by regenerateAiSummary. */
@@ -131,6 +143,22 @@ function buildFactsBlock(
       facts.push(
         `CSV context:\n${entries.map(([k, v]) => `  ${k}: ${v}`).join("\n")}`,
       );
+    }
+  }
+  // Echo already-populated custom fields back to the model as "already
+  // captured" — the extractor is told not to re-extract anything here,
+  // so this doubles as a fill-empty-only hint at the prompt layer (the
+  // server-side validator enforces it regardless).
+  const custom = lead.custom_fields ?? null;
+  if (custom && typeof custom === "object") {
+    const lines: string[] = [];
+    for (const field of LEAD_FIELD_CATALOG) {
+      const v = (custom as Record<string, unknown>)[field.key];
+      if (v === undefined || v === null || v === "") continue;
+      lines.push(`  ${field.label}: ${String(v)}`);
+    }
+    if (lines.length > 0) {
+      facts.push(`Already-captured custom fields (DO NOT re-extract):\n${lines.join("\n")}`);
     }
   }
   return facts.join("\n");
@@ -240,14 +268,30 @@ export async function regenerateAiSummary({
         "- If a value is ambiguous about one-time vs recurring, DO NOT extract it. Leave it empty.",
         "",
         "TAGS:",
-        "- If a free-text note mentions qualifications/attributes that would help filter later",
-        "  (credit score, property type, roof orientation, urgency, utility bill size), include",
-        "  them in `extracted.tags` as short lowercase kebab-case strings",
-        "  (e.g. 'credit-700', 'south-facing', 'power-bill-500-mo').",
+        "- Tags are the escape valve for trade-specific attributes that don't fit a custom field.",
+        "- Short lowercase kebab-case strings: 'south-facing', 'copper-pipes', 'panel-200a'.",
+        "- Do NOT put anything in tags that belongs in a catalog custom field (see below).",
+        "",
+        "CUSTOM FIELDS (catalog-driven structured data):",
+        "- The `extracted.custom_fields` object holds universal structured lead data. Each",
+        "  property maps to a catalog entry with a specific type and a specific meaning —",
+        "  read each property's description carefully and only populate it when the note",
+        "  CLEARLY states that exact piece of information.",
+        "- Fill-empty-only: never populate a field that appears in the 'Already-captured",
+        "  custom fields' section of the facts. Those values are locked in.",
+        "- Enum fields MUST use one of the allowed enum values verbatim — never invent new",
+        "  values, never paraphrase, never translate.",
+        "- Currency fields are in WHOLE US DOLLARS (not cents). $320 is `320`, $4500 is `4500`.",
+        "- Number fields are whole numbers. No ranges, no estimates with plus-or-minus.",
+        "- `existing_equipment_notes` is a free-text short paragraph about what's physically",
+        "  on the property now (type + material + age + condition). Do NOT put the proposed",
+        "  job scope there — that goes in `job_scope_summary` or stays out.",
+        "- If there's no clearly-stated value for a field, leave it out. Omit the whole",
+        "  `custom_fields` object if nothing is clearly extractable.",
         "",
         "- If a fact is ambiguous or not clearly stated, DO NOT extract it. Guessing is worse",
         "  than leaving a field empty.",
-        "- If there's nothing to extract, omit the `extracted` object entirely.",
+        "- If there's nothing to extract at all, omit the `extracted` object entirely.",
         "",
         "Always call the `write_lead_summary` tool with your result.",
       ].join("\n"),
@@ -284,8 +328,9 @@ export async function regenerateAiSummary({
                     type: "array",
                     items: { type: "string" },
                     description:
-                      "Short lowercase qualifying tags, e.g. ['credit-700', 'south-facing']. Additive — existing tags are preserved server-side.",
+                      "Short lowercase qualifying tags, e.g. ['credit-700', 'south-facing']. Additive — existing tags are preserved server-side. Do NOT use tags for anything that fits a catalog custom field below.",
                   },
+                  custom_fields: customFieldsToolSchema(),
                 },
               },
             },
@@ -365,7 +410,7 @@ export async function applyExtractedFields({
 
   const { data: lead, error } = await supabase
     .from("leads")
-    .select("service_needed, estimated_value_cents, tags")
+    .select("service_needed, estimated_value_cents, tags, custom_fields")
     .eq("id", leadId)
     .eq("business_id", businessId)
     .single();
@@ -425,6 +470,27 @@ export async function applyExtractedFields({
     }
   }
 
+  // Catalog-driven custom fields — fill-empty-only, per-field type/enum
+  // validation. The validator returns only the keys that passed, so this
+  // is safe to merge into the existing blob.
+  const currentCustom: LeadCustomFields | null =
+    lead.custom_fields && typeof lead.custom_fields === "object"
+      ? (lead.custom_fields as LeadCustomFields)
+      : null;
+  const { patch: customPatch, filledLabels } = validateAndPatchCustomFields(
+    currentCustom,
+    extracted.custom_fields,
+  );
+  if (filledLabels.length > 0) {
+    const merged: LeadCustomFields = { ...(currentCustom ?? {}), ...customPatch };
+    updates.custom_fields = merged;
+    patch.custom_fields = merged;
+    // Surface the human-readable labels in the filled list so the activity
+    // log reads as "AI filled: Homeowner status, Project urgency" instead of
+    // "AI filled: homeowner_status, project_urgency".
+    for (const label of filledLabels) filled.push(label);
+  }
+
   if (Object.keys(updates).length === 0) return null;
 
   const { error: updateErr } = await supabase
@@ -441,16 +507,18 @@ export async function applyExtractedFields({
 
 /**
  * Human-readable summary of which fields the AI filled, for the activity_log
- * entry that gets inserted alongside the lead update. "AI filled: service,
- * value" reads clean in the What Happened timeline.
+ * entry that gets inserted alongside the lead update. Mixes hardcoded core
+ * keys ("service" / "value" / "tags") and pretty catalog labels
+ * ("Homeowner status", "Project urgency") — the apply function pushes both
+ * onto the same list in the order they were filled.
  */
 export function formatFilledKeys(keys: string[]): string {
   if (keys.length === 0) return "";
-  const labels: Record<string, string> = {
+  const coreLabels: Record<string, string> = {
     service: "service",
     value: "value",
     tags: "tags",
   };
-  const pretty = keys.map((k) => labels[k] ?? k);
+  const pretty = keys.map((k) => coreLabels[k] ?? k);
   return `AI filled: ${pretty.join(", ")}`;
 }

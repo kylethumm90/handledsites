@@ -181,6 +181,10 @@ export type Lead = {
   sentiment_score: number | null;
   job_value_cents: number | null;
   referred_by_lead_id: string | null;
+  // Universal AI-extracted custom fields. Schema lives in lib/lead-fields.ts
+  // (LEAD_FIELD_CATALOG). Keys are stable snake_case and the extractor is
+  // fill-empty-only — contractor-entered values are never overwritten.
+  custom_fields: Record<string, string | number | boolean> | null;
 };
 
 export type ContactImport = {
