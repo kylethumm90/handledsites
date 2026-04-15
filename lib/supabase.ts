@@ -155,6 +155,21 @@ export type Lead = {
   employee_id: string | null;
   appointment_at: string | null;
   created_at: string;
+  raw_import_data: Record<string, string> | null;
+  ai_summary: string | null;
+  import_batch_id: string | null;
+};
+
+export type ContactImport = {
+  id: string;
+  business_id: string;
+  filename: string;
+  total_rows: number;
+  imported_rows: number;
+  status: "pending" | "processing" | "complete" | "failed";
+  column_mappings: Record<string, string | null>;
+  ai_context_fields: string[];
+  created_at: string;
 };
 
 export type ActivityLogEntry = {
