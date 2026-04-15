@@ -25,7 +25,7 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
-import type { ActivityLogEntry, Lead } from "@/lib/supabase";
+import type { ActivityLogEntry, Lead, LeadStatus } from "@/lib/supabase";
 import { colors, fonts, stageColors, type StageKey } from "@/lib/design-system";
 import { pipelineStageFor, postSaleStageFor } from "@/lib/pipeline-v2";
 
@@ -42,8 +42,36 @@ type Props = {
    * presentation-only; the caller fetches these and passes them in.
    */
   activities?: ActivityLogEntry[];
+  /**
+   * Optional — called after a successful status advance so the parent can
+   * refresh its data (e.g. router.refresh()). The modal already updates its
+   * own local state so the top bar and footer reflect the change immediately.
+   */
+  onUpdate?: () => void;
   onClose: () => void;
 };
+
+// Pipeline-only: status → next status (post-sale advancement is driven by
+// customer-side events, not a manual flip, so it intentionally stops here).
+const NEXT_STATUS: Record<LeadStatus, LeadStatus | null> = {
+  lead: "contacted",
+  contacted: "booked",
+  booked: "customer",
+  customer: null,
+};
+
+const NEXT_ADVANCE_LABEL: Record<LeadStatus, string> = {
+  lead: "MARK CONTACTED",
+  contacted: "MARK APPT SET",
+  booked: "MARK JOB DONE",
+  customer: "",
+};
+
+const PIPELINE_ORDER: StageKey[] = ["new", "contacted", "appt_set", "job_done"];
+
+function isPipelineStage(stage: StageKey): boolean {
+  return PIPELINE_ORDER.includes(stage);
+}
 
 const STAGE_LABELS: Record<StageKey, string> = {
   new: "NEW",
@@ -198,12 +226,34 @@ export default function ContactDetailModal({
   lead,
   stage,
   activities,
+  onUpdate,
   onClose,
 }: Props) {
-  const resolvedStage = useMemo<StageKey>(
-    () => stage ?? deriveStage(lead),
-    [stage, lead],
-  );
+  // Local status that we can optimistically advance without waiting on a
+  // parent re-render. Initialized from the incoming lead, and reset if the
+  // caller opens the modal on a different lead.
+  const [currentStatus, setCurrentStatus] = useState<LeadStatus>(lead.status);
+  const [advancing, setAdvancing] = useState(false);
+  useEffect(() => {
+    setCurrentStatus(lead.status);
+  }, [lead.id, lead.status]);
+
+  const resolvedStage = useMemo<StageKey>(() => {
+    // Post-sale stages (recovery/feedback/reviewed/referrer) stick when the
+    // caller explicitly passed one and we're still a customer — post-sale
+    // advancement isn't status-driven, so we shouldn't flip back to "job_done".
+    if (stage && !isPipelineStage(stage) && currentStatus === "customer") {
+      return stage;
+    }
+    // Otherwise derive the pipeline stage live from the current status so
+    // the top bar / footer reflect advancements the moment they happen.
+    return (
+      pipelineStageFor({ ...lead, status: currentStatus }) ??
+      stage ??
+      deriveStage(lead)
+    );
+  }, [stage, lead, currentStatus]);
+
   const stageColor = stageColors[resolvedStage].fg;
   const stageLabel = STAGE_LABELS[resolvedStage];
   const initials = useMemo(() => getInitials(lead.name), [lead.name]);
@@ -215,6 +265,27 @@ export default function ContactDetailModal({
   const aiContext = fallbackAiContext(lead, resolvedStage);
   const primaryCtaLabel = `CALL ${firstNameUpper(lead.name)}`;
   const secondaryActionLabel = secondaryActionFor(resolvedStage);
+
+  const handleAdvance = async () => {
+    const next = NEXT_STATUS[currentStatus];
+    if (!next || advancing) return;
+    setAdvancing(true);
+    try {
+      const res = await fetch(`/api/contractor/customers/${lead.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: next }),
+      });
+      if (res.ok) {
+        setCurrentStatus(next);
+        onUpdate?.();
+      }
+    } catch {
+      // Swallow — the button simply unblocks and the user can retry.
+    } finally {
+      setAdvancing(false);
+    }
+  };
 
   // Close on Escape + lock body scroll while the modal is open.
   useEffect(() => {
@@ -271,10 +342,8 @@ export default function ContactDetailModal({
             width: "100%",
             maxWidth: 640,
             maxHeight: "85vh",
-            overflowY: "auto",
-            // Momentum scroll on iOS Safari
-            WebkitOverflowScrolling: "touch",
-            overscrollBehavior: "contain",
+            display: "flex",
+            flexDirection: "column",
             backgroundColor: colors.white,
             border: `1px solid ${colors.border}`,
             borderRadius: 0,
@@ -345,6 +414,18 @@ export default function ContactDetailModal({
               handled.
             </span>
           </div>
+
+          {/* Scrollable body — everything between the fixed top bar and
+              the fixed footer. flex:1 lets the footer pin to the bottom. */}
+          <div
+            style={{
+              flex: 1,
+              minHeight: 0,
+              overflowY: "auto",
+              WebkitOverflowScrolling: "touch",
+              overscrollBehavior: "contain",
+            }}
+          >
 
           {/* Name section — avatar + name + job type / contract value */}
           <div
@@ -522,9 +603,191 @@ export default function ContactDetailModal({
 
           {/* What Happened — quiet activity timeline */}
           <WhatHappenedTimeline activities={activities ?? []} />
+
+          </div>
+          {/* /scrollable body */}
+
+          {/* Pipeline progress footer — sticks to the bottom of the panel */}
+          <PipelineFooter
+            currentStatus={currentStatus}
+            resolvedStage={resolvedStage}
+            advancing={advancing}
+            onAdvance={handleAdvance}
+          />
         </div>
       </div>
     </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Pipeline footer — 4-stage progress strip + advance button
+// ---------------------------------------------------------------------------
+
+function PipelineFooter({
+  currentStatus,
+  resolvedStage,
+  advancing,
+  onAdvance,
+}: {
+  currentStatus: LeadStatus;
+  resolvedStage: StageKey;
+  advancing: boolean;
+  onAdvance: () => void;
+}) {
+  const inPipeline = isPipelineStage(resolvedStage);
+  const currentIndex = inPipeline
+    ? PIPELINE_ORDER.indexOf(resolvedStage)
+    : PIPELINE_ORDER.length; // post-sale = "past the end"
+  const nextLabel = NEXT_ADVANCE_LABEL[currentStatus];
+  const nextStatus = NEXT_STATUS[currentStatus];
+  const showAdvance = inPipeline && nextStatus !== null;
+
+  return (
+    <div
+      style={{
+        flexShrink: 0,
+        padding: "14px 20px 16px",
+        backgroundColor: colors.bg,
+        borderTop: `1px solid ${colors.border}`,
+      }}
+    >
+      {/* Section label */}
+      <div
+        style={{
+          fontFamily: fonts.body,
+          fontSize: 9,
+          fontWeight: 600,
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
+          color: colors.mutedLight,
+          marginBottom: 10,
+        }}
+      >
+        Pipeline Stage
+      </div>
+
+      {/* 4-dot progress strip */}
+      <div
+        style={{
+          position: "relative",
+          display: "grid",
+          gridTemplateColumns: "repeat(4, 1fr)",
+          alignItems: "start",
+          marginBottom: showAdvance ? 14 : 4,
+        }}
+      >
+        {/* Connector track behind the dots */}
+        <div
+          aria-hidden
+          style={{
+            position: "absolute",
+            top: 5,
+            left: `calc(${100 / 8}% + 6px)`,
+            right: `calc(${100 / 8}% + 6px)`,
+            height: 1.5,
+            backgroundColor: colors.borderLight,
+          }}
+        />
+
+        {PIPELINE_ORDER.map((key, i) => {
+          const past = i < currentIndex;
+          const active = i === currentIndex;
+          const color = stageColors[key].fg;
+          return (
+            <div
+              key={key}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 6,
+                position: "relative",
+                zIndex: 1,
+              }}
+            >
+              <span
+                aria-hidden
+                style={{
+                  width: 12,
+                  height: 12,
+                  borderRadius: "50%",
+                  backgroundColor: active
+                    ? color
+                    : past
+                      ? colors.mutedLight
+                      : colors.white,
+                  border: `1.5px solid ${
+                    active ? color : past ? colors.mutedLight : colors.border
+                  }`,
+                }}
+              />
+              <span
+                style={{
+                  fontFamily: fonts.mono,
+                  fontSize: 9,
+                  fontWeight: 600,
+                  letterSpacing: "0.06em",
+                  textTransform: "uppercase",
+                  color: active
+                    ? color
+                    : past
+                      ? colors.muted
+                      : colors.mutedLight,
+                  textAlign: "center",
+                  lineHeight: 1.1,
+                }}
+              >
+                {STAGE_LABELS[key]}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Advance button — pipeline only */}
+      {showAdvance ? (
+        <button
+          type="button"
+          onClick={onAdvance}
+          disabled={advancing}
+          style={{
+            width: "100%",
+            minHeight: 44,
+            padding: "12px 16px",
+            backgroundColor: advancing ? colors.mutedLight : colors.navy,
+            color: colors.white,
+            border: "none",
+            borderRadius: 0,
+            cursor: advancing ? "default" : "pointer",
+            fontFamily: fonts.body,
+            fontWeight: 700,
+            fontSize: 13,
+            letterSpacing: "0.04em",
+            textTransform: "uppercase",
+          }}
+        >
+          {advancing ? "SAVING…" : `${nextLabel} →`}
+        </button>
+      ) : null}
+
+      {/* Post-sale / terminal state — quiet informational line */}
+      {!showAdvance ? (
+        <div
+          style={{
+            fontFamily: fonts.body,
+            fontSize: 12,
+            color: colors.muted,
+            lineHeight: 1.4,
+            textAlign: "center",
+          }}
+        >
+          {inPipeline
+            ? "Customer. Advancement is driven by post-sale activity."
+            : "Post-sale — advancement happens as the customer responds."}
+        </div>
+      ) : null}
+    </div>
   );
 }
 

@@ -16,6 +16,7 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { ActivityLogEntry, Lead } from "@/lib/supabase";
 import { useCurrentPlan } from "@/lib/plans";
 import { colors, fonts, type StageKey } from "@/lib/design-system";
@@ -63,6 +64,7 @@ export default function PipelineV2({
   businessName,
   avaEnabled,
 }: Props) {
+  const router = useRouter();
   const plan = useCurrentPlan();
   const [view, setView] = useState<View>("pipeline");
   const [selectedStage, setSelectedStage] = useState<StageKey | null>(null);
@@ -235,6 +237,18 @@ export default function PipelineV2({
               : stageFromView("post_sale", selectedLead)
           }
           activities={activitiesByLead[selectedLead.id]}
+          onUpdate={() => {
+            // Drop the cached activity list for this lead so the next open
+            // re-fetches (the status change just wrote a new entry).
+            setActivitiesByLead((prev) => {
+              const next = { ...prev };
+              delete next[selectedLead.id];
+              return next;
+            });
+            // Re-query the server component so leadsById picks up the
+            // new status and downstream counts/stages stay consistent.
+            router.refresh();
+          }}
           onClose={() => setSelectedLeadId(null)}
         />
       ) : null}
