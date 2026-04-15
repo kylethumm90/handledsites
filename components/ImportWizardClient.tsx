@@ -87,7 +87,7 @@ type ParseResult = {
 // Constants
 // ──────────────────────────────────────────────────────────────
 const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
-const MAX_ROWS = 2500;
+const MAX_ROWS = 100;
 
 // Auto-suggest patterns for column → UI field matching.
 const SUGGEST_PATTERNS: { field: UIField; patterns: RegExp[] }[] = [
@@ -315,7 +315,18 @@ function DropZone({
         Drop your CSV here
       </div>
       <div style={{ fontSize: 13, color: MUTED }}>
-        or click to choose a file. Up to 10 MB / 2,500 rows.
+        or click to choose a file. Up to 10 MB / 100 rows.
+      </div>
+      <div
+        style={{
+          fontSize: 12,
+          color: MUTED,
+          marginTop: 10,
+          fontStyle: "italic",
+        }}
+      >
+        Temporary limit: imports are capped at 100 contacts per file while
+        we tune the AI summary pipeline. We&apos;ll raise this soon.
       </div>
     </div>
   );

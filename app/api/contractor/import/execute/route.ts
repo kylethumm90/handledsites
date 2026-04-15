@@ -26,11 +26,9 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 const INSERT_CHUNK = 500;
-// Hard cap to bound cost exposure. The AI summary pass is now handled
-// entirely by the pipeline's client-side lazy backfill (one Claude call
-// per lead the contractor actually views), so a 2,500-row ceiling keeps
-// worst-case per-import spend predictable without needing a bulk run.
-const MAX_ROWS = 2500;
+// Temporary hard cap while we tune cost exposure and summary throughput.
+// Lifting this later will require revisiting the lazy backfill pacing.
+const MAX_ROWS = 100;
 
 type ExecuteBody = {
   filename?: unknown;
