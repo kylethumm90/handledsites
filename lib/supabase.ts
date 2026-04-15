@@ -97,6 +97,9 @@ export type Business = {
   referral_enabled: boolean;
   referral_reward_amount_cents: number | null;
   referral_reward_type: "cash" | "credit" | "gift_card" | null;
+  // Per-business opt-in to the Ava (AI) responder. Gated by the `ava` plan
+  // feature flag; both must be true for the Pipeline UI to show "Ava is live".
+  ava_enabled: boolean;
   created_at: string;
 };
 
@@ -137,6 +140,8 @@ export type SiteFull = Site & {
   logo_url: string | null;
 };
 
+export type LeadStatus = "lead" | "contacted" | "booked" | "customer";
+
 export type Lead = {
   id: string;
   business_id: string;
@@ -147,16 +152,21 @@ export type Lead = {
   email: string | null;
   answers: Record<string, string> | null;
   service_needed: string | null;
-  status: "lead" | "booked" | "customer";
+  status: LeadStatus;
   tags: string[];
   notes: string | null;
   is_demo: boolean;
   referral_code: string | null;
   employee_id: string | null;
   appointment_at: string | null;
+  estimated_value_cents: number | null;
+  first_response_at: string | null;
+  speed_to_lead_seconds: number | null;
+  last_activity_at: string | null;
+  ai_summary: string | null;
+  ai_summary_generated_at: string | null;
   created_at: string;
   raw_import_data: Record<string, string> | null;
-  ai_summary: string | null;
   import_batch_id: string | null;
 };
 

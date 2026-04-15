@@ -8,7 +8,7 @@ type SeedLead = {
   phone: string;
   email: string;
   source: string;
-  status: "lead" | "booked" | "customer";
+  status: "lead" | "contacted" | "booked" | "customer";
   service_needed: string | null;
   notes: string | null;
   tags: string[];
