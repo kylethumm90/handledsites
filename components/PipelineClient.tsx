@@ -572,55 +572,66 @@ export default function PipelineClient({ leads: initialLeads, trade, avaEnabled 
 
   // Lazy AI summary backfill via Haiku 4.5. Any lead without an
   // ai_summary gets one generated the first time it appears on
-  // screen. Requests run sequentially so a legacy backlog can't spike
-  // the API, and an `attempted` ref tracks ids we've already queued
-  // so re-renders (1Hz tick, new leads, etc.) don't re-enqueue them.
-  // As each summary lands we patch the lead in local state so the
-  // card updates in place without a refetch.
+  // screen. A single self-driving loop processes one lead at a time
+  // and re-reads the latest leads via a ref each iteration, so it
+  // picks up new arrivals without ever cancelling itself. The
+  // `running` flag prevents duplicate loops; `attempted` is only
+  // marked AFTER a successful response so that failures (network,
+  // 5xx, empty body) get retried on the next page load.
   const attempted = useRef<Set<string>>(new Set());
+  const running = useRef(false);
+  const leadsRef = useRef(leads);
   useEffect(() => {
-    let cancelled = false;
+    leadsRef.current = leads;
+  }, [leads]);
+  useEffect(() => {
+    if (running.current) return;
+    running.current = true;
 
-    async function backfill() {
-      const queue = leads
-        .filter(
-          (l) => !l.ai_summary && !l.is_demo && !attempted.current.has(l.id),
-        )
-        .map((l) => l.id);
-      for (const id of queue) {
-        attempted.current.add(id);
-      }
-      for (const id of queue) {
-        if (cancelled) return;
-        try {
-          const res = await fetch(
-            `/api/contractor/customers/${id}/ai-summary`,
-            { method: "POST" },
+    (async () => {
+      try {
+        while (true) {
+          const target = leadsRef.current.find(
+            (l) =>
+              !l.ai_summary && !l.is_demo && !attempted.current.has(l.id),
           );
-          if (!res.ok) continue;
-          const data = (await res.json()) as { ai_summary?: string };
-          if (cancelled || !data.ai_summary) continue;
-          setLeads((prev) =>
-            prev.map((l) =>
-              l.id === id
-                ? {
-                    ...l,
-                    ai_summary: data.ai_summary!,
-                    ai_summary_generated_at: new Date().toISOString(),
-                  }
-                : l,
-            ),
-          );
-        } catch {
-          // Silent: lead card falls back to raw notes.
+          if (!target) return;
+          const id = target.id;
+          try {
+            const res = await fetch(
+              `/api/contractor/customers/${id}/ai-summary`,
+              { method: "POST" },
+            );
+            if (!res.ok) {
+              // Mark attempted so we don't hammer a permanently-broken
+              // lead in a tight loop. Next page load resets the set
+              // and gives it another shot.
+              attempted.current.add(id);
+              continue;
+            }
+            const data = (await res.json()) as { ai_summary?: string };
+            attempted.current.add(id);
+            if (!data.ai_summary) continue;
+            setLeads((prev) =>
+              prev.map((l) =>
+                l.id === id
+                  ? {
+                      ...l,
+                      ai_summary: data.ai_summary!,
+                      ai_summary_generated_at: new Date().toISOString(),
+                    }
+                  : l,
+              ),
+            );
+          } catch {
+            attempted.current.add(id);
+            // Silent: lead card falls back to raw notes.
+          }
         }
+      } finally {
+        running.current = false;
       }
-    }
-
-    void backfill();
-    return () => {
-      cancelled = true;
-    };
+    })();
   }, [leads]);
 
   const nonDemoLeads = useMemo(
