@@ -62,6 +62,50 @@ function formatContractValue(cents: number | null | undefined): string | null {
   });
 }
 
+function formatPhone(raw: string | null | undefined): string {
+  if (!raw) return "";
+  const digits = raw.replace(/\D/g, "");
+  if (digits.length === 10) {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+  }
+  if (digits.length === 11 && digits.startsWith("1")) {
+    return `(${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
+  }
+  return raw;
+}
+
+function humanizeSource(source: string | null | undefined): string {
+  if (!source) return "Direct";
+  const clean = source.replace(/[_-]+/g, " ").trim();
+  return clean
+    .split(" ")
+    .map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w))
+    .join(" ");
+}
+
+function formatDateLong(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function formatDateTimeLong(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 function firstNameUpper(name: string): string {
   const first = (name || "").trim().split(/\s+/)[0];
   return first ? first.toUpperCase() : "CUSTOMER";
@@ -442,8 +486,160 @@ export default function ContactDetailModal({ lead, stage, onClose }: Props) {
               {secondaryActionLabel}
             </button>
           </div>
+
+          {/* Contact info card — quiet rows of metadata */}
+          <ContactInfoCard lead={lead} />
         </div>
       </div>
     </>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Contact info card
+// ---------------------------------------------------------------------------
+
+function ContactInfoCard({ lead }: { lead: Lead }) {
+  const phone = formatPhone(lead.phone);
+  const email = lead.email?.trim() || "";
+  const sourceLabel = humanizeSource(lead.source);
+  const createdLabel = formatDateLong(lead.created_at);
+  const appointmentLabel = formatDateTimeLong(lead.appointment_at);
+  const isReferral =
+    !!lead.referred_by_lead_id ||
+    /referr|refer_/i.test(lead.source || "");
+
+  // Review status line — pick the strongest signal we have.
+  let reviewLine: string | null = null;
+  if (lead.review_submitted_at) {
+    reviewLine = `Review submitted · ${formatDateLong(lead.review_submitted_at)}`;
+  } else if (lead.feedback_submitted_at) {
+    const sentimentBit =
+      lead.sentiment_score != null
+        ? ` · sentiment ${(lead.sentiment_score / 20).toFixed(1)}/5`
+        : "";
+    reviewLine = `Feedback submitted${sentimentBit}`;
+  } else if (lead.sentiment_score != null && lead.sentiment_score < 60) {
+    reviewLine = `Sentiment flagged · ${(lead.sentiment_score / 20).toFixed(1)}/5`;
+  }
+
+  const hasAnything =
+    phone || email || sourceLabel || createdLabel || appointmentLabel || reviewLine;
+  if (!hasAnything) return null;
+
+  return (
+    <div style={{ padding: "4px 20px 20px" }}>
+      <div
+        style={{
+          backgroundColor: colors.white,
+          border: `1px solid ${colors.borderLight}`,
+          borderRadius: 0,
+          padding: "4px 14px",
+        }}
+      >
+        {phone ? (
+          <InfoRow
+            icon="☏"
+            label={phone}
+            pill="CALL"
+            mono
+          />
+        ) : null}
+        {email ? (
+          <InfoRow
+            icon="✉"
+            label={email}
+            pill="EMAIL"
+          />
+        ) : null}
+        {sourceLabel || createdLabel ? (
+          <InfoRow
+            icon="◎"
+            label={[sourceLabel, createdLabel].filter(Boolean).join(" · ")}
+          />
+        ) : null}
+        {isReferral ? (
+          <InfoRow icon="↗" label="Referred by a previous customer" />
+        ) : null}
+        {appointmentLabel ? (
+          <InfoRow icon="◷" label={`Appointment · ${appointmentLabel}`} />
+        ) : null}
+        {reviewLine ? <InfoRow icon="★" label={reviewLine} /> : null}
+      </div>
+    </div>
+  );
+}
+
+function InfoRow({
+  icon,
+  label,
+  pill,
+  mono,
+}: {
+  icon: string;
+  label: string;
+  pill?: string;
+  mono?: boolean;
+}) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        padding: "10px 0",
+        borderBottom: `1px solid ${colors.borderLight}`,
+        fontFamily: fonts.body,
+        fontSize: 13,
+        color: colors.muted,
+        lineHeight: 1.35,
+      }}
+    >
+      <span
+        aria-hidden
+        style={{
+          width: 16,
+          flexShrink: 0,
+          color: colors.mutedLight,
+          fontSize: 13,
+          textAlign: "center",
+        }}
+      >
+        {icon}
+      </span>
+      <span
+        style={{
+          flex: 1,
+          minWidth: 0,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+          fontFamily: mono ? fonts.mono : fonts.body,
+          fontVariantNumeric: mono ? "tabular-nums" : "normal",
+          color: colors.muted,
+        }}
+      >
+        {label}
+      </span>
+      {pill ? (
+        <span
+          style={{
+            flexShrink: 0,
+            padding: "3px 7px",
+            backgroundColor: colors.bg,
+            color: colors.mutedLight,
+            fontFamily: fonts.mono,
+            fontSize: 9,
+            fontWeight: 600,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            border: `1px solid ${colors.borderLight}`,
+          }}
+        >
+          {pill}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
