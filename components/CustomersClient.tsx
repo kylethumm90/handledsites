@@ -295,6 +295,8 @@ export default function CustomersClient({ leads: initialLeads, trade }: Props) {
         .ct-pipe { cursor: pointer; -webkit-tap-highlight-color: transparent; border: none; font-family: inherit; }
         .ct-pipe:active { opacity: 0.7; }
         .ct-search:focus { outline: none; border-color: #ccc; }
+        .ct-import { transition: background 0.15s ease, border-color 0.15s ease; }
+        .ct-import:hover { background: #F3F4F6; border-color: #D1D5DB; }
         @keyframes csSheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
         @keyframes csOverlayIn { from { opacity: 0; } to { opacity: 1; } }
         .cs-sheet { animation: csSheetUp 0.38s cubic-bezier(0.32, 0.72, 0, 1) both; }
@@ -308,8 +310,14 @@ export default function CustomersClient({ leads: initialLeads, trade }: Props) {
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <Link
               href="/contractor/import"
-              style={{ background: "#fff", color: "#1F2937", border: "1px solid #E5E7EB", fontSize: 14, fontWeight: 600, padding: "9px 16px", borderRadius: 8, cursor: "pointer", textDecoration: "none", display: "inline-flex", alignItems: "center" }}
+              className="ct-import"
+              style={{ background: "#fff", color: "#1F2937", border: "1px solid #E5E7EB", fontSize: 14, fontWeight: 600, padding: "9px 14px", borderRadius: 8, cursor: "pointer", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6 }}
             >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="17 8 12 3 7 8" />
+                <line x1="12" y1="3" x2="12" y2="15" />
+              </svg>
               Import CSV
             </Link>
             <button

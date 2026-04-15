@@ -340,6 +340,7 @@ function ColumnCard({
   const fillColor = pct > 0.9 ? GREEN : pct > 0.5 ? AMBER : MUTED_LIGHT;
   return (
     <div
+      className="iw-column-card"
       style={{
         border: `1px solid ${HAIRLINE}`,
         borderRadius: 10,
@@ -397,6 +398,7 @@ function ColumnCard({
       )}
 
       <select
+        className="iw-select"
         value={mapped ?? ""}
         onChange={(e) => onChange(e.target.value === "" ? null : (e.target.value as UIField))}
         style={{
@@ -882,8 +884,28 @@ export default function ImportWizardClient() {
             <>
               <DropZone onFile={handleFile} disabled={uploading} />
               {uploading && (
-                <div style={{ marginTop: 14, fontSize: 13, color: MUTED, textAlign: "center" }}>
-                  Reading file…
+                <div
+                  style={{
+                    marginTop: 14,
+                    fontSize: 13,
+                    color: MUTED,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                  }}
+                >
+                  <span
+                    style={{
+                      width: 12,
+                      height: 12,
+                      borderRadius: 6,
+                      border: `2px solid ${MUTED_LIGHT}`,
+                      borderTopColor: "transparent",
+                      animation: "iw-spin 0.8s linear infinite",
+                    }}
+                  />
+                  Parsing CSV…
                 </div>
               )}
               {error && (
@@ -955,6 +977,7 @@ export default function ImportWizardClient() {
                   </div>
                 </div>
                 <button
+                  className="iw-btn-secondary"
                   onClick={resetFile}
                   style={{
                     background: "transparent",
@@ -1022,6 +1045,7 @@ export default function ImportWizardClient() {
               {/* Footer buttons */}
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
                 <button
+                  className="iw-btn-primary"
                   disabled={!canAdvance}
                   onClick={() => setStep(2)}
                   style={{
@@ -1093,6 +1117,7 @@ export default function ImportWizardClient() {
                       Recommended
                     </div>
                     <button
+                      className="iw-link-btn"
                       onClick={selectAllRecommended}
                       style={{
                         background: "transparent",
@@ -1174,6 +1199,7 @@ export default function ImportWizardClient() {
             }}
           >
             <button
+              className="iw-btn-secondary"
               onClick={() => setStep(1)}
               style={{
                 background: "transparent",
@@ -1190,6 +1216,7 @@ export default function ImportWizardClient() {
               Back
             </button>
             <button
+              className="iw-btn-primary"
               onClick={() => setStep(3)}
               style={{
                 background: INK,
@@ -1389,6 +1416,7 @@ export default function ImportWizardClient() {
             }}
           >
             <button
+              className="iw-btn-secondary"
               disabled={importing}
               onClick={() => setStep(2)}
               style={{
@@ -1406,6 +1434,7 @@ export default function ImportWizardClient() {
               Back
             </button>
             <button
+              className="iw-btn-primary"
               disabled={importing}
               onClick={handleImport}
               style={{
@@ -1516,6 +1545,7 @@ export default function ImportWizardClient() {
           </div>
           <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
             <button
+              className="iw-btn-secondary"
               onClick={resetFile}
               style={{
                 background: "transparent",
@@ -1532,6 +1562,7 @@ export default function ImportWizardClient() {
               Import another
             </button>
             <a
+              className="iw-btn-primary"
               href="/contractor/customers"
               style={{
                 background: INK,
@@ -1560,6 +1591,30 @@ export default function ImportWizardClient() {
         @keyframes iw-pulse {
           0%, 100% { opacity: 0.4; transform: scale(0.9); }
           50% { opacity: 1; transform: scale(1.15); }
+        }
+        .iw-btn-primary {
+          transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.05s ease;
+        }
+        .iw-btn-primary:not(:disabled):hover {
+          background: #111827;
+          box-shadow: 0 2px 8px rgba(17,24,39,0.12);
+        }
+        .iw-btn-primary:not(:disabled):active { transform: translateY(1px); }
+        .iw-btn-secondary {
+          transition: background 0.15s ease, border-color 0.15s ease;
+        }
+        .iw-btn-secondary:not(:disabled):hover {
+          background: ${HAIRLINE_LIGHT};
+          border-color: #D1D5DB;
+        }
+        .iw-link-btn { transition: opacity 0.15s ease; }
+        .iw-link-btn:hover { opacity: 0.7; }
+        .iw-column-card { transition: border-color 0.15s ease, box-shadow 0.15s ease; }
+        .iw-column-card:hover { border-color: #D1D5DB; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+        .iw-select:focus {
+          outline: none;
+          border-color: ${INK};
+          box-shadow: 0 0 0 3px rgba(31,41,55,0.08);
         }
       `}</style>
     </div>
