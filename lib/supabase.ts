@@ -166,6 +166,7 @@ export type Lead = {
   ai_summary: string | null;
   ai_summary_generated_at: string | null;
   created_at: string;
+  closed_at: string | null;
   raw_import_data: Record<string, string> | null;
   import_batch_id: string | null;
 };
@@ -180,6 +181,18 @@ export type ContactImport = {
   column_mappings: Record<string, string | null>;
   ai_context_fields: string[];
   created_at: string;
+};
+
+export type ReferralReward = {
+  id: string;
+  business_id: string;
+  referrer_lead_id: string;
+  referred_lead_id: string;
+  amount_cents: number;
+  reward_type: "cash" | "credit" | "gift_card";
+  status: "pending" | "sent" | "cancelled";
+  created_at: string;
+  sent_at: string | null;
 };
 
 export type ActivityLogEntry = {
