@@ -26,7 +26,7 @@ export async function POST(
 
   const supabase = getSupabaseAdmin();
 
-  const summary = await regenerateAiSummary({
+  const { summary } = await regenerateAiSummary({
     supabase,
     leadId: params.id,
     businessId,
@@ -38,6 +38,10 @@ export async function POST(
       { status: 502 },
     );
   }
+
+  // Note: this lazy-refresh path intentionally does NOT apply extracted
+  // fields. Extraction is tied to events (new note, status change) so the
+  // contractor isn't surprised by silent field changes on a bare refresh.
 
   return NextResponse.json({ id: params.id, ai_summary: summary });
 }
