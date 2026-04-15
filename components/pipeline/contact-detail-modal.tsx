@@ -48,6 +48,13 @@ type Props = {
    * own local state so the top bar and footer reflect the change immediately.
    */
   onUpdate?: () => void;
+  /**
+   * Optional — called with the newly created activity_log row after the user
+   * adds a note from the What Happened panel. The parent is expected to merge
+   * it into whatever activity cache it's keeping so the modal stays in sync
+   * without a full refresh.
+   */
+  onNoteAdded?: (entry: ActivityLogEntry) => void;
   onClose: () => void;
 };
 
@@ -227,6 +234,7 @@ export default function ContactDetailModal({
   stage,
   activities,
   onUpdate,
+  onNoteAdded,
   onClose,
 }: Props) {
   // Local status that we can optimistically advance without waiting on a
@@ -639,7 +647,11 @@ export default function ContactDetailModal({
           <AiDetailsSection lead={lead} />
 
           {/* What Happened — quiet activity timeline */}
-          <WhatHappenedTimeline activities={activities ?? []} />
+          <WhatHappenedTimeline
+            leadId={lead.id}
+            activities={activities ?? []}
+            onNoteAdded={onNoteAdded}
+          />
 
           </div>
           {/* /scrollable body */}
@@ -1187,123 +1199,360 @@ function formatTimelineStamp(iso: string | null | undefined): string {
   });
 }
 
+/** User-authored note from the Add Note composer (vs Ava/Stella/system). */
+function isUserNote(entry: ActivityLogEntry): boolean {
+  return entry.type === "user_note";
+}
+
 function WhatHappenedTimeline({
+  leadId,
   activities,
+  onNoteAdded,
 }: {
+  leadId: string;
   activities: ActivityLogEntry[];
+  onNoteAdded?: (entry: ActivityLogEntry) => void;
 }) {
-  if (activities.length === 0) return null;
+  const [composing, setComposing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // API returns oldest → newest for the chronological "story" read. The modal
   // inverts that so the contractor lands on the most recent activity first —
   // they care about "what just happened" more than "how this lead started".
-  const ordered = [...activities].reverse();
+  const ordered = useMemo(() => [...activities].reverse(), [activities]);
+
+  const handleSave = async () => {
+    const summary = draft.trim();
+    if (!summary || saving) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const res = await fetch(`/api/contractor/customers/${leadId}/notes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ summary }),
+      });
+      if (!res.ok) {
+        let msg = `Couldn't save note (HTTP ${res.status})`;
+        try {
+          const data = (await res.json()) as { error?: string };
+          if (data.error) msg = data.error;
+        } catch {
+          /* not JSON */
+        }
+        setSaveError(msg);
+        return;
+      }
+      const entry = (await res.json()) as ActivityLogEntry;
+      onNoteAdded?.(entry);
+      setDraft("");
+      setComposing(false);
+    } catch (err) {
+      console.error("add note threw:", err);
+      setSaveError("Network error — check your connection and try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setDraft("");
+    setSaveError(null);
+    setComposing(false);
+  };
 
   return (
     <div style={{ padding: "0 20px 24px" }}>
+      {/* Section header with an inline "+ Add Note" action on the right. */}
       <div
         style={{
-          fontFamily: fonts.body,
-          fontSize: 9,
-          fontWeight: 600,
-          letterSpacing: "0.08em",
-          textTransform: "uppercase",
-          color: colors.mutedLight,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
           marginBottom: 12,
         }}
       >
-        What Happened
+        <div
+          style={{
+            fontFamily: fonts.body,
+            fontSize: 9,
+            fontWeight: 600,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            color: colors.mutedLight,
+          }}
+        >
+          What Happened
+        </div>
+        {!composing ? (
+          <button
+            type="button"
+            onClick={() => setComposing(true)}
+            style={{
+              minHeight: 28,
+              padding: "4px 10px",
+              backgroundColor: "transparent",
+              color: colors.navy,
+              border: `1px solid ${colors.border}`,
+              borderRadius: 0,
+              cursor: "pointer",
+              fontFamily: fonts.body,
+              fontSize: 10,
+              fontWeight: 600,
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+            }}
+          >
+            + Add Note
+          </button>
+        ) : null}
       </div>
 
-      <div style={{ position: "relative" }}>
-        {/* Vertical connector line running through the dots.
-            Line center at x=5.75 aligns with dot center at x=6. */}
+      {/* Inline composer — appears above the timeline when "Add Note" is
+          tapped. Submitting calls the /notes endpoint which inserts a
+          user_note activity_log row; we then bubble the new entry up so
+          the parent can merge it into its activity cache without a full
+          page refresh. */}
+      {composing ? (
         <div
-          aria-hidden
           style={{
-            position: "absolute",
-            left: 5,
-            top: 6,
-            bottom: 6,
-            width: 1.5,
-            backgroundColor: colors.borderLight,
+            marginBottom: 16,
+            padding: 12,
+            backgroundColor: colors.amberBgSoft,
+            borderLeft: `3px solid ${colors.navy}`,
           }}
-        />
-
-        {ordered.map((entry, i) => {
-          const alert = isAlertEntry(entry);
-          const dotColor = entryBaseColor(entry);
-          const textColor = alert ? colors.alertMuted : colors.muted;
-          return (
+        >
+          <textarea
+            autoFocus
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+                e.preventDefault();
+                void handleSave();
+              }
+              if (e.key === "Escape") {
+                e.preventDefault();
+                handleCancel();
+              }
+            }}
+            placeholder="Add a note about this customer..."
+            rows={3}
+            style={{
+              width: "100%",
+              boxSizing: "border-box",
+              padding: "8px 10px",
+              backgroundColor: colors.white,
+              border: `1px solid ${colors.border}`,
+              borderRadius: 0,
+              fontFamily: fonts.body,
+              fontSize: 13,
+              lineHeight: 1.4,
+              color: colors.navy,
+              resize: "vertical",
+              outline: "none",
+            }}
+          />
+          {saveError ? (
             <div
-              key={entry.id || `${entry.type}-${i}`}
               style={{
-                position: "relative",
-                display: "flex",
-                alignItems: "flex-start",
-                gap: 14,
-                paddingLeft: 0,
-                paddingBottom: i === ordered.length - 1 ? 0 : 14,
+                marginTop: 6,
+                fontFamily: fonts.body,
+                fontSize: 11,
+                color: colors.alertMuted,
               }}
             >
-              {/* Dot — a white "donut" wrapper masks the connector line so
-                  the softened colored dot reads cleanly. No shadows. */}
-              <span
-                aria-hidden
+              {saveError}
+            </div>
+          ) : null}
+          <div
+            style={{
+              marginTop: 8,
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: 8,
+            }}
+          >
+            <button
+              type="button"
+              onClick={handleCancel}
+              disabled={saving}
+              style={{
+                minHeight: 32,
+                padding: "6px 12px",
+                backgroundColor: "transparent",
+                color: colors.muted,
+                border: `1px solid ${colors.border}`,
+                borderRadius: 0,
+                cursor: saving ? "default" : "pointer",
+                fontFamily: fonts.body,
+                fontSize: 11,
+                fontWeight: 600,
+                letterSpacing: "0.04em",
+                textTransform: "uppercase",
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving || !draft.trim()}
+              style={{
+                minHeight: 32,
+                padding: "6px 12px",
+                backgroundColor: colors.navy,
+                color: colors.white,
+                border: "none",
+                borderRadius: 0,
+                cursor: saving || !draft.trim() ? "default" : "pointer",
+                opacity: saving || !draft.trim() ? 0.55 : 1,
+                fontFamily: fonts.body,
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: "0.04em",
+                textTransform: "uppercase",
+              }}
+            >
+              {saving ? "Saving…" : "Save Note"}
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {ordered.length === 0 ? (
+        <div
+          style={{
+            fontFamily: fonts.body,
+            fontSize: 12,
+            color: colors.mutedLight,
+            lineHeight: 1.4,
+          }}
+        >
+          Nothing yet. Add a note to start tracking this customer.
+        </div>
+      ) : (
+        <div style={{ position: "relative" }}>
+          {/* Vertical connector line running through the dots.
+              Line center at x=5.75 aligns with dot center at x=6. */}
+          <div
+            aria-hidden
+            style={{
+              position: "absolute",
+              left: 5,
+              top: 6,
+              bottom: 6,
+              width: 1.5,
+              backgroundColor: colors.borderLight,
+            }}
+          />
+
+          {ordered.map((entry, i) => {
+            const userNote = isUserNote(entry);
+            const alert = isAlertEntry(entry);
+            const dotColor = userNote ? colors.navy : entryBaseColor(entry);
+            // User notes read at full navy strength to signal "this is YOU
+            // talking, not the system". Alerts stay in muted red. Everything
+            // else stays in the quiet gray it was before.
+            const textColor = userNote
+              ? colors.navy
+              : alert
+                ? colors.alertMuted
+                : colors.muted;
+            return (
+              <div
+                key={entry.id || `${entry.type}-${i}`}
                 style={{
                   position: "relative",
-                  zIndex: 1,
-                  width: 12,
-                  height: 12,
-                  flexShrink: 0,
-                  marginTop: 2,
-                  backgroundColor: colors.white,
-                  borderRadius: "50%",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: 14,
+                  paddingLeft: 0,
+                  paddingBottom: i === ordered.length - 1 ? 0 : 14,
                 }}
               >
+                {/* Dot — a white "donut" wrapper masks the connector line so
+                    the softened colored dot reads cleanly. No shadows.
+                    User notes render at full opacity so they pop. */}
                 <span
+                  aria-hidden
                   style={{
-                    width: 10,
-                    height: 10,
-                    backgroundColor: dotColor,
-                    // Soften: 30-40% opacity per design spec.
-                    opacity: alert ? 0.4 : 0.35,
-                    borderRadius: "50%",
-                  }}
-                />
-              </span>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div
-                  style={{
-                    fontFamily: fonts.body,
-                    fontSize: 13,
-                    lineHeight: 1.4,
-                    color: textColor,
-                    wordBreak: "break-word",
-                  }}
-                >
-                  {entry.summary}
-                </div>
-                <div
-                  style={{
+                    position: "relative",
+                    zIndex: 1,
+                    width: 12,
+                    height: 12,
+                    flexShrink: 0,
                     marginTop: 2,
-                    fontFamily: fonts.mono,
-                    fontSize: 10,
-                    letterSpacing: "0.02em",
-                    color: colors.mutedLight,
-                    fontVariantNumeric: "tabular-nums",
+                    backgroundColor: colors.white,
+                    borderRadius: "50%",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
                   }}
                 >
-                  {formatTimelineStamp(entry.created_at)}
+                  <span
+                    style={{
+                      width: 10,
+                      height: 10,
+                      backgroundColor: dotColor,
+                      opacity: userNote ? 1 : alert ? 0.4 : 0.35,
+                      borderRadius: "50%",
+                    }}
+                  />
+                </span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  {userNote ? (
+                    <span
+                      style={{
+                        display: "inline-block",
+                        marginRight: 6,
+                        padding: "1px 6px",
+                        backgroundColor: colors.navy,
+                        color: colors.white,
+                        fontFamily: fonts.body,
+                        fontSize: 9,
+                        fontWeight: 700,
+                        letterSpacing: "0.08em",
+                        textTransform: "uppercase",
+                        verticalAlign: "2px",
+                      }}
+                    >
+                      Note
+                    </span>
+                  ) : null}
+                  <span
+                    style={{
+                      fontFamily: fonts.body,
+                      fontSize: 13,
+                      lineHeight: 1.4,
+                      fontWeight: userNote ? 500 : 400,
+                      color: textColor,
+                      wordBreak: "break-word",
+                    }}
+                  >
+                    {entry.summary}
+                  </span>
+                  <div
+                    style={{
+                      marginTop: 2,
+                      fontFamily: fonts.mono,
+                      fontSize: 10,
+                      letterSpacing: "0.02em",
+                      color: colors.mutedLight,
+                      fontVariantNumeric: "tabular-nums",
+                    }}
+                  >
+                    {formatTimelineStamp(entry.created_at)}
+                  </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

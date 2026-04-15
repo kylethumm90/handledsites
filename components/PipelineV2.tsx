@@ -249,6 +249,20 @@ export default function PipelineV2({
             // new status and downstream counts/stages stay consistent.
             router.refresh();
           }}
+          onNoteAdded={(entry) => {
+            // Merge the note into our activity cache so the timeline
+            // updates instantly — no refetch, no router.refresh().
+            // API returns rows in ascending (oldest → newest) order, so
+            // the new note belongs at the end; the modal reverses for
+            // display so it'll still render at the top.
+            setActivitiesByLead((prev) => {
+              const existing = prev[selectedLead.id] ?? [];
+              return {
+                ...prev,
+                [selectedLead.id]: [...existing, entry],
+              };
+            });
+          }}
           onClose={() => setSelectedLeadId(null)}
         />
       ) : null}
