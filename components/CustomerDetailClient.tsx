@@ -1,10 +1,11 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Lead, ActivityLogEntry } from "@/lib/supabase";
+import { useLazyAiSummary } from "@/hooks/useLazyAiSummary";
 import { formatPhone } from "@/lib/utils";
 
 type Props = {
@@ -121,6 +122,26 @@ export default function CustomerDetailClient({ lead, timeline: initialTimeline, 
   const [apptError, setApptError] = useState("");
   const [importDataOpen, setImportDataOpen] = useState(false);
 
+  // Local mirror of lead.ai_summary. A Postgres trigger nulls the
+  // cached summary whenever activity_log changes, so every mutation
+  // below (add note, status change, appointment) resets this to null
+  // and calls markStale(lead.id); the shared hook then regenerates
+  // via the ai-summary endpoint and pipes the fresh one-liner back
+  // through setAiSummary.
+  const [aiSummary, setAiSummary] = useState<string | null>(lead.ai_summary);
+  const leadForSummary = useMemo(
+    () => ({ id: lead.id, ai_summary: aiSummary, is_demo: lead.is_demo }),
+    [lead.id, lead.is_demo, aiSummary],
+  );
+  const { markStale: markSummaryStale } = useLazyAiSummary(
+    leadForSummary,
+    setAiSummary,
+  );
+  const invalidateAiSummary = () => {
+    setAiSummary(null);
+    markSummaryStale(lead.id);
+  };
+
   // Subset of raw_import_data worth showing in the disclosure: every
   // non-empty string value, capped at 50 keys to keep the panel tame
   // for absurdly wide CSVs.
@@ -210,6 +231,7 @@ export default function CustomerDetailClient({ lead, timeline: initialTimeline, 
         },
         ...prev,
       ]);
+      invalidateAiSummary();
       setApptModalOpen(false);
     } catch {
       setApptError("Couldn't save. Please try again.");
@@ -233,6 +255,7 @@ export default function CustomerDetailClient({ lead, timeline: initialTimeline, 
       setTimeline((prev) => [entry, ...prev]);
       setNoteDraft("");
       setAddingNote(false);
+      invalidateAiSummary();
     } catch {
       // leave the composer open so the contractor can retry
     } finally {
@@ -277,6 +300,7 @@ export default function CustomerDetailClient({ lead, timeline: initialTimeline, 
         },
         ...prev,
       ]);
+      invalidateAiSummary();
     } catch {
       setStatus(oldStatus);
     }
@@ -328,7 +352,7 @@ export default function CustomerDetailClient({ lead, timeline: initialTimeline, 
             {service}
           </div>
         )}
-        {lead.ai_summary && (
+        {aiSummary && (
           <div style={{
             fontSize: 13,
             color: "#6B7280",
@@ -337,7 +361,7 @@ export default function CustomerDetailClient({ lead, timeline: initialTimeline, 
             fontStyle: "italic",
             lineHeight: 1.45,
           }}>
-            {lead.ai_summary}
+            {aiSummary}
           </div>
         )}
 

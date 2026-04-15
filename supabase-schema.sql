@@ -382,3 +382,33 @@ CREATE POLICY "contact_imports_no_anon_select"
   ON contact_imports FOR SELECT TO anon, authenticated USING (false);
 CREATE POLICY "contact_imports_no_anon_write"
   ON contact_imports FOR ALL TO anon, authenticated USING (false) WITH CHECK (false);
+
+-- ============================================================
+-- AI summary cache invalidation (2026-04)
+-- ============================================================
+--
+-- Whenever a row is written to activity_log (insert/update/delete),
+-- clear the cached ai_summary on the corresponding lead. The pipeline
+-- and customer-detail clients both run a lazy backfill effect that
+-- regenerates any row where ai_summary IS NULL, so nulling the cache
+-- is enough to keep the summary in sync with the timeline the next
+-- time a contractor views the lead. Putting this in the database
+-- means no route can ever forget to invalidate the cache.
+
+CREATE OR REPLACE FUNCTION invalidate_lead_ai_summary()
+RETURNS TRIGGER AS $$
+BEGIN
+  UPDATE leads
+     SET ai_summary = NULL,
+         ai_summary_generated_at = NULL
+   WHERE id = COALESCE(NEW.lead_id, OLD.lead_id);
+  RETURN COALESCE(NEW, OLD);
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS activity_log_invalidate_ai_summary ON activity_log;
+
+CREATE TRIGGER activity_log_invalidate_ai_summary
+AFTER INSERT OR UPDATE OR DELETE ON activity_log
+FOR EACH ROW
+EXECUTE FUNCTION invalidate_lead_ai_summary();

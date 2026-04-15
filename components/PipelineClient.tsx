@@ -12,10 +12,11 @@
 // tree. No forked codepaths. Flipping the businesses.ava_enabled column
 // swaps the entire screen.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Lead } from "@/lib/supabase";
+import { useLazyAiSummaries } from "@/hooks/useLazyAiSummary";
 import { useCurrentPlan } from "@/lib/plans";
 import { initials, nameHue } from "@/lib/utils";
 import {
@@ -622,67 +623,22 @@ export default function PipelineClient({ leads: initialLeads, trade, avaEnabled 
 
   // Lazy AI summary backfill via Haiku 4.5. Any lead without an
   // ai_summary gets one generated the first time it appears on
-  // screen. A single self-driving loop processes one lead at a time
-  // and re-reads the latest leads via a ref each iteration, so it
-  // picks up new arrivals without ever cancelling itself. The
-  // `running` flag prevents duplicate loops; `attempted` is only
-  // marked AFTER a successful response so that failures (network,
-  // 5xx, empty body) get retried on the next page load.
-  const attempted = useRef<Set<string>>(new Set());
-  const running = useRef(false);
-  const leadsRef = useRef(leads);
-  useEffect(() => {
-    leadsRef.current = leads;
-  }, [leads]);
-  useEffect(() => {
-    if (running.current) return;
-    running.current = true;
-
-    (async () => {
-      try {
-        while (true) {
-          const target = leadsRef.current.find(
-            (l) =>
-              !l.ai_summary && !l.is_demo && !attempted.current.has(l.id),
-          );
-          if (!target) return;
-          const id = target.id;
-          try {
-            const res = await fetch(
-              `/api/contractor/customers/${id}/ai-summary`,
-              { method: "POST" },
-            );
-            if (!res.ok) {
-              // Mark attempted so we don't hammer a permanently-broken
-              // lead in a tight loop. Next page load resets the set
-              // and gives it another shot.
-              attempted.current.add(id);
-              continue;
+  // screen. The loop lives in the shared useLazyAiSummaries hook
+  // (see hooks/useLazyAiSummary.ts) and is driven by activity_log
+  // cache invalidation on the Postgres side.
+  useLazyAiSummaries(leads, (id, summary) => {
+    setLeads((prev) =>
+      prev.map((l) =>
+        l.id === id
+          ? {
+              ...l,
+              ai_summary: summary,
+              ai_summary_generated_at: new Date().toISOString(),
             }
-            const data = (await res.json()) as { ai_summary?: string };
-            attempted.current.add(id);
-            if (!data.ai_summary) continue;
-            setLeads((prev) =>
-              prev.map((l) =>
-                l.id === id
-                  ? {
-                      ...l,
-                      ai_summary: data.ai_summary!,
-                      ai_summary_generated_at: new Date().toISOString(),
-                    }
-                  : l,
-              ),
-            );
-          } catch {
-            attempted.current.add(id);
-            // Silent: lead card falls back to raw notes.
-          }
-        }
-      } finally {
-        running.current = false;
-      }
-    })();
-  }, [leads]);
+          : l,
+      ),
+    );
+  });
 
   const nonDemoLeads = useMemo(
     () => leads.filter((l) => !l.is_demo),
