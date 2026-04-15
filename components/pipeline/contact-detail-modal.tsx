@@ -265,7 +265,13 @@ export default function ContactDetailModal({
     lead.job_value_cents ?? lead.estimated_value_cents,
   );
   const aiContext = fallbackAiContext(lead, resolvedStage);
-  const primaryCtaLabel = `CALL ${firstNameUpper(lead.name)}`;
+  // Primary CTA flips once the job is done: the contractor's next move is
+  // no longer "pick up the phone" but "ask for a review". Keeps the modal's
+  // top action aligned with where the lead is in the post-sale funnel.
+  const primaryCtaLabel =
+    resolvedStage === "job_done"
+      ? "SEND FEEDBACK REQUEST"
+      : `CALL ${firstNameUpper(lead.name)}`;
   const secondaryActionLabel = secondaryActionFor(resolvedStage);
 
   const handleAdvance = async () => {
@@ -1188,6 +1194,11 @@ function WhatHappenedTimeline({
 }) {
   if (activities.length === 0) return null;
 
+  // API returns oldest → newest for the chronological "story" read. The modal
+  // inverts that so the contractor lands on the most recent activity first —
+  // they care about "what just happened" more than "how this lead started".
+  const ordered = [...activities].reverse();
+
   return (
     <div style={{ padding: "0 20px 24px" }}>
       <div
@@ -1219,7 +1230,7 @@ function WhatHappenedTimeline({
           }}
         />
 
-        {activities.map((entry, i) => {
+        {ordered.map((entry, i) => {
           const alert = isAlertEntry(entry);
           const dotColor = entryBaseColor(entry);
           const textColor = alert ? colors.alertMuted : colors.muted;
@@ -1232,7 +1243,7 @@ function WhatHappenedTimeline({
                 alignItems: "flex-start",
                 gap: 14,
                 paddingLeft: 0,
-                paddingBottom: i === activities.length - 1 ? 0 : 14,
+                paddingBottom: i === ordered.length - 1 ? 0 : 14,
               }}
             >
               {/* Dot — a white "donut" wrapper masks the connector line so
