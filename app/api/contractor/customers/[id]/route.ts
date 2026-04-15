@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import { validateSessionFromRequest } from "@/lib/contractor-auth";
+import { regenerateAiSummary } from "@/lib/ai-summary";
 
 export async function PUT(
   request: NextRequest,
@@ -254,5 +255,18 @@ export async function PUT(
     }
   }
 
-  return NextResponse.json({ success: true });
+  // Status changes meaningfully shift "what should the contractor do next",
+  // so regenerate the AI one-liner to match the new stage. Cheap edits like
+  // notes/tags-only updates don't — skip the model call in those cases to
+  // keep the endpoint fast and the Anthropic bill honest.
+  let ai_summary: string | null = null;
+  if (updates.status && updates.status !== lead.status) {
+    ai_summary = await regenerateAiSummary({
+      supabase,
+      leadId: params.id,
+      businessId,
+    });
+  }
+
+  return NextResponse.json({ success: true, ai_summary });
 }
