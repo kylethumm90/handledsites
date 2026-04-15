@@ -11,11 +11,23 @@ const config: Config = {
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",
+        // Legacy admin/landing tokens (kept so the rest of the app still renders)
         paper: "#F6F1EB",
         ink: "#1A1A1A",
         muted: "#8A8070",
         "border-dark": "#D6CCBC",
         "border-light": "#E8E0D4",
+        // handled. brand tokens — Pipeline/Pulse product (docs/PRODUCT_SPEC.md)
+        navy: "#1E2A3A",
+        amber: "#E8922A",
+        "warm-bg": "#F7F7F5",
+        "card-border": "#E8E8E4",
+        "hint-bg": "#FFF8EF",
+        recovery: "#DC2626",
+        "recovery-bg": "#FEF2F2",
+        success: "#16A34A",
+        info: "#2563EB",
+        purple: "#7C3AED",
         card: {
           bg: "#12151f",
           surface: "#1a1e2e",
@@ -29,10 +41,11 @@ const config: Config = {
       },
       fontFamily: {
         display: ["'Newsreader'", "serif"],
-        mono: ["'IBM Plex Mono'", "monospace"],
-        body: ["'Libre Franklin'", "sans-serif"],
+        // handled. product UI — DM Sans for body, IBM Plex Mono for numbers/badges
+        mono: ["'IBM Plex Mono'", "ui-monospace", "monospace"],
+        body: ["'DM Sans'", "'Libre Franklin'", "sans-serif"],
         serif: ["'Newsreader'", "serif"],
-        sans: ["'Libre Franklin'", "sans-serif"],
+        sans: ["'DM Sans'", "'Libre Franklin'", "sans-serif"],
       },
     },
   },

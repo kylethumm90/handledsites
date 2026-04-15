@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Newsreader:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&family=IBM+Plex+Mono:wght@400;500;600;700&family=Libre+Franklin:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Newsreader:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&family=IBM+Plex+Mono:wght@400;500;600;700&family=Libre+Franklin:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -10,6 +10,18 @@
   --muted: #8A8070;
   --border: #D6CCBC;
   --border-light: #E8E0D4;
+
+  /* handled. product brand tokens (docs/PRODUCT_SPEC.md) */
+  --hl-navy: #1E2A3A;
+  --hl-amber: #E8922A;
+  --hl-paper: #F7F7F5;
+  --hl-card-border: #E8E8E4;
+  --hl-hint-bg: #FFF8EF;
+  --hl-recovery: #DC2626;
+  --hl-recovery-bg: #FEF2F2;
+  --hl-success: #16A34A;
+  --hl-info: #2563EB;
+  --hl-purple: #7C3AED;
 }
 
 body {
