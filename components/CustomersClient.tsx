@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import Link from "next/link";
 import type { Lead } from "@/lib/supabase";
 import { TRADE_SERVICES, Trade } from "@/lib/constants";
 import { X } from "lucide-react";
@@ -304,12 +305,20 @@ export default function CustomersClient({ leads: initialLeads, trade }: Props) {
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <div style={{ fontSize: 26, fontWeight: 800, color: "#1F2937", letterSpacing: "-0.03em" }}>Pipeline</div>
-          <button
-            onClick={() => setShowAdd(true)}
-            style={{ background: "#1F2937", color: "#fff", border: "none", fontSize: 14, fontWeight: 600, padding: "10px 20px", borderRadius: 8, cursor: "pointer" }}
-          >
-            + Add
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Link
+              href="/contractor/import"
+              style={{ background: "#fff", color: "#1F2937", border: "1px solid #E5E7EB", fontSize: 14, fontWeight: 600, padding: "9px 16px", borderRadius: 8, cursor: "pointer", textDecoration: "none", display: "inline-flex", alignItems: "center" }}
+            >
+              Import CSV
+            </Link>
+            <button
+              onClick={() => setShowAdd(true)}
+              style={{ background: "#1F2937", color: "#fff", border: "none", fontSize: 14, fontWeight: 600, padding: "10px 20px", borderRadius: 8, cursor: "pointer" }}
+            >
+              + Add
+            </button>
+          </div>
         </div>
 
         {/* Alert banner */}
