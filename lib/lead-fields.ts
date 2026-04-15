@@ -504,3 +504,73 @@ export const LEAD_FIELD_CATEGORY_LABEL: Record<LeadFieldCategory, string> = {
   financial: "Financial",
   engagement: "Engagement",
 };
+
+/**
+ * The 5 signals that get promoted to colored chips directly under the Lead
+ * Profile narrative in the modal. Chosen because each one drives a visual
+ * decision the contractor needs to make at a glance — emergency urgency
+ * flags a red badge, renter flags an amber qualifier warning, etc.
+ *
+ * Every other populated field from the catalog still renders, just in the
+ * quieter AI Details section below. This list is a DISPLAY curation, not
+ * a capture limit — all 22 catalog fields are always available for
+ * extraction.
+ */
+export const CHIP_SIGNAL_KEYS: readonly string[] = [
+  "project_urgency",
+  "homeowner_status",
+  "project_driver",
+  "purchase_timeline_weeks",
+  "decision_maker_situation",
+] as const;
+
+/**
+ * Lookup for chip styling per enum value. Missing keys / values fall back
+ * to a neutral navy chip. Keeps the modal's rendering code dumb — it just
+ * reads `chipStyleFor(fieldKey, value)` and gets a color token back.
+ */
+export type ChipTone = "red" | "amber" | "green" | "blue" | "navy" | "muted";
+
+const CHIP_TONES: Record<string, Record<string, ChipTone>> = {
+  project_urgency: {
+    emergency_today: "red",
+    this_week: "amber",
+    this_month: "blue",
+    this_quarter: "navy",
+    exploring: "muted",
+  },
+  homeowner_status: {
+    owner: "green",
+    renter: "amber",
+    landlord: "blue",
+    unknown: "muted",
+  },
+  project_driver: {
+    emergency_breakdown: "red",
+    upgrade: "blue",
+    routine_maintenance: "muted",
+    new_construction: "blue",
+    insurance_claim: "amber",
+    code_compliance: "amber",
+    other: "muted",
+  },
+  decision_maker_situation: {
+    sole: "green",
+    needs_spouse: "amber",
+    needs_partner: "amber",
+    unknown: "muted",
+  },
+};
+
+export function chipToneFor(fieldKey: string, rawValue: LeadFieldValue): ChipTone {
+  if (fieldKey === "purchase_timeline_weeks") {
+    const n = typeof rawValue === "number" ? rawValue : Number(rawValue);
+    if (!Number.isFinite(n)) return "muted";
+    if (n <= 1) return "red";
+    if (n <= 4) return "amber";
+    if (n <= 12) return "blue";
+    return "muted";
+  }
+  if (typeof rawValue !== "string") return "navy";
+  return CHIP_TONES[fieldKey]?.[rawValue] ?? "navy";
+}

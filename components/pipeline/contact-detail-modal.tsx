@@ -28,6 +28,18 @@ import { useEffect, useMemo, useState } from "react";
 import type { ActivityLogEntry, Lead, LeadStatus } from "@/lib/supabase";
 import { colors, fonts, stageColors, type StageKey } from "@/lib/design-system";
 import { pipelineStageFor, postSaleStageFor } from "@/lib/pipeline-v2";
+import {
+  CHIP_SIGNAL_KEYS,
+  chipToneFor,
+  formatCustomFieldValue,
+  getLeadFieldDef,
+  LEAD_FIELD_CATALOG,
+  LEAD_FIELD_CATEGORY_LABEL,
+  LEAD_FIELD_CATEGORY_ORDER,
+  type ChipTone,
+  type LeadCustomFields,
+  type LeadFieldValue,
+} from "@/lib/lead-fields";
 
 type Props = {
   lead: Lead;
@@ -254,6 +266,12 @@ export default function ContactDetailModal({
   const [currentAiSummary, setCurrentAiSummary] = useState<string | null>(
     lead.ai_summary ?? null,
   );
+  // Local mirror of the AI lead profile narrative. Regenerated (replace,
+  // not append) on every note save / status advance by lib/ai-summary.ts.
+  // The modal renders this as a soft gray paragraph above the primary CTA.
+  const [currentLeadProfile, setCurrentLeadProfile] = useState<string | null>(
+    lead.ai_lead_profile ?? null,
+  );
   // Local patch for structured fields the AI extracted from a free-text
   // note (service name, estimated value, tags). Merged over the incoming
   // lead so the name section and AI Details refresh without a full reload.
@@ -264,8 +282,9 @@ export default function ContactDetailModal({
     setCurrentStatus(lead.status);
     setAdvanceError(null);
     setCurrentAiSummary(lead.ai_summary ?? null);
+    setCurrentLeadProfile(lead.ai_lead_profile ?? null);
     setLeadPatch({});
-  }, [lead.id, lead.status, lead.ai_summary]);
+  }, [lead.id, lead.status, lead.ai_summary, lead.ai_lead_profile]);
 
   const effectiveLead = useMemo<Lead>(
     () => ({ ...lead, ...leadPatch }),
@@ -341,9 +360,13 @@ export default function ContactDetailModal({
         try {
           const data = (await res.json()) as {
             ai_summary?: string | null;
+            ai_lead_profile?: string | null;
             lead_patch?: Partial<Lead> | null;
           };
           if (data.ai_summary) setCurrentAiSummary(data.ai_summary);
+          if (data.ai_lead_profile) {
+            setCurrentLeadProfile(data.ai_lead_profile);
+          }
           if (data.lead_patch) {
             setLeadPatch((prev) => ({ ...prev, ...data.lead_patch }));
           }
@@ -613,6 +636,16 @@ export default function ContactDetailModal({
             </div>
           ) : null}
 
+          {/* Lead Profile — AI-maintained 2-4 sentence briefing + 5 curated
+              signal chips. Sits between the amber "next move" banner and
+              the primary CTA so it's the second thing the contractor
+              reads on phone. Renders only when there's actually something
+              to show (profile text or at least one filled chip field). */}
+          <LeadProfileSection
+            profile={currentLeadProfile}
+            customFields={effectiveLead.custom_fields}
+          />
+
           {/* Primary CTA — full-width navy "CALL [FIRST NAME]" */}
           <div style={{ padding: "20px 20px 0" }}>
             <button
@@ -700,6 +733,7 @@ export default function ContactDetailModal({
             activities={activities ?? []}
             onNoteAdded={onNoteAdded}
             onAiSummaryUpdated={(summary) => setCurrentAiSummary(summary)}
+            onAiLeadProfileUpdated={(profile) => setCurrentLeadProfile(profile)}
             onLeadPatched={(patch) =>
               setLeadPatch((prev) => ({ ...prev, ...patch }))
             }
@@ -912,19 +946,139 @@ function PipelineFooter({
 }
 
 // ---------------------------------------------------------------------------
+// Lead Profile — AI-maintained narrative + 5 curated signal chips
+// ---------------------------------------------------------------------------
+
+/**
+ * Tone → chip color tokens. Kept in one place so the chip renderer is dumb:
+ * it reads `chipToneFor(key, value)` and looks up bg/fg/border here. Tones
+ * map to the same brand palette as stage badges so the modal feels coherent.
+ */
+const CHIP_STYLE: Record<ChipTone, { bg: string; fg: string; border: string }> = {
+  red: { bg: colors.redBg, fg: colors.red, border: colors.red },
+  amber: { bg: colors.amberBg, fg: colors.amber, border: colors.amber },
+  green: { bg: colors.greenBg, fg: colors.green, border: colors.green },
+  blue: { bg: colors.blueBg, fg: colors.blue, border: colors.blue },
+  navy: { bg: colors.navyBg, fg: colors.navy, border: colors.border },
+  muted: { bg: colors.bg, fg: colors.mutedLight, border: colors.borderLight },
+};
+
+function LeadProfileSection({
+  profile,
+  customFields,
+}: {
+  profile: string | null;
+  customFields: Lead["custom_fields"];
+}) {
+  const profileText = profile?.trim() || "";
+
+  // Collect the chips for the curated signal keys — skip any that don't
+  // have a value yet so an empty lead shows nothing instead of a row of
+  // ghost chips.
+  const chips = useMemo(() => {
+    if (!customFields || typeof customFields !== "object") return [];
+    const out: Array<{
+      key: string;
+      label: string;
+      display: string;
+      tone: ChipTone;
+    }> = [];
+    for (const key of CHIP_SIGNAL_KEYS) {
+      const raw = (customFields as Record<string, LeadFieldValue>)[key];
+      if (raw === undefined || raw === null || raw === "") continue;
+      const def = getLeadFieldDef(key);
+      if (!def) continue;
+      const display = formatCustomFieldValue(def, raw);
+      if (!display) continue;
+      out.push({
+        key,
+        label: def.label,
+        display,
+        tone: chipToneFor(key, raw),
+      });
+    }
+    return out;
+  }, [customFields]);
+
+  if (!profileText && chips.length === 0) return null;
+
+  return (
+    <div style={{ padding: "14px 20px 0" }}>
+      {profileText ? (
+        <p
+          style={{
+            margin: 0,
+            fontFamily: fonts.body,
+            fontSize: 13,
+            lineHeight: 1.5,
+            color: colors.muted,
+            wordBreak: "break-word",
+          }}
+        >
+          {profileText}
+        </p>
+      ) : null}
+
+      {chips.length > 0 ? (
+        <div
+          style={{
+            marginTop: profileText ? 10 : 0,
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 6,
+          }}
+        >
+          {chips.map((chip) => {
+            const tone = CHIP_STYLE[chip.tone];
+            return (
+              <span
+                key={chip.key}
+                title={chip.label}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                  padding: "3px 8px",
+                  backgroundColor: tone.bg,
+                  color: tone.fg,
+                  border: `1px solid ${tone.border}`,
+                  borderRadius: 0,
+                  fontFamily: fonts.mono,
+                  fontSize: 10,
+                  fontWeight: 600,
+                  letterSpacing: "0.04em",
+                  textTransform: "uppercase",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {chip.display}
+              </span>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // AI Details — discreet expandable block of raw extracted fields
 // ---------------------------------------------------------------------------
 
 function AiDetailsSection({ lead }: { lead: Lead }) {
   const [open, setOpen] = useState(false);
 
-  // Merge all the structured metadata the AI has on this lead. The core
-  // extracted fields (service / value / tags / notes) come first so they
-  // always read cleanly at the top — these are the fields the note-time
-  // extractor fills in from free-text notes, and the contractor needs a
-  // stable place to find them. Then `raw_import_data` (CSV import rows)
-  // and `answers` (quiz-funnel responses) fill in the rest. Duplicate
-  // keys from answers win (funnel data is the freshest signal).
+  // Merge all the structured metadata the AI has on this lead. Ordering:
+  //   1. Core extracted fields (service / value / tags / notes) — the
+  //      hardcoded "spine" that the extractor has been filling forever.
+  //   2. Universal catalog fields (lib/lead-fields.ts) grouped by category,
+  //      skipping the 5 that are already rendered as chips in LeadProfile.
+  //      Category headers appear inline so the list reads "Customer > ...,
+  //      Property > ...".
+  //   3. CSV import rows + quiz-funnel answers, deduped against anything
+  //      already shown above.
+  // Duplicate keys from answers win over raw_import_data (funnel data is
+  // the freshest signal).
   const fields = useMemo<Array<[string, string]>>(() => {
     const ordered: Array<[string, string]> = [];
     const usedKeys = new Set<string>();
@@ -958,6 +1112,28 @@ function AiDetailsSection({ lead }: { lead: Lead }) {
     }
     if (lead.notes) pushCore("Notes", lead.notes);
 
+    // Catalog-driven custom fields — walk the canonical category order so
+    // they read consistently across leads. Skip chip-promoted keys
+    // (LeadProfile already displays them) and anything unset.
+    const custom = (lead.custom_fields ?? null) as LeadCustomFields | null;
+    if (custom && typeof custom === "object") {
+      const chipKeys = new Set(CHIP_SIGNAL_KEYS);
+      for (const category of LEAD_FIELD_CATEGORY_ORDER) {
+        for (const def of LEAD_FIELD_CATALOG) {
+          if (def.category !== category) continue;
+          if (chipKeys.has(def.key)) continue;
+          const raw = custom[def.key];
+          if (raw === undefined || raw === null || raw === "") continue;
+          const display = formatCustomFieldValue(def, raw);
+          if (!display) continue;
+          const label = `${LEAD_FIELD_CATEGORY_LABEL[category]} › ${def.label}`;
+          ordered.push([label, display]);
+          usedKeys.add(def.label.toLowerCase());
+          usedKeys.add(def.key.toLowerCase());
+        }
+      }
+    }
+
     const merged: Record<string, string> = {};
     if (lead.raw_import_data) {
       for (const [k, v] of Object.entries(lead.raw_import_data)) {
@@ -984,6 +1160,7 @@ function AiDetailsSection({ lead }: { lead: Lead }) {
     lead.notes,
     lead.answers,
     lead.raw_import_data,
+    lead.custom_fields,
   ]);
 
   if (fields.length === 0) return null;
@@ -1311,12 +1488,14 @@ function WhatHappenedTimeline({
   activities,
   onNoteAdded,
   onAiSummaryUpdated,
+  onAiLeadProfileUpdated,
   onLeadPatched,
 }: {
   leadId: string;
   activities: ActivityLogEntry[];
   onNoteAdded?: (entry: ActivityLogEntry) => void;
   onAiSummaryUpdated?: (summary: string) => void;
+  onAiLeadProfileUpdated?: (profile: string) => void;
   onLeadPatched?: (patch: Partial<Lead>) => void;
 }) {
   const [composing, setComposing] = useState(false);
@@ -1354,10 +1533,12 @@ function WhatHappenedTimeline({
       }
       const entry = (await res.json()) as ActivityLogEntry & {
         ai_summary?: string | null;
+        ai_lead_profile?: string | null;
         lead_patch?: Partial<Lead> | null;
       };
       onNoteAdded?.(entry);
       if (entry.ai_summary) onAiSummaryUpdated?.(entry.ai_summary);
+      if (entry.ai_lead_profile) onAiLeadProfileUpdated?.(entry.ai_lead_profile);
       if (entry.lead_patch) onLeadPatched?.(entry.lead_patch);
       setDraft("");
       setComposing(false);

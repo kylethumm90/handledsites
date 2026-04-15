@@ -62,7 +62,11 @@ export async function POST(
   // apply them fill-empty-only and never overwrite contractor-entered
   // data. If anything landed, we log a second "AI filled: ..." activity
   // row so the contractor can see what changed in the timeline.
-  const { summary: ai_summary, extracted } = await regenerateAiSummary({
+  const {
+    summary: ai_summary,
+    ai_lead_profile,
+    extracted,
+  } = await regenerateAiSummary({
     supabase,
     leadId: params.id,
     businessId,
@@ -88,6 +92,7 @@ export async function POST(
   return NextResponse.json({
     ...entry,
     ai_summary,
+    ai_lead_profile,
     lead_patch: applied?.patch ?? null,
   });
 }

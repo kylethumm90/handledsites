@@ -270,6 +270,7 @@ export async function PUT(
   // name, estimated value, tags). We apply them fill-empty-only so the
   // contractor never gets their typed values overwritten.
   let ai_summary: string | null = null;
+  let ai_lead_profile: string | null = null;
   let lead_patch: Partial<Lead> | null = null;
   if (updates.status && updates.status !== lead.status) {
     const result = await regenerateAiSummary({
@@ -278,6 +279,7 @@ export async function PUT(
       businessId,
     });
     ai_summary = result.summary;
+    ai_lead_profile = result.ai_lead_profile;
 
     const applied = await applyExtractedFields({
       supabase,
@@ -297,5 +299,10 @@ export async function PUT(
     }
   }
 
-  return NextResponse.json({ success: true, ai_summary, lead_patch });
+  return NextResponse.json({
+    success: true,
+    ai_summary,
+    ai_lead_profile,
+    lead_patch,
+  });
 }

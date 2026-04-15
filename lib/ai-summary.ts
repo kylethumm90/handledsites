@@ -81,9 +81,17 @@ export type ExtractedLeadFields = {
   custom_fields?: Record<string, unknown>;
 };
 
-/** Combined result returned by regenerateAiSummary. */
+/**
+ * Combined result returned by regenerateAiSummary.
+ *
+ * `summary` and `ai_lead_profile` are persisted inline by regenerateAiSummary
+ * (both are AI-maintained REPLACE-not-append narratives and don't need the
+ * fill-empty-only apply pass). `extracted` is handed back raw so the caller
+ * can run `applyExtractedFields` on it separately.
+ */
 export type AiSummaryResult = {
   summary: string | null;
+  ai_lead_profile: string | null;
   extracted: ExtractedLeadFields | null;
 };
 
@@ -145,6 +153,15 @@ function buildFactsBlock(
       );
     }
   }
+  // Echo the current lead profile narrative so the model can REPLACE it with
+  // an updated version instead of starting from a blank page on every regen.
+  // This is the single biggest lever for profile quality — without it the
+  // model forgets everything it wrote last time.
+  if (lead.ai_lead_profile && String(lead.ai_lead_profile).trim()) {
+    facts.push(
+      `Current lead profile (rewrite with any new info from the notes below — preserve anything still true):\n  ${String(lead.ai_lead_profile).trim()}`,
+    );
+  }
   // Echo already-populated custom fields back to the model as "already
   // captured" — the extractor is told not to re-extract anything here,
   // so this doubles as a fill-empty-only hint at the prompt layer (the
@@ -179,7 +196,11 @@ export async function regenerateAiSummary({
   leadId: string;
   businessId: string;
 }): Promise<AiSummaryResult> {
-  const empty: AiSummaryResult = { summary: null, extracted: null };
+  const empty: AiSummaryResult = {
+    summary: null,
+    ai_lead_profile: null,
+    extracted: null,
+  };
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
@@ -227,8 +248,9 @@ export async function regenerateAiSummary({
       model: MODEL,
       max_tokens: 400,
       system: [
-        "You write one-line summaries of sales leads for a contractor's pipeline app",
-        "AND extract structured lead fields from free-text notes.",
+        "You write one-line summaries of sales leads for a contractor's pipeline app,",
+        "maintain a short running LEAD PROFILE narrative, AND extract structured lead",
+        "fields from free-text notes.",
         "",
         "Audience: a busy contractor glancing at a phone screen. They need to know",
         "what this lead needs and what's next.",
@@ -244,6 +266,23 @@ export async function regenerateAiSummary({
         "Tailor the sentence to the lead's current stage. The next move the contractor",
         "should take depends entirely on where the lead is in the funnel:",
         stageHint,
+        "",
+        "LEAD PROFILE RULES (the `ai_lead_profile` field):",
+        "- A short briefing a sales rep would read before calling this lead.",
+        "- 2-4 sentences, max 400 characters total.",
+        "- REPLACE, don't append. You are given the current profile (if any) — rewrite",
+        "  it into a fresh version that incorporates any new info from the notes.",
+        "  Preserve anything in the current profile that's still true.",
+        "- Cover, in order, only the facts you actually know: who they are and their",
+        "  situation (owner/renter, location, household), what the job is and why they",
+        "  need it, any urgency/timeline/budget signals, and anything unusual the rep",
+        "  should know before calling.",
+        "- Plain declarative sentences. No bullet points, no labels, no emojis, no em dashes.",
+        "- Third-person neutral tone (e.g. 'Homeowner in Austin dealing with a failing AC.').",
+        "- If there's almost nothing to say, keep it short and factual — do NOT pad with",
+        "  speculation. A one-sentence profile is fine.",
+        "- If the facts contain literally nothing about the lead beyond their name, omit",
+        "  the `ai_lead_profile` field entirely rather than writing fluff.",
         "",
         "EXTRACTION RULES:",
         "- Only extract facts from free-text Notes or Recent activity lines in the facts block.",
@@ -309,6 +348,11 @@ export async function regenerateAiSummary({
                 description:
                   "One-line lead summary, max 110 characters. Follow the SUMMARY RULES in the system prompt.",
               },
+              ai_lead_profile: {
+                type: "string",
+                description:
+                  "Short 2-4 sentence briefing of the lead (max 400 characters). REPLACES the current profile each time. Follow the LEAD PROFILE RULES in the system prompt. Omit this field if there is literally nothing factual to say beyond the lead's name.",
+              },
               extracted: {
                 type: "object",
                 description:
@@ -354,23 +398,38 @@ export async function regenerateAiSummary({
 
     const input = (toolUse.input ?? {}) as {
       summary?: string;
+      ai_lead_profile?: string;
       extracted?: ExtractedLeadFields;
     };
     const summary = (input.summary ?? "")
       .trim()
       .replace(/^["']|["']$/g, "");
 
+    // Profile is a direct REPLACE — clamp length as a safety net, then pass
+    // through as-is. An empty / missing profile leaves the column untouched.
+    const rawProfile = (input.ai_lead_profile ?? "").trim();
+    const aiLeadProfile = rawProfile ? rawProfile.slice(0, 600) : null;
+
     if (!summary) {
       console.warn("[ai-summary] empty summary from model");
-      return { summary: null, extracted: input.extracted ?? null };
+      return {
+        summary: null,
+        ai_lead_profile: aiLeadProfile,
+        extracted: input.extracted ?? null,
+      };
+    }
+
+    const updatePayload: Record<string, unknown> = {
+      ai_summary: summary,
+      ai_summary_generated_at: new Date().toISOString(),
+    };
+    if (aiLeadProfile) {
+      updatePayload.ai_lead_profile = aiLeadProfile;
     }
 
     const { error: updateErr } = await supabase
       .from("leads")
-      .update({
-        ai_summary: summary,
-        ai_summary_generated_at: new Date().toISOString(),
-      })
+      .update(updatePayload)
       .eq("id", leadId);
 
     if (updateErr) {
@@ -378,7 +437,11 @@ export async function regenerateAiSummary({
       // Still return the summary so the caller can at least surface it.
     }
 
-    return { summary, extracted: input.extracted ?? null };
+    return {
+      summary,
+      ai_lead_profile: aiLeadProfile,
+      extracted: input.extracted ?? null,
+    };
   } catch (err) {
     console.error("[ai-summary] generation failed:", err);
     return empty;

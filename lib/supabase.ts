@@ -185,6 +185,10 @@ export type Lead = {
   // (LEAD_FIELD_CATALOG). Keys are stable snake_case and the extractor is
   // fill-empty-only — contractor-entered values are never overwritten.
   custom_fields: Record<string, string | number | boolean> | null;
+  // AI-maintained 2-4 sentence narrative briefing. Written fresh on every
+  // regen (REPLACE, not append). Distinct from ai_summary, which is the
+  // shorter stage-aware next-action blurb. Populated by lib/ai-summary.ts.
+  ai_lead_profile: string | null;
 };
 
 export type ContactImport = {
