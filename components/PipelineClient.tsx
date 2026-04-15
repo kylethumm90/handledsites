@@ -32,6 +32,7 @@ import {
   startOfTodayMs,
 } from "@/lib/pipeline";
 import AddContactModal from "@/components/AddContactModal";
+import { addressFromLead } from "@/lib/leads";
 
 type Props = {
   leads: Lead[];
@@ -45,56 +46,6 @@ const MUTED = "#6B7280";
 const HAIRLINE = "rgba(17,24,39,0.08)";
 const SURFACE = "#FFFFFF";
 const BG = "#F5F5F7";
-
-// Pull a printable address out of a lead's raw_import_data. There's
-// no canonical address column on leads, so for CSV-imported contacts
-// we look for the common shapes — a single combined "Full Address"
-// field first, then stitch one together from street + city + state +
-// zip components. Keys are matched case-insensitively against the
-// usual GHL/HubSpot/Salesforce labels. Returns null if nothing usable
-// is found.
-function addressFromLead(lead: Lead): string | null {
-  const raw = lead.raw_import_data;
-  if (!raw || typeof raw !== "object") return null;
-
-  // Build a normalized key map once so multiple lookups are cheap.
-  const lower = new Map<string, string>();
-  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
-    if (typeof v !== "string") continue;
-    const trimmed = v.trim();
-    if (!trimmed) continue;
-    lower.set(k.toLowerCase().replace(/[\s_-]+/g, ""), trimmed);
-  }
-
-  const get = (...keys: string[]): string | null => {
-    for (const k of keys) {
-      const v = lower.get(k);
-      if (v) return v;
-    }
-    return null;
-  };
-
-  // 1. Single pre-joined address field.
-  const full = get(
-    "fulladdress",
-    "address",
-    "serviceaddress",
-    "mailingaddress",
-    "homeaddress",
-  );
-  if (full) return full;
-
-  // 2. Stitch street + city + state + zip.
-  const street = get("streetaddress", "street", "address1", "addressline1");
-  const city = get("city");
-  const state = get("state", "region");
-  const zip = get("postalcode", "zip", "zipcode");
-
-  const tail = [city, state].filter(Boolean).join(", ");
-  const parts = [street, tail, zip].filter(Boolean);
-  if (parts.length === 0) return null;
-  return parts.join(", ");
-}
 
 // ── Small building blocks ─────────────────────────────────────────────
 

@@ -28,6 +28,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { ActivityLogEntry, Lead, LeadStatus } from "@/lib/supabase";
 import { colors, fonts, stageColors, type StageKey } from "@/lib/design-system";
 import { pipelineStageFor, postSaleStageFor } from "@/lib/pipeline-v2";
+import { addressFromLead } from "@/lib/leads";
 
 type Props = {
   lead: Lead;
@@ -296,6 +297,17 @@ export default function ContactDetailModal({
   const contractValue = formatContractValue(
     effectiveLead.job_value_cents ?? effectiveLead.estimated_value_cents,
   );
+  // Address is one of the most important fields for a contractor — they
+  // need to know where the job is before they pick up the phone. We
+  // feature it in its own strip directly below the name section, and
+  // build a Google Maps link so the row is tappable on mobile.
+  const address = useMemo(
+    () => addressFromLead(effectiveLead),
+    [effectiveLead],
+  );
+  const addressMapHref = address
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`
+    : null;
   const aiContext = fallbackAiContext(
     effectiveLead,
     resolvedStage,
@@ -594,6 +606,89 @@ export default function ContactDetailModal({
               </p>
             </div>
           </div>
+
+          {/* Featured address strip — address is the single most important
+              operational field for a contractor (they need to know where
+              the job is). Rendered as a prominent tappable row that opens
+              Google Maps. Sits directly under the name section so it's
+              the first thing after "who" is "where". */}
+          {address ? (
+            <div style={{ padding: "0 20px 16px" }}>
+              <a
+                href={addressMapHref ?? undefined}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                  padding: "12px 14px",
+                  backgroundColor: colors.white,
+                  border: `1px solid ${colors.border}`,
+                  borderLeft: `3px solid ${colors.navy}`,
+                  textDecoration: "none",
+                  color: "inherit",
+                }}
+              >
+                <span
+                  aria-hidden
+                  style={{
+                    width: 20,
+                    flexShrink: 0,
+                    fontSize: 16,
+                    lineHeight: 1,
+                    color: colors.navy,
+                    textAlign: "center",
+                  }}
+                >
+                  ⚲
+                </span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div
+                    style={{
+                      fontFamily: fonts.mono,
+                      fontSize: 9,
+                      fontWeight: 600,
+                      letterSpacing: "0.08em",
+                      textTransform: "uppercase",
+                      color: colors.mutedLight,
+                      marginBottom: 2,
+                    }}
+                  >
+                    Service Address
+                  </div>
+                  <div
+                    style={{
+                      fontFamily: fonts.body,
+                      fontSize: 14,
+                      fontWeight: 600,
+                      lineHeight: 1.3,
+                      color: colors.navy,
+                      wordBreak: "break-word",
+                    }}
+                  >
+                    {address}
+                  </div>
+                </div>
+                <span
+                  style={{
+                    flexShrink: 0,
+                    padding: "4px 8px",
+                    backgroundColor: colors.bg,
+                    color: colors.muted,
+                    fontFamily: fonts.mono,
+                    fontSize: 9,
+                    fontWeight: 600,
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase",
+                    border: `1px solid ${colors.borderLight}`,
+                  }}
+                >
+                  Map
+                </span>
+              </a>
+            </div>
+          ) : null}
 
           {/* AI context hint — barely-warm panel, amber left rule */}
           {aiContext ? (
