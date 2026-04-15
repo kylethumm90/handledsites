@@ -36,10 +36,10 @@ const MONO_STACK =
 // ──────────────────────────────────────────────────────────────
 type Step = 1 | 2 | 3;
 
-// Spec's UI-facing field choices. Some of these (address_line1, city,
-// state, zip, assigned_to) don't exist on the leads table — on
-// execute we'll route those headers into aiContextFields (raw_import_data)
-// instead of sending them as backend column mappings.
+// Spec's UI-facing field choices. The keyed address parts (address_line1,
+// city, state, zip) get stitched together into a single string at execute
+// time and written to the real `leads.address` column; assigned_to still
+// has no canonical home, so it rides along in raw_import_data.
 type UIField =
   | "first_name"
   | "last_name"
@@ -590,17 +590,19 @@ function ContextColumnCard({
 // Step 3 — Execute payload builder
 //
 // The backend only accepts the canonical lead fields: name, email,
-// phone, tags, notes, service_needed, source. Our UI exposes a
-// richer set (first/last name, address, city, state, zip, etc.) so
-// we translate before sending:
+// phone, tags, notes, service_needed, source, address. Our UI exposes a
+// richer set (first/last name, granular address parts, etc.) so we
+// translate before sending:
 //   - first_name + last_name → combined into a synthetic __name row
 //     column, mapped to "name"
 //   - only first_name or only last_name → that header maps to "name"
 //   - email / phone / tags → direct passthrough
 //   - lead_source → "source"
-//   - address_line1, city, state, zip, assigned_to → auto-added to
-//     aiContextFields so the raw values land in raw_import_data
-//     without needing their own schema columns
+//   - address_line1 / city / state / zip → stitched together into a
+//     synthetic __address row column and mapped to "address" (the
+//     real leads column). The raw parts ALSO ride along in
+//     raw_import_data so AI Details can still show them untouched.
+//   - assigned_to → raw_import_data only (no canonical column yet)
 // ──────────────────────────────────────────────────────────────
 
 type BackendLeadField =
@@ -610,9 +612,11 @@ type BackendLeadField =
   | "tags"
   | "notes"
   | "service_needed"
-  | "source";
+  | "source"
+  | "address";
 
 const SYNTHETIC_NAME_COL = "__name";
+const SYNTHETIC_ADDRESS_COL = "__address";
 
 function buildExecutePayload(
   rows: Record<string, string>[],
@@ -652,6 +656,36 @@ function buildExecutePayload(
     columnMappings[lastHeader] = "name";
   }
 
+  // Address synthesis — if any of the four address parts are mapped,
+  // stitch them per-row into "street, city, state zip" and mount that
+  // on a synthetic column mapped to the real `address` field. Rows
+  // missing every part just get an empty string and won't be written
+  // (applyColumnMappings drops empty values). Parts that are present
+  // but not all four still produce a usable partial address.
+  const addrStreet = headerFor.address_line1;
+  const addrCity = headerFor.city;
+  const addrState = headerFor.state;
+  const addrZip = headerFor.zip;
+  const hasAnyAddressPart = Boolean(
+    addrStreet || addrCity || addrState || addrZip,
+  );
+  if (hasAnyAddressPart) {
+    transformedRows = transformedRows.map((row) => {
+      const street = addrStreet ? (row[addrStreet] ?? "").trim() : "";
+      const city = addrCity ? (row[addrCity] ?? "").trim() : "";
+      const state = addrState ? (row[addrState] ?? "").trim() : "";
+      const zip = addrZip ? (row[addrZip] ?? "").trim() : "";
+      const tail = [city, state].filter(Boolean).join(", ");
+      const withZip = [tail, zip].filter(Boolean).join(" ");
+      const stitched = [street, withZip].filter(Boolean).join(", ");
+      return { ...row, [SYNTHETIC_ADDRESS_COL]: stitched };
+    });
+    columnMappings[SYNTHETIC_ADDRESS_COL] = "address";
+  }
+
+  // Passthroughs: keep the original address parts in raw_import_data
+  // alongside the synthesized column so contractors can still see the
+  // untouched values in AI Details. assigned_to has no column yet.
   const extraContextFields: string[] = [];
   const PASSTHROUGH_TO_CONTEXT: UIField[] = [
     "address_line1",

@@ -1,19 +1,42 @@
 import type { Lead } from "@/lib/supabase";
 
 /**
- * Pull a printable address out of a lead. There's no canonical address
- * column on `leads`, so we look in both `raw_import_data` (CSV imports)
- * and `answers` (quiz-funnel responses) for the usual GHL/HubSpot/
- * Salesforce shapes — a single combined "Full Address" field first,
- * then stitch one together from street + city + state + zip. Keys are
- * matched case-insensitively with whitespace/underscores/dashes stripped.
- * Returns null when nothing usable is found.
- *
- * Shared by PipelineClient (list card fallback) and ContactDetailModal
- * (featured address strip) so both always agree on what "the address"
- * for a lead is.
+ * Narrow shape `addressFromLead` needs — the real `leads.address` column
+ * when available, plus the JSON blobs we scan as a fallback. Accepts a
+ * subset of `Lead` so server routes can call it before they have a
+ * fully-hydrated row (e.g. the quiz submit handler passing `{ answers }`
+ * alone to derive an address at insert time).
  */
-export function addressFromLead(lead: Lead): string | null {
+type AddressSource = Pick<Lead, "answers" | "raw_import_data"> & {
+  address?: string | null;
+};
+
+/**
+ * Resolve a printable service address for a lead.
+ *
+ * Order:
+ *   1. `leads.address` column — the canonical field. New writes land here.
+ *   2. A combined "Full Address" style key in `raw_import_data` or `answers`.
+ *   3. Stitched street + city + state + zip from the usual
+ *      GHL/HubSpot/Salesforce/quiz-funnel shapes.
+ *
+ * Keys in (2)/(3) are compared case-insensitively with whitespace,
+ * underscores, and dashes stripped. Returns null when nothing usable
+ * is found.
+ *
+ * Shared by PipelineClient (list card fallback), ContactDetailModal
+ * (featured address strip), and the server-side insert handlers
+ * (quiz / website / CSV import) so everyone agrees on what "the
+ * address" for a lead is. Kept tolerant of the legacy shapes so old
+ * rows written before the column existed still render correctly.
+ */
+export function addressFromLead(lead: AddressSource): string | null {
+  // Column wins. Once the CSV importer, quiz funnel, and note-time
+  // AI extractor start populating this, it'll be the only path we
+  // actually hit for new rows.
+  const col = lead.address?.trim();
+  if (col) return col;
+
   // Build one normalized key → value map from both answer/raw sources.
   // `answers` wins on conflicts — it's the fresher funnel signal.
   const lower = new Map<string, string>();

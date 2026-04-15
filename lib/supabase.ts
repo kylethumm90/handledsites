@@ -169,6 +169,12 @@ export type Lead = {
   closed_at: string | null;
   raw_import_data: Record<string, string> | null;
   import_batch_id: string | null;
+  // Service address. Free-form single-line string — we don't split into
+  // street/city/state/zip because inbound sources (CSV, quiz funnel,
+  // website form, manual entry) disagree on granularity and we always
+  // render it as one line anyway. Nullable because legacy rows and
+  // minimal-data sources (referral links, bare seeds) may not have one.
+  address: string | null;
   // Post-sale reputation funnel (all nullable — see supabase-schema.sql
   // "Reputation funnel: post-sale milestone columns on leads"). Parallel
   // event timestamps, not a status progression. Drive the Post-Sale view

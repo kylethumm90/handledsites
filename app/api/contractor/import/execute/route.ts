@@ -252,6 +252,7 @@ export async function POST(request: NextRequest) {
       service_needed: p.fields.service_needed ?? null,
       notes: p.fields.notes ?? null,
       tags: p.fields.tags ?? null,
+      address: p.fields.address ?? null,
     });
     if (p.fields.email) batchByEmail.set(p.fields.email, idx);
     if (p.fields.phone) batchByPhone.set(p.fields.phone, idx);

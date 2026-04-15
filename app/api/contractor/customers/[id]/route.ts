@@ -94,6 +94,7 @@ export async function PUT(
     "employee_id",
     "appointment_at",
     "estimated_value_cents",
+    "address",
   ]);
   const updates: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(body)) {

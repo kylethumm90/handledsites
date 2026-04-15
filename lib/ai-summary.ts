@@ -67,6 +67,11 @@ export type ExtractedLeadFields = {
    */
   estimated_value_dollars?: number;
   tags?: string[];
+  /**
+   * Service address for the job. Free-form single line. Fill-empty only —
+   * applyExtractedFields never overwrites a contractor-entered address.
+   */
+  address?: string;
 };
 
 /** Combined result returned by regenerateAiSummary. */
@@ -103,6 +108,7 @@ function buildFactsBlock(
   }
   facts.push(`Status: ${lead.status}`);
   if (lead.source) facts.push(`Source: ${lead.source}`);
+  if (lead.address) facts.push(`Address: ${lead.address}`);
   if (lead.appointment_at) facts.push(`Appointment: ${lead.appointment_at}`);
   if (lead.tags && lead.tags.length) {
     facts.push(`Tags: ${lead.tags.join(", ")}`);
@@ -220,10 +226,15 @@ export async function regenerateAiSummary({
         "EXTRACTION RULES:",
         "- Only extract facts from free-text Notes or Recent activity lines in the facts block.",
         "- NEVER re-extract anything already listed in the explicit labeled lines at the top",
-        "  (Name, Service, Estimated value, Tags, Status, Source, Appointment). Those are the",
-        "  'already captured' fields — leave them alone.",
+        "  (Name, Service, Estimated value, Tags, Status, Source, Address, Appointment). Those",
+        "  are the 'already captured' fields — leave them alone.",
         "- If a free-text note clearly mentions a job type and the Service line is missing,",
         "  set `extracted.service_needed` (sentence case, short, e.g. 'Roof replacement').",
+        "- If a free-text note clearly mentions a service address and the Address line is",
+        "  missing, set `extracted.address` to the full single-line address the note gives",
+        "  (e.g. '1421 Willow Creek Dr, Plano, TX 75024'). Only extract when the note is",
+        "  unambiguously talking about where the job is — not the customer's workplace, a",
+        "  prior address, or somewhere they're moving from. If you're not sure, leave it empty.",
         "",
         "ESTIMATED VALUE — read this carefully, this field is tricky:",
         "- `estimated_value_dollars` is the ONE-TIME contract / job value the contractor will",
@@ -285,6 +296,11 @@ export async function regenerateAiSummary({
                     items: { type: "string" },
                     description:
                       "Short lowercase qualifying tags, e.g. ['credit-700', 'south-facing']. Additive — existing tags are preserved server-side.",
+                  },
+                  address: {
+                    type: "string",
+                    description:
+                      "Service address for the job as a single line, e.g. '1421 Willow Creek Dr, Plano, TX 75024'. Only set this if the note unambiguously states the address of the job site AND the Address line is missing from the facts block. Leave empty if there's any ambiguity about whether the note is talking about the job site.",
                   },
                 },
               },
@@ -365,7 +381,7 @@ export async function applyExtractedFields({
 
   const { data: lead, error } = await supabase
     .from("leads")
-    .select("service_needed, estimated_value_cents, tags")
+    .select("service_needed, estimated_value_cents, tags, address")
     .eq("id", leadId)
     .eq("business_id", businessId)
     .single();
@@ -404,6 +420,20 @@ export async function applyExtractedFields({
     updates.estimated_value_cents = cents;
     patch.estimated_value_cents = cents;
     filled.push("value");
+  }
+
+  // Service address — fill only if currently empty / whitespace. Never
+  // overwrite a contractor-entered address with a model guess; the detail
+  // modal has an editable address field for corrections.
+  if (
+    typeof extracted.address === "string" &&
+    extracted.address.trim() &&
+    (!lead.address || !String(lead.address).trim())
+  ) {
+    const val = extracted.address.trim();
+    updates.address = val;
+    patch.address = val;
+    filled.push("address");
   }
 
   // Tags — additive merge, dedupe case-insensitively. Never overwrites.
@@ -450,6 +480,7 @@ export function formatFilledKeys(keys: string[]): string {
     service: "service",
     value: "value",
     tags: "tags",
+    address: "address",
   };
   const pretty = keys.map((k) => labels[k] ?? k);
   return `AI filled: ${pretty.join(", ")}`;

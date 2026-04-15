@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase";
+import { addressFromLead } from "@/lib/leads";
 
 export async function POST(request: NextRequest) {
   let body: {
@@ -38,6 +39,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Site not found" }, { status: 404 });
   }
 
+  // Quiz funnels collect an address in `answers` under whatever field key
+  // the quiz builder chose (full_address, street_address, etc.). Derive a
+  // canonical single-line address now and write it to the real column so
+  // the detail card, search, and downstream flows don't have to re-parse
+  // it from JSON every time.
+  const derivedAddress = addressFromLead({
+    answers,
+    raw_import_data: null,
+  });
+
   const { data: lead, error } = await supabase
     .from("leads")
     .insert({
@@ -48,6 +59,7 @@ export async function POST(request: NextRequest) {
       phone,
       email: email || null,
       answers,
+      address: derivedAddress,
     })
     .select("id")
     .single();

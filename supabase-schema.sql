@@ -412,3 +412,17 @@ CREATE TRIGGER activity_log_invalidate_ai_summary
 AFTER INSERT OR UPDATE OR DELETE ON activity_log
 FOR EACH ROW
 EXECUTE FUNCTION invalidate_lead_ai_summary();
+
+-- ============================================================
+-- Service address column (2026-04)
+-- ============================================================
+--
+-- Address is one of the most important operational fields for a
+-- contractor — they need to know where the job is before picking up
+-- the phone. Previously we had no canonical column and fished an
+-- address out of `raw_import_data` / `answers` at read time; that's
+-- fine as a fallback for old rows but we want a real column we can
+-- query, update from the UI, and have the note-time AI extractor
+-- fill in. Rows without a parsed address stay NULL.
+
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS address TEXT;

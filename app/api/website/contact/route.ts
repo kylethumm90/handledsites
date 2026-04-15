@@ -3,7 +3,7 @@ import { getSupabaseAdmin } from "@/lib/supabase";
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const { site_id, name, phone, service_needed, message } = body;
+  const { site_id, name, phone, service_needed, message, address } = body;
 
   if (!site_id || !name || !phone) {
     return NextResponse.json({ error: "Name and phone are required" }, { status: 400 });
@@ -21,6 +21,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Site not found" }, { status: 404 });
   }
 
+  // Service address is optional on the contact form, but when provided
+  // we persist it to the real `leads.address` column so contractors see
+  // it front-and-center on the detail card.
+  const normalizedAddress =
+    typeof address === "string" && address.trim().length > 0
+      ? address.trim()
+      : null;
+
   const { data: lead, error } = await supabase
     .from("leads")
     .insert({
@@ -31,6 +39,7 @@ export async function POST(request: NextRequest) {
       phone: phone.replace(/\D/g, ""),
       service_needed: service_needed || null,
       notes: message || null,
+      address: normalizedAddress,
     })
     .select("id")
     .single();

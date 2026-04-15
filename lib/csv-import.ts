@@ -12,6 +12,7 @@ export const LEAD_FIELD_WHITELIST = [
   "notes",
   "service_needed",
   "source",
+  "address",
 ] as const;
 
 export type LeadField = (typeof LEAD_FIELD_WHITELIST)[number];
@@ -75,6 +76,7 @@ export type MappedLeadFields = {
   notes?: string;
   service_needed?: string;
   source?: string;
+  address?: string;
 };
 
 export function applyColumnMappings(
@@ -120,6 +122,11 @@ export function applyColumnMappings(
       case "source": {
         const v = cleanText(raw);
         if (v) out.source = v;
+        break;
+      }
+      case "address": {
+        const v = cleanText(raw);
+        if (v) out.address = v;
         break;
       }
     }
