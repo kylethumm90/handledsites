@@ -17,7 +17,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Lead } from "@/lib/supabase";
 import { useCurrentPlan } from "@/lib/plans";
-import { initials, nameHue } from "@/lib/utils";
+import { formatPhone, initials, nameHue } from "@/lib/utils";
 import {
   STAGE_COLORS,
   computeStageCounts,
@@ -266,6 +266,17 @@ function LeadCard({
     ? formatMoneyCompact(lead.estimated_value_cents)
     : null;
 
+  // Fallback contact line: when a lead has neither a service nor a
+  // value (e.g. plain CSV imports), we show phone/email so the card
+  // has SOMETHING identifying below the name instead of looking empty
+  // while the AI summary is still being generated.
+  const contactFallback =
+    !service && !value
+      ? [lead.phone ? formatPhone(lead.phone) : null, lead.email]
+          .filter(Boolean)
+          .join(" · ") || null
+      : null;
+
   // "34m" — time since the lead landed. Capped client-side for the card
   // header; the alert row shows the full elapsed countup.
   const elapsedSinceCreated = formatElapsed(
@@ -363,6 +374,21 @@ function LeadCard({
             {service}
             {service && value ? " · " : ""}
             {value}
+          </div>
+        )}
+        {contactFallback && (
+          <div
+            style={{
+              fontSize: 12,
+              color: MUTED,
+              marginTop: 2,
+              fontWeight: 500,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {contactFallback}
           </div>
         )}
         {(() => {
