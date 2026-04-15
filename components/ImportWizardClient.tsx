@@ -14,7 +14,6 @@ const MUTED_LIGHT = "#9CA3AF";
 const HAIRLINE = "#E5E7EB";
 const HAIRLINE_LIGHT = "#F3F4F6";
 const SURFACE = "#FFFFFF";
-const PAGE_TINT = "#FAFAFB";
 const BLUE = "#2F6FED";
 const GREEN = "#2E7D32";
 const AMBER = "#E0A800";
@@ -997,7 +996,7 @@ export default function ImportWizardClient() {
 
               {/* Mapping instructions */}
               <div style={{ fontSize: 13, color: MUTED, marginBottom: 12, lineHeight: 1.5 }}>
-                Map each column to a contact field, or skip it. You'll pick AI context
+                Map each column to a contact field, or skip it. You&apos;ll pick AI context
                 columns in the next step.
               </div>
 
