@@ -62,6 +62,53 @@ function formatContractValue(cents: number | null | undefined): string | null {
   });
 }
 
+function firstNameUpper(name: string): string {
+  const first = (name || "").trim().split(/\s+/)[0];
+  return first ? first.toUpperCase() : "CUSTOMER";
+}
+
+function secondaryActionFor(stage: StageKey): string {
+  switch (stage) {
+    case "job_done":
+    case "feedback":
+      return "SEND FEEDBACK REQUEST";
+    case "reviewed":
+      return "ASK FOR REFERRAL";
+    case "referrer":
+      return "FOLLOW UP";
+    case "recovery":
+      return "EMAIL";
+    default:
+      return "EMAIL";
+  }
+}
+
+function fallbackAiContext(lead: Lead, stage: StageKey): string {
+  const summary = lead.ai_summary?.trim();
+  if (summary) return summary;
+  switch (stage) {
+    case "new":
+      return "New lead. No outreach yet — first response wins the job.";
+    case "contacted":
+      return "Contacted but not booked. Follow up to keep momentum.";
+    case "appt_set":
+      return lead.appointment_at
+        ? "Appointment on the calendar. Confirm day-of to reduce no-shows."
+        : "Appointment booked. Keep them warm until the visit.";
+    case "job_done":
+    case "feedback":
+      return "Job complete. Good window for a feedback request.";
+    case "reviewed":
+      return "Left a positive review. Strong candidate for a referral ask.";
+    case "referrer":
+      return "Enrolled as a referral partner. Keep them engaged.";
+    case "recovery":
+      return "Sentiment flagged low. Call before a public review lands.";
+    default:
+      return "";
+  }
+}
+
 function defaultJobTypeFor(stage: StageKey): string {
   if (
     stage === "recovery" ||
@@ -97,6 +144,9 @@ export default function ContactDetailModal({ lead, stage, onClose }: Props) {
   const contractValue = formatContractValue(
     lead.job_value_cents ?? lead.estimated_value_cents,
   );
+  const aiContext = fallbackAiContext(lead, resolvedStage);
+  const primaryCtaLabel = `CALL ${firstNameUpper(lead.name)}`;
+  const secondaryActionLabel = secondaryActionFor(resolvedStage);
 
   // Close on Escape + lock body scroll while the modal is open.
   useEffect(() => {
@@ -300,6 +350,97 @@ export default function ContactDetailModal({ lead, stage, onClose }: Props) {
                 ) : null}
               </p>
             </div>
+          </div>
+
+          {/* AI context hint — barely-warm panel, amber left rule */}
+          {aiContext ? (
+            <div
+              style={{
+                margin: "0 20px",
+                padding: "10px 12px",
+                backgroundColor: "#FEFCF8",
+                borderLeft: `2px solid ${colors.amber}`,
+                color: colors.muted,
+                fontFamily: fonts.body,
+                fontSize: 13,
+                lineHeight: 1.4,
+              }}
+            >
+              {aiContext}
+            </div>
+          ) : null}
+
+          {/* Primary CTA — full-width navy "CALL [FIRST NAME]" */}
+          <div style={{ padding: "16px 20px 0" }}>
+            <button
+              type="button"
+              style={{
+                width: "100%",
+                minHeight: 48,
+                padding: "12px 16px",
+                backgroundColor: colors.navy,
+                color: colors.white,
+                border: "none",
+                borderRadius: 0,
+                cursor: "pointer",
+                fontFamily: fonts.body,
+                fontWeight: 700,
+                fontSize: 15,
+                letterSpacing: "0.04em",
+                textTransform: "uppercase",
+              }}
+            >
+              {primaryCtaLabel}
+            </button>
+          </div>
+
+          {/* Secondary CTAs — two half-width muted buttons */}
+          <div
+            style={{
+              padding: "8px 20px 20px",
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: 8,
+            }}
+          >
+            <button
+              type="button"
+              style={{
+                minHeight: 44,
+                padding: "12px 16px",
+                backgroundColor: colors.white,
+                color: colors.muted,
+                border: `1px solid ${colors.border}`,
+                borderRadius: 0,
+                cursor: "pointer",
+                fontFamily: fonts.body,
+                fontWeight: 500,
+                fontSize: 13,
+                letterSpacing: "0.04em",
+                textTransform: "uppercase",
+              }}
+            >
+              TEXT
+            </button>
+            <button
+              type="button"
+              style={{
+                minHeight: 44,
+                padding: "12px 16px",
+                backgroundColor: colors.white,
+                color: colors.muted,
+                border: `1px solid ${colors.border}`,
+                borderRadius: 0,
+                cursor: "pointer",
+                fontFamily: fonts.body,
+                fontWeight: 500,
+                fontSize: 13,
+                letterSpacing: "0.04em",
+                textTransform: "uppercase",
+              }}
+            >
+              {secondaryActionLabel}
+            </button>
           </div>
         </div>
       </div>
