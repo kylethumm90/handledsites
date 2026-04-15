@@ -254,11 +254,23 @@ export default function ContactDetailModal({
   const [currentAiSummary, setCurrentAiSummary] = useState<string | null>(
     lead.ai_summary ?? null,
   );
+  // Local patch for structured fields the AI extracted from a free-text
+  // note (service name, estimated value, tags). Merged over the incoming
+  // lead so the name section and AI Details refresh without a full reload.
+  // Reset on lead change so we don't leak one customer's patch into
+  // another's render.
+  const [leadPatch, setLeadPatch] = useState<Partial<Lead>>({});
   useEffect(() => {
     setCurrentStatus(lead.status);
     setAdvanceError(null);
     setCurrentAiSummary(lead.ai_summary ?? null);
+    setLeadPatch({});
   }, [lead.id, lead.status, lead.ai_summary]);
+
+  const effectiveLead = useMemo<Lead>(
+    () => ({ ...lead, ...leadPatch }),
+    [lead, leadPatch],
+  );
 
   const resolvedStage = useMemo<StageKey>(() => {
     // Post-sale stages (recovery/feedback/reviewed/referrer) stick when the
@@ -280,11 +292,15 @@ export default function ContactDetailModal({
   const stageLabel = STAGE_LABELS[resolvedStage];
   const initials = useMemo(() => getInitials(lead.name), [lead.name]);
   const jobType =
-    lead.service_needed?.trim() || defaultJobTypeFor(resolvedStage);
+    effectiveLead.service_needed?.trim() || defaultJobTypeFor(resolvedStage);
   const contractValue = formatContractValue(
-    lead.job_value_cents ?? lead.estimated_value_cents,
+    effectiveLead.job_value_cents ?? effectiveLead.estimated_value_cents,
   );
-  const aiContext = fallbackAiContext(lead, resolvedStage, currentAiSummary);
+  const aiContext = fallbackAiContext(
+    effectiveLead,
+    resolvedStage,
+    currentAiSummary,
+  );
   // Primary CTA flips once the job is done: the contractor's next move is
   // no longer "pick up the phone" but "ask for a review". Keeps the modal's
   // top action aligned with where the lead is in the post-sale funnel.
@@ -319,10 +335,18 @@ export default function ContactDetailModal({
         // Pick up the freshly-regenerated AI summary if the server
         // returned one. It's stage-aware, so the banner now reads
         // "next move" copy tailored to `next` instead of the previous
-        // stage the moment the button is pressed.
+        // stage the moment the button is pressed. Also merge any
+        // structured fields the AI pulled from notes (service name,
+        // estimated value, tags) so the name section updates in place.
         try {
-          const data = (await res.json()) as { ai_summary?: string | null };
+          const data = (await res.json()) as {
+            ai_summary?: string | null;
+            lead_patch?: Partial<Lead> | null;
+          };
           if (data.ai_summary) setCurrentAiSummary(data.ai_summary);
+          if (data.lead_patch) {
+            setLeadPatch((prev) => ({ ...prev, ...data.lead_patch }));
+          }
         } catch {
           /* body wasn't JSON — that's fine, just don't update the summary */
         }
@@ -674,6 +698,9 @@ export default function ContactDetailModal({
             activities={activities ?? []}
             onNoteAdded={onNoteAdded}
             onAiSummaryUpdated={(summary) => setCurrentAiSummary(summary)}
+            onLeadPatched={(patch) =>
+              setLeadPatch((prev) => ({ ...prev, ...patch }))
+            }
           />
 
           </div>
@@ -1232,11 +1259,13 @@ function WhatHappenedTimeline({
   activities,
   onNoteAdded,
   onAiSummaryUpdated,
+  onLeadPatched,
 }: {
   leadId: string;
   activities: ActivityLogEntry[];
   onNoteAdded?: (entry: ActivityLogEntry) => void;
   onAiSummaryUpdated?: (summary: string) => void;
+  onLeadPatched?: (patch: Partial<Lead>) => void;
 }) {
   const [composing, setComposing] = useState(false);
   const [draft, setDraft] = useState("");
@@ -1273,9 +1302,11 @@ function WhatHappenedTimeline({
       }
       const entry = (await res.json()) as ActivityLogEntry & {
         ai_summary?: string | null;
+        lead_patch?: Partial<Lead> | null;
       };
       onNoteAdded?.(entry);
       if (entry.ai_summary) onAiSummaryUpdated?.(entry.ai_summary);
+      if (entry.lead_patch) onLeadPatched?.(entry.lead_patch);
       setDraft("");
       setComposing(false);
     } catch (err) {

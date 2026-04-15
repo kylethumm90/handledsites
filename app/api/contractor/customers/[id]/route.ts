@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import { validateSessionFromRequest } from "@/lib/contractor-auth";
-import { regenerateAiSummary } from "@/lib/ai-summary";
+import {
+  regenerateAiSummary,
+  applyExtractedFields,
+  formatFilledKeys,
+} from "@/lib/ai-summary";
+import type { Lead } from "@/lib/supabase";
 
 export async function PUT(
   request: NextRequest,
@@ -259,14 +264,38 @@ export async function PUT(
   // so regenerate the AI one-liner to match the new stage. Cheap edits like
   // notes/tags-only updates don't — skip the model call in those cases to
   // keep the endpoint fast and the Anthropic bill honest.
+  //
+  // The same regen call also returns any structured fields the model pulled
+  // from free-text notes / activity that we hadn't captured yet (service
+  // name, estimated value, tags). We apply them fill-empty-only so the
+  // contractor never gets their typed values overwritten.
   let ai_summary: string | null = null;
+  let lead_patch: Partial<Lead> | null = null;
   if (updates.status && updates.status !== lead.status) {
-    ai_summary = await regenerateAiSummary({
+    const result = await regenerateAiSummary({
       supabase,
       leadId: params.id,
       businessId,
     });
+    ai_summary = result.summary;
+
+    const applied = await applyExtractedFields({
+      supabase,
+      leadId: params.id,
+      businessId,
+      extracted: result.extracted,
+    });
+    if (applied && applied.filledKeys.length > 0) {
+      lead_patch = applied.patch;
+      await supabase.from("activity_log").insert({
+        business_id: businessId,
+        lead_id: params.id,
+        type: "ai_extract",
+        summary: formatFilledKeys(applied.filledKeys),
+        agent: "ai",
+      });
+    }
   }
 
-  return NextResponse.json({ success: true, ai_summary });
+  return NextResponse.json({ success: true, ai_summary, lead_patch });
 }
