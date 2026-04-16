@@ -20,7 +20,7 @@ export default async function CustomersPage() {
     await Promise.all([
       supabase
         .from("businesses")
-        .select("name, ava_enabled")
+        .select("name, ava_enabled, trade")
         .eq("id", businessId)
         .single(),
       supabase
@@ -45,6 +45,7 @@ export default async function CustomersPage() {
         leads={(leads || []) as Lead[]}
         businessName={business.name || "Your Business"}
         avaEnabled={business.ava_enabled ?? false}
+        trade={business.trade || ""}
       />
       {hasDemoLeads && <DemoBanner />}
     </>

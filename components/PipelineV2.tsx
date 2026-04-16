@@ -16,6 +16,7 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ActivityLogEntry, Lead } from "@/lib/supabase";
 import { useCurrentPlan } from "@/lib/plans";
@@ -27,6 +28,7 @@ import {
   type Tier,
 } from "@/components/pipeline/contact-card";
 import ContactDetailModal from "@/components/pipeline/contact-detail-modal";
+import AddContactModal from "@/components/AddContactModal";
 import { leadToContact } from "@/lib/pipeline-v2";
 
 type View = "pipeline" | "post_sale";
@@ -57,18 +59,21 @@ type Props = {
   leads: Lead[];
   businessName: string;
   avaEnabled: boolean;
+  trade: string;
 };
 
 export default function PipelineV2({
   leads,
   businessName,
   avaEnabled,
+  trade,
 }: Props) {
   const router = useRouter();
   const plan = useCurrentPlan();
   const [view, setView] = useState<View>("pipeline");
   const [selectedStage, setSelectedStage] = useState<StageKey | null>(null);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
+  const [showAdd, setShowAdd] = useState(false);
   // Activities cache keyed by lead id so re-opening the modal is instant.
   const [activitiesByLead, setActivitiesByLead] = useState<
     Record<string, ActivityLogEntry[]>
@@ -193,12 +198,14 @@ export default function PipelineV2({
 
         {tier === "ai_team" ? <AgentStatusBar view={view} /> : null}
 
+        <AddContactBar onAdd={() => setShowAdd(true)} />
+
         <section
           style={{
             display: "flex",
             flexDirection: "column",
             gap: 12,
-            padding: 16,
+            padding: "0 16px 16px",
           }}
         >
           {visibleContacts.length === 0 ? (
@@ -225,6 +232,21 @@ export default function PipelineV2({
 
         {tier === "base" ? <BottomUpsell view={view} /> : null}
       </div>
+
+      {showAdd ? (
+        <AddContactModal
+          trade={trade}
+          onClose={() => setShowAdd(false)}
+          onAdded={() => {
+            setShowAdd(false);
+            router.refresh();
+          }}
+          onBulkAdded={() => {
+            setShowAdd(false);
+            router.refresh();
+          }}
+        />
+      ) : null}
 
       {selectedLead ? (
         <ContactDetailModal
@@ -607,6 +629,71 @@ function BottomUpsell({ view }: { view: View }) {
         ⚡ Activate Your AI Team
       </button>
     </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Add contact action bar
+// ---------------------------------------------------------------------------
+
+function AddContactBar({ onAdd }: { onAdd: () => void }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "flex-end",
+        gap: 10,
+        padding: "12px 16px 4px",
+      }}
+    >
+      <Link
+        href="/contractor/import"
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 4,
+          minHeight: 34,
+          padding: "6px 12px",
+          backgroundColor: "transparent",
+          color: colors.muted,
+          border: `1px solid ${colors.border}`,
+          borderRadius: 0,
+          fontFamily: fonts.body,
+          fontWeight: 600,
+          fontSize: 11,
+          letterSpacing: "0.04em",
+          textTransform: "uppercase",
+          textDecoration: "none",
+          cursor: "pointer",
+        }}
+      >
+        Import CSV
+      </Link>
+      <button
+        type="button"
+        onClick={onAdd}
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 4,
+          minHeight: 34,
+          padding: "6px 14px",
+          backgroundColor: colors.navy,
+          color: colors.white,
+          border: "none",
+          borderRadius: 0,
+          fontFamily: fonts.body,
+          fontWeight: 700,
+          fontSize: 11,
+          letterSpacing: "0.04em",
+          textTransform: "uppercase",
+          cursor: "pointer",
+        }}
+      >
+        + Add Contact
+      </button>
+    </div>
   );
 }
 
