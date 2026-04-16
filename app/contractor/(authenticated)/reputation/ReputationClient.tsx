@@ -1,34 +1,98 @@
 "use client";
 
 /**
- * handled. — Reputation screen
+ * handled. — Reputation dashboard client
  *
- * Post-sale reputation dashboard powered by Stella. Shows feedback,
- * Google reviews, and customer advocates alongside the Stella funnel
- * (Jobs → Feedback → Reviews → Advocates).
- *
- * Mock data flows through `REPUTATION_SAMPLE` today; swap for a
- * Supabase-backed hook once the post-sale pipeline is live.
+ * Post-sale "handled. reputation" view. Shows feedback, Google reviews,
+ * and customer advocates alongside a sticky Stella funnel.
+ * Receives fully-shaped rows from the server component in
+ * `./page.tsx`; all Supabase work happens there.
  */
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { colors, fonts } from "@/lib/design-system";
-import {
-  REPUTATION_SAMPLE,
-  type FeedbackItem,
-  type FunnelStep,
-  type ReferralItem,
-  type ReviewItem,
-  type ReviewStatus,
-  type ReferralStatus,
-} from "@/components/reputation/sample-data";
+
+// ---------------------------------------------------------------------------
+// Shared types (also re-exported for server page.tsx)
+// ---------------------------------------------------------------------------
+
+export type TimeRange = "7d" | "30d" | "90d" | "All";
+
+export type FeedbackItem = {
+  id: string;
+  name: string;
+  initials: string;
+  job: string;
+  time: string;
+  emoji: string;
+  label: string;
+  comment: string;
+  sentiment: number;
+  reviewSent: boolean;
+};
+
+export type ReviewStatus = "posted" | "awaiting review" | "needs attention";
+
+export type ReviewItem = {
+  id: string;
+  name: string;
+  initials: string;
+  job: string;
+  source: string;
+  time: string;
+  rating: number | null;
+  status: ReviewStatus;
+  text: string;
+  sentiment: number;
+  alert?: string;
+};
+
+export type ReferralStatus = "booked" | "contacted" | "new lead";
+
+export type ReferralItem = {
+  id: string;
+  name: string;
+  initials: string;
+  referredName: string;
+  referredJob: string;
+  time: string;
+  status: ReferralStatus;
+  value: string | null;
+};
+
+export type FunnelColorKey = "navy" | "blue" | "amber" | "green";
+
+export type FunnelStep = {
+  label: string;
+  value: number;
+  colorKey: FunnelColorKey;
+};
+
+export type ReputationData = {
+  companyName: string;
+  range: TimeRange;
+  stats: {
+    feedback: number;
+    reviews: number;
+    avgRating: number;
+    advocates: number;
+  };
+  advocateRevenue: {
+    amount: string;
+    conversionPct: number;
+  };
+  funnel: FunnelStep[];
+  feedback: FeedbackItem[];
+  reviews: ReviewItem[];
+  referrals: ReferralItem[];
+};
 
 // ---------------------------------------------------------------------------
 // Config
 // ---------------------------------------------------------------------------
 
 type TabKey = "feedback" | "reviews" | "advocates";
-type TimeRange = "7d" | "30d" | "90d" | "All";
 
 const TIME_RANGES: TimeRange[] = ["7d", "30d", "90d", "All"];
 
@@ -44,34 +108,42 @@ const REFERRAL_STATUS_COLOR: Record<ReferralStatus, string> = {
   "new lead": colors.amber,
 };
 
-const FUNNEL_COLOR: Record<FunnelStep["colorKey"], string> = {
+const FUNNEL_COLOR: Record<FunnelColorKey, string> = {
   navy: colors.navy,
   blue: colors.blue,
   amber: colors.amber,
   green: colors.green,
 };
 
-const STELLA_BAR_HEIGHT = 84;
+// Stack the sticky Stella funnel above the reputation layout's bottom tab bar
+// (which is fixed at bottom:0 and ~84px tall).
+const BOTTOM_TAB_BAR_HEIGHT = 84;
+const STELLA_FUNNEL_HEIGHT = 76;
 
 // ---------------------------------------------------------------------------
-// Page
+// Component
 // ---------------------------------------------------------------------------
 
-export default function ReputationPage() {
+export default function ReputationClient({ data }: { data: ReputationData }) {
   const [activeTab, setActiveTab] = useState<TabKey>("reviews");
-  const [timeRange, setTimeRange] = useState<TimeRange>("30d");
+  const router = useRouter();
 
-  const data = REPUTATION_SAMPLE;
+  function setRange(next: TimeRange) {
+    if (next === data.range) return;
+    const params = new URLSearchParams();
+    if (next !== "30d") params.set("range", next);
+    const qs = params.toString();
+    router.push(`/contractor/reputation${qs ? `?${qs}` : ""}`);
+  }
 
   return (
     <div
       style={{
-        maxWidth: 480,
-        margin: "0 auto",
         background: "#FAFAFA",
-        minHeight: "100vh",
         fontFamily: fonts.body,
         color: colors.navy,
+        minHeight: "100vh",
+        paddingBottom: STELLA_FUNNEL_HEIGHT,
       }}
     >
       {/* Header */}
@@ -115,7 +187,12 @@ export default function ReputationPage() {
       >
         <StatBox value={String(data.stats.feedback)} label="Feedback" color={colors.green} border />
         <StatBox value={String(data.stats.reviews)} label="Reviews" color="#1C1B18" border />
-        <StatBox value={data.stats.avgRating.toFixed(1)} label="Avg Rating" color={colors.amber} border />
+        <StatBox
+          value={data.stats.avgRating > 0 ? data.stats.avgRating.toFixed(1) : "—"}
+          label="Avg Rating"
+          color={colors.amber}
+          border
+        />
         <StatBox value={String(data.stats.advocates)} label="Advocates" color={colors.green} />
       </div>
 
@@ -129,12 +206,12 @@ export default function ReputationPage() {
         }}
       >
         {TIME_RANGES.map((t) => {
-          const active = timeRange === t;
+          const active = data.range === t;
           return (
             <button
               key={t}
               type="button"
-              onClick={() => setTimeRange(t)}
+              onClick={() => setRange(t)}
               style={{
                 padding: "4px 10px",
                 fontSize: 11,
@@ -182,20 +259,41 @@ export default function ReputationPage() {
       </div>
 
       {/* Content */}
-      <div style={{ padding: `12px 20px ${STELLA_BAR_HEIGHT + 24}px` }}>
+      <div style={{ padding: "12px 20px 24px" }}>
         {activeTab === "reviews" &&
-          data.reviews.map((r) => <ReviewCard key={r.id} review={r} />)}
+          (data.reviews.length > 0 ? (
+            data.reviews.map((r) => <ReviewCard key={r.id} review={r} />)
+          ) : (
+            <EmptyState
+              title="No reviews yet"
+              body="Reviews will appear here as customers complete the feedback funnel."
+            />
+          ))}
+
         {activeTab === "feedback" &&
-          data.feedback.map((f) => <FeedbackCard key={f.id} item={f} />)}
+          (data.feedback.length > 0 ? (
+            data.feedback.map((f) => <FeedbackCard key={f.id} item={f} />)
+          ) : (
+            <EmptyState
+              title="No feedback yet"
+              body="Completed post-job surveys will show up here."
+            />
+          ))}
+
         {activeTab === "advocates" && (
           <>
             <RevenueSummary
               amount={data.advocateRevenue.amount}
               conversionPct={data.advocateRevenue.conversionPct}
             />
-            {data.referrals.map((r) => (
-              <ReferralCard key={r.id} referral={r} />
-            ))}
+            {data.referrals.length > 0 ? (
+              data.referrals.map((r) => <ReferralCard key={r.id} referral={r} />)
+            ) : (
+              <EmptyState
+                title="No referrals yet"
+                body="When a past customer refers a friend, they'll appear here."
+              />
+            )}
           </>
         )}
       </div>
@@ -643,7 +741,9 @@ function FeedbackCard({ item }: { item: FeedbackItem }) {
               </span>
             </div>
           </div>
-          <div style={greyContentBox}>&ldquo;{item.comment}&rdquo;</div>
+          {item.comment && (
+            <div style={greyContentBox}>&ldquo;{item.comment}&rdquo;</div>
+          )}
           <SentimentBar score={item.sentiment} />
           <div
             style={{
@@ -814,7 +914,47 @@ function ReferralCard({ referral }: { referral: ReferralItem }) {
 }
 
 // ---------------------------------------------------------------------------
-// Stella funnel (sticky bottom)
+// Empty state
+// ---------------------------------------------------------------------------
+
+function EmptyState({ title, body }: { title: string; body: string }) {
+  return (
+    <div
+      style={{
+        background: colors.white,
+        border: `1px solid ${colors.border}`,
+        borderRadius: 10,
+        padding: "28px 20px",
+        textAlign: "center",
+      }}
+    >
+      <div
+        style={{
+          fontSize: 14,
+          fontWeight: 700,
+          color: "#1C1B18",
+          marginBottom: 4,
+          fontFamily: fonts.body,
+        }}
+      >
+        {title}
+      </div>
+      <div
+        style={{
+          fontSize: 12,
+          color: colors.muted,
+          lineHeight: 1.5,
+          fontFamily: fonts.body,
+        }}
+      >
+        {body}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Stella funnel (sticky bottom, stacked above section BottomTabBar)
 // ---------------------------------------------------------------------------
 
 function StellaFunnel({ steps }: { steps: FunnelStep[] }) {
@@ -822,87 +962,93 @@ function StellaFunnel({ steps }: { steps: FunnelStep[] }) {
     <div
       style={{
         position: "fixed",
-        bottom: 0,
-        left: "50%",
-        transform: "translateX(-50%)",
-        width: 480,
-        maxWidth: "100%",
+        bottom: BOTTOM_TAB_BAR_HEIGHT,
+        left: 0,
+        right: 0,
         background: colors.white,
         borderTop: `1px solid ${colors.border}`,
         padding: "10px 20px 12px",
+        zIndex: 40,
       }}
     >
       <div
         style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          fontSize: 11,
-          fontWeight: 600,
-          color: colors.muted,
-          fontFamily: fonts.body,
-          textTransform: "uppercase",
-          letterSpacing: "0.04em",
-          marginBottom: 6,
+          maxWidth: 420,
+          margin: "0 auto",
         }}
       >
-        <span>Stella Funnel</span>
-        <span
+        <div
           style={{
-            color: colors.mutedLight,
-            fontWeight: 500,
-            fontSize: 10,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            fontSize: 11,
+            fontWeight: 600,
+            color: colors.muted,
+            fontFamily: fonts.body,
+            textTransform: "uppercase",
+            letterSpacing: "0.04em",
+            marginBottom: 6,
           }}
         >
-          Last 30 days
-        </span>
-      </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
-        {steps.map((step, i) => (
-          <div
-            key={step.label}
-            style={{ display: "flex", alignItems: "center", flex: 1 }}
+          <span>Stella Funnel</span>
+          <span
+            style={{
+              color: colors.mutedLight,
+              fontWeight: 500,
+              fontSize: 10,
+            }}
           >
-            <div style={{ textAlign: "center", flex: 1 }}>
-              <div
-                style={{
-                  fontSize: 16,
-                  fontWeight: 800,
-                  color: FUNNEL_COLOR[step.colorKey],
-                  lineHeight: 1,
-                  fontFamily: fonts.body,
-                }}
-              >
-                {step.value}
+            Last 30 days
+          </span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
+          {steps.map((step, i) => (
+            <div
+              key={step.label}
+              style={{ display: "flex", alignItems: "center", flex: 1 }}
+            >
+              <div style={{ textAlign: "center", flex: 1 }}>
+                <div
+                  style={{
+                    fontSize: 16,
+                    fontWeight: 800,
+                    color: FUNNEL_COLOR[step.colorKey],
+                    lineHeight: 1,
+                    fontFamily: fonts.body,
+                  }}
+                >
+                  {step.value}
+                </div>
+                <div
+                  style={{
+                    fontSize: 9,
+                    fontWeight: 600,
+                    color: colors.muted,
+                    marginTop: 2,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.04em",
+                    fontFamily: fonts.body,
+                  }}
+                >
+                  {step.label}
+                </div>
               </div>
-              <div
-                style={{
-                  fontSize: 9,
-                  fontWeight: 600,
-                  color: colors.muted,
-                  marginTop: 2,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.04em",
-                  fontFamily: fonts.body,
-                }}
-              >
-                {step.label}
-              </div>
+              {i < steps.length - 1 && (
+                <div
+                  style={{
+                    color: colors.mutedLight,
+                    fontSize: 12,
+                    fontWeight: 300,
+                    padding: "0 2px",
+                  }}
+                >
+                  →
+                </div>
+              )}
             </div>
-            {i < steps.length - 1 && (
-              <div
-                style={{
-                  color: colors.mutedLight,
-                  fontSize: 12,
-                  fontWeight: 300,
-                  padding: "0 2px",
-                }}
-              >
-                →
-              </div>
-            )}
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </div>
   );
