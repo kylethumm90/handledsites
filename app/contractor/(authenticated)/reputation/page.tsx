@@ -8,7 +8,6 @@ import ReputationClient, {
   type ReferralStatus,
   type ReputationData,
   type ReviewItem,
-  type ReviewStatus,
   type TimeRange,
 } from "./ReputationClient";
 
@@ -17,10 +16,15 @@ import ReputationClient, {
  *
  * Server component. Reads the post-sale funnel for the logged-in
  * business straight from Supabase:
- *   - business name (businesses.name)
- *   - feedback + reviews (review_responses joined to leads)
- *   - advocates + revenue (leads.referred_by_lead_id + referral_partners)
- *   - Stella funnel counts (denormalized timestamps on leads)
+ *   - business name + Google My Business data (businesses.name,
+ *     .google_review_count, .google_rating, .google_reviews)
+ *   - Feedback tab from review_responses joined to leads
+ *   - Reviews tab from the scraped GMB reviews on businesses.google_reviews
+ *     merged with any curated rows in the `reviews` table
+ *   - Advocates + revenue from leads.referred_by_lead_id and
+ *     referral_partners
+ *   - Stella funnel counts from the denormalized post-sale timestamps
+ *     on leads
  *
  * Time range comes from ?range=7d|30d|90d|All (defaults to 30d).
  * Clicking a range pill in the client pushes a new querystring and
@@ -59,6 +63,21 @@ type ReviewResponseRow = {
   feedback: string | null;
   is_positive: boolean | null;
   lead_id: string | null;
+};
+
+type CuratedReviewRow = {
+  id: string;
+  reviewer_name: string;
+  rating: number;
+  review_text: string;
+  review_date: string;
+  source: string;
+};
+
+type GoogleReviewRow = {
+  author: string;
+  rating: number;
+  text: string;
 };
 
 type LeadLookupRow = {
@@ -107,6 +126,21 @@ export default async function ContractorReputationPage({
     return q;
   };
 
+  // Curated rows in the `reviews` table (manual/featured reviews). These
+  // have real timestamps, so they honor the time filter. Scraped GMB reviews
+  // (businesses.google_reviews JSONB) don't carry per-review dates, so they
+  // pass through regardless of range.
+  const buildCuratedReviewsQuery = () => {
+    let q = supabase
+      .from("reviews")
+      .select("id, reviewer_name, rating, review_text, review_date, source")
+      .eq("business_id", businessId)
+      .order("review_date", { ascending: false })
+      .limit(30);
+    if (cutoff) q = q.gte("review_date", cutoff);
+    return q;
+  };
+
   const buildReferralsQuery = () => {
     let q = supabase
       .from("leads")
@@ -124,6 +158,7 @@ export default async function ContractorReputationPage({
   const [
     businessRes,
     reviewResponsesRes,
+    curatedReviewsRes,
     advocatesCountRes,
     referralsRes,
     // Funnel (always last 30d)
@@ -138,10 +173,11 @@ export default async function ContractorReputationPage({
   ] = await Promise.all([
     supabase
       .from("businesses")
-      .select("name, google_rating, google_review_count")
+      .select("name, google_rating, google_review_count, google_reviews")
       .eq("id", businessId)
       .single(),
     buildReviewsQuery(),
+    buildCuratedReviewsQuery(),
     supabase
       .from("referral_partners")
       .select("id", { count: "exact", head: true })
@@ -191,6 +227,13 @@ export default async function ContractorReputationPage({
 
   const business = businessRes.data;
   const reviewRows: ReviewResponseRow[] = reviewResponsesRes.data ?? [];
+  const curatedReviewRows: CuratedReviewRow[] =
+    (curatedReviewsRes.data ?? []) as CuratedReviewRow[];
+  const googleReviewRows: GoogleReviewRow[] = Array.isArray(
+    business?.google_reviews
+  )
+    ? (business.google_reviews as GoogleReviewRow[])
+    : [];
   const referralRows: LeadLookupRow[] = (referralsRes.data ??
     []) as LeadLookupRow[];
 
@@ -233,8 +276,16 @@ export default async function ContractorReputationPage({
     toFeedbackItem(r, r.lead_id ? leadLookup.get(r.lead_id) : undefined)
   );
 
-  const reviews: ReviewItem[] = reviewRows.map((r) =>
-    toReviewItem(r, r.lead_id ? leadLookup.get(r.lead_id) : undefined)
+  // Reviews tab: actual posted reviews.
+  //  - Google My Business reviews scraped onto businesses.google_reviews
+  //    come first (no timestamps, so they always appear regardless of range).
+  //  - Curated rows from the `reviews` table fill in any manually added or
+  //    featured reviews (time-filtered by review_date).
+  //  - Dedupe by author+rating+text so GMB rows that were copied into the
+  //    reviews table don't render twice.
+  const reviews: ReviewItem[] = buildReviewsFromGoogleAndCurated(
+    googleReviewRows,
+    curatedReviewRows
   );
 
   const referrals: ReferralItem[] = referralRows.map((lead) => {
@@ -254,13 +305,19 @@ export default async function ContractorReputationPage({
         ratedRows.length
       : 0;
 
+  // Reviews count prefers the live GMB count from the business record so it
+  // matches what the contractor sees on Google. Falls back to however many
+  // reviews we've actually shaped for the tab.
+  const reviewsCount =
+    business?.google_review_count ??
+    (googleReviewRows.length + curatedReviewRows.length);
+
   const stats = {
     feedback: reviewRows.length,
-    reviews: reviewRows.filter((r) => r.is_positive === true).length,
+    reviews: reviewsCount,
     avgRating:
-      avgRatingInWindow > 0
-        ? avgRatingInWindow
-        : (business?.google_rating ?? 0),
+      business?.google_rating ??
+      (avgRatingInWindow > 0 ? avgRatingInWindow : 0),
     advocates: advocatesCountRes.count ?? 0,
   };
 
@@ -346,53 +403,90 @@ function toFeedbackItem(
   };
 }
 
-function toReviewItem(
-  row: ReviewResponseRow,
-  lead: LeadLookupRow | undefined
-): ReviewItem {
-  const name = lead?.name?.trim() || "Customer";
-  const rating = row.rating ?? 0;
-  const sentiment =
-    typeof lead?.sentiment_score === "number"
-      ? lead.sentiment_score
-      : ratingToSentiment(rating);
+function buildReviewsFromGoogleAndCurated(
+  googleRows: GoogleReviewRow[],
+  curatedRows: CuratedReviewRow[]
+): ReviewItem[] {
+  const out: ReviewItem[] = [];
+  const seen = new Set<string>();
 
-  let status: ReviewStatus;
-  let source: string;
-  let alert: string | undefined;
+  // Google My Business scraped reviews first — they're the canonical "posted"
+  // public reviews. No per-review timestamp, so surface them as "Posted".
+  googleRows.forEach((g, i) => {
+    const name = g.author?.trim() || "Google reviewer";
+    const rating = typeof g.rating === "number" ? g.rating : 0;
+    const text = g.text?.trim() || "";
+    const key = dedupeKey(name, rating, text);
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push({
+      id: `gmb-${i}-${hashShort(key)}`,
+      name,
+      initials: getInitials(name),
+      job: "Google review",
+      source: "Google",
+      time: "Posted",
+      rating,
+      status: "posted",
+      text: text || "Left a Google review.",
+      sentiment: ratingToSentiment(rating),
+    });
+  });
 
-  if (sentiment < 60) {
-    status = "needs attention";
-    source = "Feedback";
-    alert = "Low sentiment — recovery recommended";
-  } else if (row.is_positive === true && lead?.review_submitted_at) {
-    status = "posted";
-    source = "Google";
-  } else if (row.is_positive === true) {
-    status = "awaiting review";
-    source = "Pending";
-    alert = `Review link sent ${formatRelative(row.created_at)}`;
-  } else {
-    status = "awaiting review";
-    source = "Pending";
+  // Curated rows in the `reviews` table (featured / manually logged public
+  // reviews). These have real review_date timestamps.
+  curatedRows.forEach((r) => {
+    const name = r.reviewer_name?.trim() || "Customer";
+    const rating = typeof r.rating === "number" ? r.rating : 0;
+    const text = r.review_text?.trim() || "";
+    const key = dedupeKey(name, rating, text);
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push({
+      id: `curated-${r.id}`,
+      name,
+      initials: getInitials(name),
+      job: humanizeSource(r.source),
+      source: humanizeSource(r.source) || "Review",
+      time: formatReviewDate(r.review_date),
+      rating,
+      status: "posted",
+      text: text || "Left a review.",
+      sentiment: ratingToSentiment(rating),
+    });
+  });
+
+  return out;
+}
+
+function dedupeKey(name: string, rating: number, text: string): string {
+  return `${name.toLowerCase()}|${rating}|${text.slice(0, 80).toLowerCase()}`;
+}
+
+function hashShort(input: string): string {
+  let h = 0;
+  for (let i = 0; i < input.length; i += 1) {
+    h = (h * 31 + input.charCodeAt(i)) >>> 0;
   }
+  return h.toString(36);
+}
 
-  const showStars = status === "posted";
-  const text = buildReviewText(row, status);
+function humanizeSource(source: string | null | undefined): string {
+  if (!source) return "";
+  if (/google/i.test(source)) return "Google";
+  if (/yelp/i.test(source)) return "Yelp";
+  if (/facebook/i.test(source)) return "Facebook";
+  return source
+    .replace(/[_-]+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
 
-  return {
-    id: row.id,
-    name,
-    initials: getInitials(name),
-    job: lead?.service_needed?.trim() || "Job complete",
-    source,
-    time: formatRelative(row.created_at),
-    rating: showStars ? rating : null,
-    status,
-    text,
-    sentiment,
-    alert,
-  };
+function formatReviewDate(iso: string): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
 function toReferralItem(
@@ -432,18 +526,6 @@ function referralStatusAndValue(lead: LeadLookupRow): {
     return { status: "contacted", value: null };
   }
   return { status: "new lead", value: null };
-}
-
-function buildReviewText(row: ReviewResponseRow, status: ReviewStatus): string {
-  const feedback = row.feedback?.trim();
-  if (feedback) return feedback;
-  if (status === "awaiting review") {
-    return "Feedback collected. Stella sent a review link — waiting for the customer to submit on Google.";
-  }
-  if (status === "needs attention") {
-    return "Low-sentiment feedback collected. Recovery call recommended before a public review lands.";
-  }
-  return "Review on file.";
 }
 
 function emojiForRating(rating: number): string {
