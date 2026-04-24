@@ -179,7 +179,7 @@ export default async function ContractorReputationPage({
     supabase
       .from("businesses")
       .select(
-        "name, google_rating, google_review_count, google_reviews, google_review_url"
+        "name, google_rating, google_review_count, google_reviews, google_review_url, google_place_id"
       )
       .eq("id", businessId)
       .single(),
@@ -290,10 +290,21 @@ export default async function ContractorReputationPage({
   //    featured reviews (time-filtered by review_date).
   //  - Dedupe by author+rating+text so GMB rows that were copied into the
   //    reviews table don't render twice.
+  // Prefer a "see all reviews" link built from the place_id so the VIEW
+  // button opens the reviews listing; fall back to the write-review URL
+  // if a place_id isn't set. The scraped google_reviews rows don't carry
+  // per-review URLs, so deep-linking to the specific review isn't possible
+  // without a data migration (e.g. switching to the Places API).
+  const googleReviewsListUrl = business?.google_place_id
+    ? `https://search.google.com/local/reviews?placeid=${encodeURIComponent(
+        business.google_place_id
+      )}`
+    : business?.google_review_url ?? null;
+
   const reviews: ReviewItem[] = buildReviewsFromGoogleAndCurated(
     googleReviewRows,
     curatedReviewRows,
-    business?.google_review_url ?? null
+    googleReviewsListUrl
   );
 
   const referrals: ReferralItem[] = referralRows.map((lead) => {
