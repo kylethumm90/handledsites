@@ -24,7 +24,7 @@
  * reference mockup at docs/mockups/pipeline-contact-modal.png.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ActivityLogEntry, Lead, LeadStatus } from "@/lib/supabase";
 import { colors, fonts, stageColors, type StageKey } from "@/lib/design-system";
 import { pipelineStageFor, postSaleStageFor } from "@/lib/pipeline-v2";
@@ -165,22 +165,6 @@ function firstNameUpper(name: string): string {
   return first ? first.toUpperCase() : "CUSTOMER";
 }
 
-function secondaryActionFor(stage: StageKey): string {
-  switch (stage) {
-    case "job_done":
-    case "feedback":
-      return "SEND FEEDBACK REQUEST";
-    case "reviewed":
-      return "ASK FOR REFERRAL";
-    case "referrer":
-      return "FOLLOW UP";
-    case "recovery":
-      return "EMAIL";
-    default:
-      return "EMAIL";
-  }
-}
-
 function fallbackAiContext(
   lead: Lead,
   stage: StageKey,
@@ -260,6 +244,18 @@ export default function ContactDetailModal({
   // Reset on lead change so we don't leak one customer's patch into
   // another's render.
   const [leadPatch, setLeadPatch] = useState<Partial<Lead>>({});
+  const [composing, setComposing] = useState(false);
+  const timelineRef = useRef<HTMLDivElement | null>(null);
+  const handleStartNote = () => {
+    setComposing(true);
+    // Defer scroll so the composer has a chance to mount before we measure.
+    requestAnimationFrame(() => {
+      timelineRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+  };
   useEffect(() => {
     setCurrentStatus(lead.status);
     setAdvanceError(null);
@@ -308,7 +304,6 @@ export default function ContactDetailModal({
     resolvedStage === "job_done"
       ? "SEND FEEDBACK REQUEST"
       : `CALL ${firstNameUpper(lead.name)}`;
-  const secondaryActionLabel = secondaryActionFor(resolvedStage);
 
   const handleAdvance = async () => {
     const next = NEXT_STATUS[currentStatus];
@@ -667,22 +662,23 @@ export default function ContactDetailModal({
             </button>
             <button
               type="button"
+              onClick={handleStartNote}
               style={{
                 minHeight: 44,
                 padding: "12px 16px",
-                backgroundColor: colors.white,
-                color: colors.muted,
-                border: `1px solid ${colors.border}`,
+                backgroundColor: colors.navy,
+                color: colors.white,
+                border: "none",
                 borderRadius: 0,
                 cursor: "pointer",
                 fontFamily: fonts.body,
-                fontWeight: 500,
+                fontWeight: 700,
                 fontSize: 13,
                 letterSpacing: "0.04em",
                 textTransform: "uppercase",
               }}
             >
-              {secondaryActionLabel}
+              + Add Note
             </button>
           </div>
 
@@ -698,6 +694,9 @@ export default function ContactDetailModal({
           <WhatHappenedTimeline
             leadId={lead.id}
             activities={activities ?? []}
+            composing={composing}
+            onComposingChange={setComposing}
+            scrollRef={timelineRef}
             onNoteAdded={onNoteAdded}
             onAiSummaryUpdated={(summary) => setCurrentAiSummary(summary)}
             onLeadPatched={(patch) =>
@@ -1309,17 +1308,23 @@ function isUserNote(entry: ActivityLogEntry): boolean {
 function WhatHappenedTimeline({
   leadId,
   activities,
+  composing,
+  onComposingChange,
+  scrollRef,
   onNoteAdded,
   onAiSummaryUpdated,
   onLeadPatched,
 }: {
   leadId: string;
   activities: ActivityLogEntry[];
+  composing: boolean;
+  onComposingChange: (value: boolean) => void;
+  scrollRef: React.RefObject<HTMLDivElement>;
   onNoteAdded?: (entry: ActivityLogEntry) => void;
   onAiSummaryUpdated?: (summary: string) => void;
   onLeadPatched?: (patch: Partial<Lead>) => void;
 }) {
-  const [composing, setComposing] = useState(false);
+  const setComposing = onComposingChange;
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -1376,8 +1381,10 @@ function WhatHappenedTimeline({
   };
 
   return (
-    <div style={{ padding: "0 20px 24px" }}>
-      {/* Section header with an inline "+ Add Note" action on the right. */}
+    <div ref={scrollRef} style={{ padding: "0 20px 24px" }}>
+      {/* Section header with a quiet "+ Add Note" text link on the right.
+          The prominent add-note CTA lives in the modal's secondary action
+          row; this is just a convenience repeat in context. */}
       <div
         style={{
           display: "flex",
@@ -1403,21 +1410,19 @@ function WhatHappenedTimeline({
             type="button"
             onClick={() => setComposing(true)}
             style={{
-              minHeight: 28,
-              padding: "4px 10px",
-              backgroundColor: "transparent",
-              color: colors.navy,
-              border: `1px solid ${colors.border}`,
-              borderRadius: 0,
+              background: "transparent",
+              color: colors.muted,
+              border: "none",
+              padding: 0,
               cursor: "pointer",
               fontFamily: fonts.body,
-              fontSize: 10,
-              fontWeight: 600,
-              letterSpacing: "0.06em",
-              textTransform: "uppercase",
+              fontSize: 11,
+              fontWeight: 500,
+              letterSpacing: 0,
+              textTransform: "none",
             }}
           >
-            + Add Note
+            + Add note
           </button>
         ) : null}
       </div>
