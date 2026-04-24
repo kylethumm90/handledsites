@@ -25,7 +25,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { ActivityLogEntry, Lead, LeadStatus } from "@/lib/supabase";
+import type { ActivityLogEntry, Employee, Lead, LeadStatus } from "@/lib/supabase";
 import { colors, fonts, stageColors, type StageKey } from "@/lib/design-system";
 import { pipelineStageFor, postSaleStageFor } from "@/lib/pipeline-v2";
 
@@ -685,6 +685,18 @@ export default function ContactDetailModal({
           {/* Contact info card — quiet rows of metadata */}
           <ContactInfoCard lead={lead} />
 
+          {/* Assign + Referral Partner — rep assignment and (for closed
+              customers) a one-tap "make them a referral partner" action. */}
+          <AssignAndReferralSection
+            lead={effectiveLead}
+            onEmployeeChanged={(employeeId) =>
+              setLeadPatch((prev) => ({ ...prev, employee_id: employeeId }))
+            }
+            onReferralCodeSet={(code) =>
+              setLeadPatch((prev) => ({ ...prev, referral_code: code }))
+            }
+          />
+
           {/* AI Details — expandable structured fields the AI extracted.
               Pass `effectiveLead` so fields the note-time extractor just
               filled show up immediately without a reload. */}
@@ -1167,6 +1179,294 @@ function ContactInfoCard({ lead }: { lead: Lead }) {
           />
         ))}
       </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Assigned-to select + Make referral partner
+// ---------------------------------------------------------------------------
+
+function AssignAndReferralSection({
+  lead,
+  onEmployeeChanged,
+  onReferralCodeSet,
+}: {
+  lead: Lead;
+  onEmployeeChanged: (employeeId: string | null) => void;
+  onReferralCodeSet: (code: string) => void;
+}) {
+  const [employees, setEmployees] = useState<Employee[] | null>(null);
+  const [assigned, setAssigned] = useState<string | null>(
+    lead.employee_id ?? null,
+  );
+  const [savingAssign, setSavingAssign] = useState(false);
+  const [assignError, setAssignError] = useState<string | null>(null);
+
+  const [referralCode, setReferralCode] = useState<string | null>(
+    lead.referral_code ?? null,
+  );
+  const [referralLoading, setReferralLoading] = useState(false);
+  const [referralCopied, setReferralCopied] = useState(false);
+  const [referralError, setReferralError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/contractor/employees", {
+          cache: "no-store",
+        });
+        if (!res.ok) return;
+        const data = (await res.json()) as Employee[];
+        if (!cancelled) setEmployees(data ?? []);
+      } catch {
+        /* modal still renders without the dropdown */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    setAssigned(lead.employee_id ?? null);
+  }, [lead.employee_id]);
+
+  useEffect(() => {
+    setReferralCode(lead.referral_code ?? null);
+  }, [lead.referral_code]);
+
+  const showAssign = employees !== null && employees.length > 0;
+  const showReferral = lead.status === "customer" || !!referralCode;
+
+  if (!showAssign && !showReferral) return null;
+
+  const handleAssign = async (empId: string | null) => {
+    setSavingAssign(true);
+    setAssignError(null);
+    const prev = assigned;
+    setAssigned(empId);
+    try {
+      const res = await fetch(`/api/contractor/customers/${lead.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ employee_id: empId }),
+      });
+      if (!res.ok) {
+        setAssigned(prev);
+        setAssignError("Couldn't save assignment.");
+        return;
+      }
+      onEmployeeChanged(empId);
+    } catch {
+      setAssigned(prev);
+      setAssignError("Couldn't save assignment.");
+    } finally {
+      setSavingAssign(false);
+    }
+  };
+
+  const handleMakePartner = async () => {
+    if (referralLoading) return;
+    setReferralLoading(true);
+    setReferralError(null);
+    try {
+      const res = await fetch("/api/contractor/referral-partner", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ customer_id: lead.id }),
+      });
+      const data = (await res.json()) as { referral_code?: string; error?: string };
+      if (!res.ok || !data.referral_code) {
+        setReferralError(data.error || "Couldn't create referral partner.");
+        return;
+      }
+      setReferralCode(data.referral_code);
+      onReferralCodeSet(data.referral_code);
+    } catch {
+      setReferralError("Couldn't create referral partner.");
+    } finally {
+      setReferralLoading(false);
+    }
+  };
+
+  const copyReferralLink = async () => {
+    if (!referralCode || typeof window === "undefined") return;
+    const url = `${window.location.origin}/refer/${referralCode}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setReferralCopied(true);
+      setTimeout(() => setReferralCopied(false), 1500);
+    } catch {
+      /* ignore — clipboard may be unavailable */
+    }
+  };
+
+  return (
+    <div
+      style={{
+        padding: "8px 20px 4px",
+        display: "flex",
+        flexDirection: "column",
+        gap: 14,
+      }}
+    >
+      {showAssign && (
+        <div>
+          <div
+            style={{
+              fontFamily: fonts.body,
+              fontSize: 9,
+              fontWeight: 600,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              color: colors.mutedLight,
+              marginBottom: 8,
+            }}
+          >
+            Assigned To
+          </div>
+          <select
+            value={assigned ?? ""}
+            disabled={savingAssign}
+            onChange={(e) => handleAssign(e.target.value || null)}
+            style={{
+              width: "100%",
+              padding: "12px 14px",
+              border: `1px solid ${colors.border}`,
+              background: colors.white,
+              fontSize: 14,
+              fontWeight: 600,
+              color: assigned ? colors.navy : colors.muted,
+              fontFamily: fonts.body,
+              borderRadius: 0,
+              cursor: savingAssign ? "wait" : "pointer",
+              appearance: "none",
+              backgroundImage: `url("data:image/svg+xml,%3Csvg width='12' height='12' viewBox='0 0 12 12' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M3 4.5L6 7.5L9 4.5' stroke='%239CA3AF' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`,
+              backgroundRepeat: "no-repeat",
+              backgroundPosition: "right 14px center",
+            }}
+          >
+            <option value="">Unassigned</option>
+            {employees!.map((emp) => (
+              <option key={emp.id} value={emp.id}>
+                {emp.name}
+              </option>
+            ))}
+          </select>
+          {assignError && (
+            <div
+              style={{
+                marginTop: 6,
+                fontSize: 11,
+                color: colors.red,
+                fontFamily: fonts.body,
+              }}
+            >
+              {assignError}
+            </div>
+          )}
+        </div>
+      )}
+
+      {showReferral && (
+        <div>
+          {referralCode ? (
+            <div
+              style={{
+                background: colors.white,
+                border: `1px solid ${colors.border}`,
+                padding: "12px 14px",
+              }}
+            >
+              <div
+                style={{
+                  fontFamily: fonts.body,
+                  fontSize: 9,
+                  fontWeight: 600,
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  color: colors.mutedLight,
+                  marginBottom: 8,
+                }}
+              >
+                Referral Link
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    fontSize: 13,
+                    color: colors.navy,
+                    fontFamily: fonts.mono,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {typeof window !== "undefined" ? window.location.origin : ""}
+                  /refer/{referralCode}
+                </span>
+                <button
+                  type="button"
+                  onClick={copyReferralLink}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    cursor: "pointer",
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: referralCopied ? colors.green : colors.muted,
+                    padding: "4px 8px",
+                    fontFamily: fonts.body,
+                    letterSpacing: "0.04em",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  {referralCopied ? "Copied" : "Copy"}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={handleMakePartner}
+              disabled={referralLoading}
+              style={{
+                width: "100%",
+                padding: "12px",
+                background: colors.white,
+                border: `1px solid ${colors.border}`,
+                fontSize: 13,
+                fontWeight: 600,
+                color: colors.muted,
+                cursor: referralLoading ? "wait" : "pointer",
+                fontFamily: fonts.body,
+                borderRadius: 0,
+                letterSpacing: "0.02em",
+              }}
+            >
+              {referralLoading ? "Creating…" : "Make referral partner"}
+            </button>
+          )}
+          {referralError && (
+            <div
+              style={{
+                marginTop: 6,
+                fontSize: 11,
+                color: colors.red,
+                fontFamily: fonts.body,
+              }}
+            >
+              {referralError}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
