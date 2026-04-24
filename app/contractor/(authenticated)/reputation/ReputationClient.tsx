@@ -115,9 +115,6 @@ const FUNNEL_COLOR: Record<FunnelColorKey, string> = {
   green: colors.green,
 };
 
-// Stack the sticky Stella funnel above the reputation layout's bottom tab bar
-// (which is fixed at bottom:0 and ~84px tall).
-const BOTTOM_TAB_BAR_HEIGHT = 84;
 const STELLA_FUNNEL_HEIGHT = 76;
 
 // ---------------------------------------------------------------------------
@@ -954,7 +951,7 @@ function EmptyState({ title, body }: { title: string; body: string }) {
 }
 
 // ---------------------------------------------------------------------------
-// Stella funnel (sticky bottom, stacked above section BottomTabBar)
+// Stella funnel (sticky bottom)
 // ---------------------------------------------------------------------------
 
 function StellaFunnel({ steps }: { steps: FunnelStep[] }) {
@@ -962,7 +959,7 @@ function StellaFunnel({ steps }: { steps: FunnelStep[] }) {
     <div
       style={{
         position: "fixed",
-        bottom: BOTTOM_TAB_BAR_HEIGHT,
+        bottom: 0,
         left: 0,
         right: 0,
         background: colors.white,
