@@ -2,10 +2,10 @@ import { redirect } from "next/navigation";
 import { validateSessionFromCookie } from "@/lib/contractor-auth";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import ReputationClient, {
+  type AdvocatePartner,
+  type AdvocatesData,
   type FeedbackItem,
   type FunnelStep,
-  type ReferralItem,
-  type ReferralStatus,
   type ReputationData,
   type ReviewItem,
   type TimeRange,
@@ -99,6 +99,20 @@ type LeadLookupRow = {
   referred_by_lead_id: string | null;
 };
 
+type ReferralPartnerRow = {
+  id: string;
+  customer_id: string | null;
+  referral_code: string | null;
+  created_at: string;
+};
+
+type PartnerReferralRow = {
+  id: string;
+  referred_by_lead_id: string | null;
+  status: string;
+  estimated_value_cents: number | null;
+};
+
 export default async function ContractorReputationPage({
   searchParams,
 }: {
@@ -146,26 +160,12 @@ export default async function ContractorReputationPage({
     return q;
   };
 
-  const buildReferralsQuery = () => {
-    let q = supabase
-      .from("leads")
-      .select(
-        "id, name, service_needed, status, created_at, closed_at, estimated_value_cents, sentiment_score, review_submitted_at, feedback_submitted_at, referral_opted_in_at, job_completed_at, referred_by_lead_id"
-      )
-      .eq("business_id", businessId)
-      .not("referred_by_lead_id", "is", null)
-      .order("created_at", { ascending: false })
-      .limit(30);
-    if (cutoff) q = q.gte("created_at", cutoff);
-    return q;
-  };
-
   const [
     businessRes,
     reviewResponsesRes,
     curatedReviewsRes,
     advocatesCountRes,
-    referralsRes,
+    partnerRowsRes,
     // Funnel (always last 30d)
     funnelJobsRes,
     funnelFeedbackRes,
@@ -189,7 +189,12 @@ export default async function ContractorReputationPage({
       .from("referral_partners")
       .select("id", { count: "exact", head: true })
       .eq("business_id", businessId),
-    buildReferralsQuery(),
+    // All referral_partners for this business — drives the Advocates tab.
+    // We resolve names/stats in a second pass below.
+    supabase
+      .from("referral_partners")
+      .select("id, customer_id, referral_code, created_at")
+      .eq("business_id", businessId),
     supabase
       .from("leads")
       .select("id", { count: "exact", head: true })
@@ -241,25 +246,26 @@ export default async function ContractorReputationPage({
   )
     ? (business.google_reviews as GoogleReviewRow[])
     : [];
-  const referralRows: LeadLookupRow[] = (referralsRes.data ??
-    []) as LeadLookupRow[];
+  const partnerRows: ReferralPartnerRow[] =
+    (partnerRowsRes.data ?? []) as ReferralPartnerRow[];
 
   // -----------------------------------------------------------------
-  // Secondary lookup: the leads referenced by review_responses +
-  // the referrers for each referred lead. One batched .in(...) each.
+  // Secondary lookups:
+  //   1. leads referenced by review_responses (for the Feedback tab)
+  //   2. partner leads themselves (for name/initials on the Advocates tab)
+  //   3. referred-in leads that attribute to these partners (for
+  //      submitted/successful/revenue counts)
   // -----------------------------------------------------------------
   const leadIdsFromReviews = Array.from(
     new Set(reviewRows.map((r) => r.lead_id).filter(Boolean) as string[])
   );
-  const referrerIds = Array.from(
+  const partnerLeadIds = Array.from(
     new Set(
-      referralRows
-        .map((r) => r.referred_by_lead_id)
-        .filter(Boolean) as string[]
+      partnerRows.map((p) => p.customer_id).filter(Boolean) as string[]
     )
   );
   const lookupIds = Array.from(
-    new Set([...leadIdsFromReviews, ...referrerIds])
+    new Set([...leadIdsFromReviews, ...partnerLeadIds])
   );
 
   let leadLookup = new Map<string, LeadLookupRow>();
@@ -274,6 +280,18 @@ export default async function ContractorReputationPage({
     leadLookup = new Map(
       ((leads ?? []) as LeadLookupRow[]).map((l) => [l.id, l])
     );
+  }
+
+  // Fetch every lead referred by any partner. Status + estimated value let
+  // us count submitted/successful and sum revenue per partner.
+  let partnerReferralRows: PartnerReferralRow[] = [];
+  if (partnerLeadIds.length > 0) {
+    const { data } = await supabase
+      .from("leads")
+      .select("id, referred_by_lead_id, status, estimated_value_cents")
+      .eq("business_id", businessId)
+      .in("referred_by_lead_id", partnerLeadIds);
+    partnerReferralRows = (data ?? []) as PartnerReferralRow[];
   }
 
   // -----------------------------------------------------------------
@@ -307,12 +325,11 @@ export default async function ContractorReputationPage({
     googleReviewsListUrl
   );
 
-  const referrals: ReferralItem[] = referralRows.map((lead) => {
-    const referrer = lead.referred_by_lead_id
-      ? leadLookup.get(lead.referred_by_lead_id)
-      : undefined;
-    return toReferralItem(lead, referrer);
-  });
+  const advocates: AdvocatesData = buildAdvocates(
+    partnerRows,
+    partnerReferralRows,
+    leadLookup
+  );
 
   // Stats
   const ratedRows = reviewRows.filter(
@@ -384,7 +401,7 @@ export default async function ContractorReputationPage({
     funnel,
     feedback,
     reviews,
-    referrals,
+    advocates,
   };
 
   return <ReputationClient data={data} />;
@@ -519,45 +536,80 @@ function formatReviewDate(iso: string): string {
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-function toReferralItem(
-  lead: LeadLookupRow,
-  referrer: LeadLookupRow | undefined
-): ReferralItem {
-  const referrerName = referrer?.name?.trim() || "Customer";
-  const referredName = lead.name?.trim() || "Referral";
-  const referredJob = lead.service_needed?.trim() || "a job";
-  const { status, value } = referralStatusAndValue(lead);
-
-  return {
-    id: lead.id,
-    referredLeadId: lead.id,
-    referrerLeadId: referrer?.id ?? null,
-    name: referrerName,
-    initials: getInitials(referrerName),
-    referredName,
-    referredJob,
-    time: formatRelative(lead.created_at),
-    status,
-    value,
-  };
-}
-
-function referralStatusAndValue(lead: LeadLookupRow): {
-  status: ReferralStatus;
-  value: string | null;
-} {
-  if (lead.status === "customer") {
-    return {
-      status: "booked",
-      value: lead.estimated_value_cents
-        ? formatMoneyCompact(lead.estimated_value_cents)
-        : null,
+function buildAdvocates(
+  partnerRows: ReferralPartnerRow[],
+  partnerReferralRows: PartnerReferralRow[],
+  leadLookup: Map<string, LeadLookupRow>
+): AdvocatesData {
+  // Aggregate referral counts + revenue per partner.
+  const statsByPartnerLead = new Map<
+    string,
+    { submitted: number; successful: number; revenueCents: number }
+  >();
+  for (const r of partnerReferralRows) {
+    if (!r.referred_by_lead_id) continue;
+    const acc = statsByPartnerLead.get(r.referred_by_lead_id) ?? {
+      submitted: 0,
+      successful: 0,
+      revenueCents: 0,
     };
+    acc.submitted += 1;
+    if (r.status === "customer") {
+      acc.successful += 1;
+      acc.revenueCents += r.estimated_value_cents ?? 0;
+    }
+    statsByPartnerLead.set(r.referred_by_lead_id, acc);
   }
-  if (lead.status === "booked" || lead.status === "contacted") {
-    return { status: "contacted", value: null };
+
+  const newCutoffMs = Date.now() - 7 * DAY_MS;
+
+  const shaped: AdvocatePartner[] = partnerRows.map((p) => {
+    const lead = p.customer_id ? leadLookup.get(p.customer_id) : undefined;
+    const name = lead?.name?.trim() || "Advocate";
+    const stats = p.customer_id
+      ? (statsByPartnerLead.get(p.customer_id) ?? {
+          submitted: 0,
+          successful: 0,
+          revenueCents: 0,
+        })
+      : { submitted: 0, successful: 0, revenueCents: 0 };
+    return {
+      id: p.id,
+      leadId: p.customer_id,
+      name,
+      initials: getInitials(name),
+      joinedAt: p.created_at,
+      joinedLabel: formatRelative(p.created_at),
+      submitted: stats.submitted,
+      successful: stats.successful,
+      revenueLabel:
+        stats.revenueCents > 0 ? formatMoneyCompact(stats.revenueCents) : null,
+    };
+  });
+
+  const newAdvocates: AdvocatePartner[] = [];
+  const rest: AdvocatePartner[] = [];
+  for (const a of shaped) {
+    const joinedMs = Date.parse(a.joinedAt);
+    if (Number.isFinite(joinedMs) && joinedMs >= newCutoffMs) {
+      newAdvocates.push(a);
+    } else {
+      rest.push(a);
+    }
   }
-  return { status: "new lead", value: null };
+
+  newAdvocates.sort((a, b) => (a.joinedAt < b.joinedAt ? 1 : -1));
+
+  rest.sort((a, b) => {
+    if (b.successful !== a.successful) return b.successful - a.successful;
+    if (b.submitted !== a.submitted) return b.submitted - a.submitted;
+    const aRev = a.revenueLabel ? 1 : 0;
+    const bRev = b.revenueLabel ? 1 : 0;
+    if (bRev !== aRev) return bRev - aRev;
+    return a.name.localeCompare(b.name);
+  });
+
+  return { newAdvocates, rankedAdvocates: rest };
 }
 
 function emojiForRating(rating: number): string {

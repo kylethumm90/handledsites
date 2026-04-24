@@ -61,19 +61,21 @@ export type ReviewItem = {
   externalUrl: string | null;
 };
 
-export type ReferralStatus = "booked" | "contacted" | "new lead";
-
-export type ReferralItem = {
+export type AdvocatePartner = {
   id: string;
-  referrerLeadId: string | null;
-  referredLeadId: string | null;
+  leadId: string | null;
   name: string;
   initials: string;
-  referredName: string;
-  referredJob: string;
-  time: string;
-  status: ReferralStatus;
-  value: string | null;
+  joinedAt: string;
+  joinedLabel: string;
+  submitted: number;
+  successful: number;
+  revenueLabel: string | null;
+};
+
+export type AdvocatesData = {
+  newAdvocates: AdvocatePartner[];
+  rankedAdvocates: AdvocatePartner[];
 };
 
 export type FunnelColorKey = "navy" | "blue" | "amber" | "green";
@@ -100,7 +102,7 @@ export type ReputationData = {
   funnel: FunnelStep[];
   feedback: FeedbackItem[];
   reviews: ReviewItem[];
-  referrals: ReferralItem[];
+  advocates: AdvocatesData;
 };
 
 // ---------------------------------------------------------------------------
@@ -115,12 +117,6 @@ const REVIEW_STATUS_COLOR: Record<ReviewStatus, string> = {
   posted: colors.green,
   "awaiting review": colors.amber,
   "needs attention": colors.red,
-};
-
-const REFERRAL_STATUS_COLOR: Record<ReferralStatus, string> = {
-  booked: colors.green,
-  contacted: colors.blue,
-  "new lead": colors.amber,
 };
 
 const FUNNEL_COLOR: Record<FunnelColorKey, string> = {
@@ -349,26 +345,11 @@ export default function ReputationClient({ data }: { data: ReputationData }) {
           ))}
 
         {activeFilter === "advocates" && (
-          <>
-            <RevenueSummary
-              amount={data.advocateRevenue.amount}
-              conversionPct={data.advocateRevenue.conversionPct}
-            />
-            {data.referrals.length > 0 ? (
-              data.referrals.map((r) => (
-                <ReferralCard
-                  key={r.id}
-                  referral={r}
-                  onOpenContact={() => openContact(r.referrerLeadId)}
-                />
-              ))
-            ) : (
-              <EmptyState
-                title="No referrals yet"
-                body="When a past customer refers a friend, they'll appear here."
-              />
-            )}
-          </>
+          <AdvocatesPanel
+            revenue={data.advocateRevenue}
+            advocates={data.advocates}
+            onOpenContact={openContact}
+          />
         )}
       </div>
 
@@ -1002,83 +983,255 @@ function RevenueSummary({
   );
 }
 
-function ReferralCard({
-  referral,
+function AdvocatesPanel({
+  revenue,
+  advocates,
   onOpenContact,
 }: {
-  referral: ReferralItem;
-  onOpenContact: () => void;
+  revenue: { amount: string; conversionPct: number };
+  advocates: AdvocatesData;
+  onOpenContact: (leadId: string | null) => void;
 }) {
-  const statusColor = REFERRAL_STATUS_COLOR[referral.status];
-  const canOpenContact = !!referral.referrerLeadId;
+  const hasAny =
+    advocates.newAdvocates.length > 0 || advocates.rankedAdvocates.length > 0;
+
   return (
-    <Card accentColor={statusColor}>
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-        <ClickableAvatar
-          initials={referral.initials}
-          onClick={canOpenContact ? onOpenContact : undefined}
+    <>
+      <RevenueSummary
+        amount={revenue.amount}
+        conversionPct={revenue.conversionPct}
+      />
+
+      {!hasAny && (
+        <EmptyState
+          title="No advocates yet"
+          body="When customers enroll via your referral link, they'll show up here."
         />
-        <div style={{ flex: 1, minWidth: 0 }}>
+      )}
+
+      {advocates.newAdvocates.length > 0 && (
+        <AdvocateSection
+          title="New advocates"
+          subtitle="Joined in the last 7 days"
+        >
+          {advocates.newAdvocates.map((a) => (
+            <AdvocateRow
+              key={a.id}
+              partner={a}
+              onClick={() => onOpenContact(a.leadId)}
+              trailing={
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: colors.green,
+                    fontFamily: fonts.body,
+                  }}
+                >
+                  NEW
+                </span>
+              }
+              subtext={`Joined ${a.joinedLabel}`}
+            />
+          ))}
+        </AdvocateSection>
+      )}
+
+      {advocates.rankedAdvocates.length > 0 && (
+        <AdvocateSection
+          title="Top advocates"
+          subtitle="Ranked by successful referrals"
+        >
           <div
             style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "flex-start",
+              display: "grid",
+              gridTemplateColumns: "1fr auto auto",
+              fontSize: 10,
+              fontWeight: 700,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              color: colors.muted,
+              padding: "8px 14px",
+              borderBottom: `1px solid ${colors.border}`,
+              background: "#F8F8F8",
+              fontFamily: fonts.body,
+              columnGap: 18,
             }}
           >
-            <div>
-              <ClickableName
-                name={referral.name}
-                onClick={canOpenContact ? onOpenContact : undefined}
-              />
-              <div style={bodyRowMeta}>
-                referred {referral.referredName} · {referral.time}
-              </div>
-            </div>
-            <StatusBadge label={referral.status} color={statusColor} />
+            <span>Partner</span>
+            <span style={{ textAlign: "right" }}>Submitted</span>
+            <span style={{ textAlign: "right" }}>Successful</span>
           </div>
-          <div style={greyContentBox}>
-            <span style={{ fontWeight: 600 }}>{referral.referredName}</span>{" "}
-            needs {referral.referredJob}.{" "}
-            {referral.value
-              ? `Estimated value: ${referral.value}`
-              : "Follow up to qualify."}
-          </div>
-          {referral.value && (
-            <div
-              style={{
-                marginTop: 8,
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-              }}
-            >
-              <span
-                style={{
-                  fontSize: 11,
-                  color: colors.muted,
-                  fontWeight: 500,
-                  fontFamily: fonts.body,
-                }}
-              >
-                Revenue:
-              </span>
-              <span
-                style={{
-                  fontSize: 14,
-                  fontWeight: 800,
-                  color: colors.green,
-                  fontFamily: fonts.body,
-                }}
-              >
-                {referral.value}
-              </span>
-            </div>
-          )}
-          <ActionButtons primary="CALL LEAD" secondary="VIEW DETAILS" />
-        </div>
+          {advocates.rankedAdvocates.map((a, i) => (
+            <AdvocateRow
+              key={a.id}
+              partner={a}
+              onClick={() => onOpenContact(a.leadId)}
+              showBorder={i > 0}
+              trailing={
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "auto auto",
+                    columnGap: 18,
+                    alignItems: "baseline",
+                    fontFamily: fonts.body,
+                    fontVariantNumeric: "tabular-nums",
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: 15,
+                      fontWeight: 700,
+                      color: colors.navy,
+                      textAlign: "right",
+                      minWidth: 28,
+                    }}
+                  >
+                    {a.submitted}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 15,
+                      fontWeight: 700,
+                      color: a.successful > 0 ? colors.green : colors.mutedLight,
+                      textAlign: "right",
+                      minWidth: 28,
+                    }}
+                  >
+                    {a.successful}
+                  </span>
+                </div>
+              }
+              subtext={a.revenueLabel ? `${a.revenueLabel} closed` : null}
+            />
+          ))}
+        </AdvocateSection>
+      )}
+    </>
+  );
+}
+
+function AdvocateSection({
+  title,
+  subtitle,
+  children,
+}: {
+  title: string;
+  subtitle: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "baseline",
+          justifyContent: "space-between",
+          marginBottom: 6,
+          padding: "0 2px",
+        }}
+      >
+        <span
+          style={{
+            fontSize: 11,
+            fontWeight: 700,
+            color: "#1C1B18",
+            textTransform: "uppercase",
+            letterSpacing: "0.08em",
+            fontFamily: fonts.body,
+          }}
+        >
+          {title}
+        </span>
+        <span
+          style={{
+            fontSize: 10,
+            color: colors.muted,
+            fontFamily: fonts.body,
+          }}
+        >
+          {subtitle}
+        </span>
       </div>
-    </Card>
+      <div
+        style={{
+          background: colors.white,
+          border: `1px solid ${colors.border}`,
+          borderRadius: 10,
+          overflow: "hidden",
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function AdvocateRow({
+  partner,
+  onClick,
+  trailing,
+  subtext,
+  showBorder,
+}: {
+  partner: AdvocatePartner;
+  onClick: () => void;
+  trailing: React.ReactNode;
+  subtext: string | null;
+  showBorder?: boolean;
+}) {
+  const clickable = !!partner.leadId;
+  return (
+    <button
+      type="button"
+      onClick={clickable ? onClick : undefined}
+      disabled={!clickable}
+      style={{
+        width: "100%",
+        display: "flex",
+        alignItems: "center",
+        gap: 12,
+        padding: "12px 14px",
+        background: "transparent",
+        border: "none",
+        borderTop: showBorder ? `1px solid ${colors.border}` : "none",
+        cursor: clickable ? "pointer" : "default",
+        textAlign: "left",
+        fontFamily: fonts.body,
+        color: "inherit",
+      }}
+    >
+      <Avatar initials={partner.initials} size={34} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div
+          style={{
+            fontSize: 14,
+            fontWeight: 700,
+            color: "#1C1B18",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            fontFamily: fonts.body,
+          }}
+        >
+          {partner.name}
+        </div>
+        {subtext && (
+          <div
+            style={{
+              fontSize: 11,
+              color: colors.muted,
+              marginTop: 1,
+              fontFamily: fonts.body,
+            }}
+          >
+            {subtext}
+          </div>
+        )}
+      </div>
+      {trailing}
+    </button>
   );
 }
 
