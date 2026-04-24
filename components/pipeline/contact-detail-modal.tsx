@@ -245,17 +245,7 @@ export default function ContactDetailModal({
   // another's render.
   const [leadPatch, setLeadPatch] = useState<Partial<Lead>>({});
   const [composing, setComposing] = useState(false);
-  const timelineRef = useRef<HTMLDivElement | null>(null);
-  const handleStartNote = () => {
-    setComposing(true);
-    // Defer scroll so the composer has a chance to mount before we measure.
-    requestAnimationFrame(() => {
-      timelineRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    });
-  };
+  const handleStartNote = () => setComposing(true);
   useEffect(() => {
     setCurrentStatus(lead.status);
     setAdvanceError(null);
@@ -704,16 +694,8 @@ export default function ContactDetailModal({
 
           {/* What Happened — quiet activity timeline */}
           <WhatHappenedTimeline
-            leadId={lead.id}
             activities={activities ?? []}
-            composing={composing}
-            onComposingChange={setComposing}
-            scrollRef={timelineRef}
-            onNoteAdded={onNoteAdded}
-            onAiSummaryUpdated={(summary) => setCurrentAiSummary(summary)}
-            onLeadPatched={(patch) =>
-              setLeadPatch((prev) => ({ ...prev, ...patch }))
-            }
+            onStartComposing={handleStartNote}
           />
 
           </div>
@@ -729,6 +711,21 @@ export default function ContactDetailModal({
           />
         </div>
       </div>
+
+      {/* Bottom-sheet note composer — floats above the modal panel. */}
+      {composing && (
+        <AddNoteSheet
+          leadId={lead.id}
+          contactName={lead.name}
+          stage={resolvedStage}
+          onClose={() => setComposing(false)}
+          onNoteAdded={onNoteAdded}
+          onAiSummaryUpdated={(summary) => setCurrentAiSummary(summary)}
+          onLeadPatched={(patch) =>
+            setLeadPatch((prev) => ({ ...prev, ...patch }))
+          }
+        />
+      )}
     </>
   );
 }
@@ -1605,40 +1602,108 @@ function isUserNote(entry: ActivityLogEntry): boolean {
   return entry.type === "user_note";
 }
 
-function WhatHappenedTimeline({
+// ---------------------------------------------------------------------------
+// Add Note bottom sheet
+// ---------------------------------------------------------------------------
+
+const ADD_NOTE_PLACEHOLDERS: Partial<Record<StageKey, string>> = {
+  new: "What's the context on this lead?",
+  contacted: "How'd the call go?",
+  appt_set: "What's planned for the appointment?",
+  job_done: "What happened on the job?",
+  feedback: "What did they say?",
+  reviewed: "Any review follow-up notes?",
+  referrer: "What's the referral update?",
+  recovery: "What's going on with the customer?",
+};
+
+// Minimal subset of the Web Speech API we actually call.
+type SpeechRecognitionResultShape = {
+  readonly isFinal: boolean;
+  readonly length: number;
+  readonly 0: { readonly transcript: string };
+};
+type SpeechRecognitionEventShape = {
+  readonly resultIndex: number;
+  readonly results: ArrayLike<SpeechRecognitionResultShape>;
+};
+type SpeechRecognitionInstance = {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  onresult: ((e: SpeechRecognitionEventShape) => void) | null;
+  onend: (() => void) | null;
+  onerror: ((e: { error?: string }) => void) | null;
+  start: () => void;
+  stop: () => void;
+};
+type SpeechRecognitionCtor = new () => SpeechRecognitionInstance;
+
+function getSpeechRecognitionCtor(): SpeechRecognitionCtor | null {
+  if (typeof window === "undefined") return null;
+  const w = window as unknown as {
+    SpeechRecognition?: SpeechRecognitionCtor;
+    webkitSpeechRecognition?: SpeechRecognitionCtor;
+  };
+  return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
+}
+
+function AddNoteSheet({
   leadId,
-  activities,
-  composing,
-  onComposingChange,
-  scrollRef,
+  contactName,
+  stage,
+  onClose,
   onNoteAdded,
   onAiSummaryUpdated,
   onLeadPatched,
 }: {
   leadId: string;
-  activities: ActivityLogEntry[];
-  composing: boolean;
-  onComposingChange: (value: boolean) => void;
-  scrollRef: React.RefObject<HTMLDivElement>;
+  contactName: string;
+  stage: StageKey;
+  onClose: () => void;
   onNoteAdded?: (entry: ActivityLogEntry) => void;
   onAiSummaryUpdated?: (summary: string) => void;
   onLeadPatched?: (patch: Partial<Lead>) => void;
 }) {
-  const setComposing = onComposingChange;
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [recording, setRecording] = useState(false);
+  const [speechSupported, setSpeechSupported] = useState<boolean>(false);
+  const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
+  const draftBeforeRecordRef = useRef<string>("");
 
-  // API returns oldest → newest for the chronological "story" read. The modal
-  // inverts that so the contractor lands on the most recent activity first —
-  // they care about "what just happened" more than "how this lead started".
-  const ordered = useMemo(() => [...activities].reverse(), [activities]);
+  const placeholder = ADD_NOTE_PLACEHOLDERS[stage] ?? "What do you want to remember?";
+  const stageLabel = STAGE_LABELS[stage];
+
+  useEffect(() => {
+    setSpeechSupported(getSpeechRecognitionCtor() !== null);
+  }, []);
+
+  // Lock body scroll while the sheet is open. The modal already does this;
+  // we layer ours so closing the sheet doesn't accidentally release it.
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      recognitionRef.current?.stop();
+      recognitionRef.current = null;
+    };
+  }, []);
 
   const handleSave = async () => {
     const summary = draft.trim();
     if (!summary || saving) return;
     setSaving(true);
-    setSaveError(null);
+    setError(null);
+    // Stop any active dictation so its final result isn't racing with save.
+    recognitionRef.current?.stop();
     try {
       const res = await fetch(`/api/contractor/customers/${leadId}/notes`, {
         method: "POST",
@@ -1654,7 +1719,7 @@ function WhatHappenedTimeline({
         } catch {
           /* not JSON */
         }
-        setSaveError(msg);
+        setError(msg);
         return;
       }
       const entry = (await res.json()) as ActivityLogEntry & {
@@ -1664,25 +1729,374 @@ function WhatHappenedTimeline({
       onNoteAdded?.(entry);
       if (entry.ai_summary) onAiSummaryUpdated?.(entry.ai_summary);
       if (entry.lead_patch) onLeadPatched?.(entry.lead_patch);
-      setDraft("");
-      setComposing(false);
+      onClose();
     } catch (err) {
       console.error("add note threw:", err);
-      setSaveError("Network error — check your connection and try again.");
+      setError("Network error — check your connection and try again.");
     } finally {
       setSaving(false);
     }
   };
 
-  const handleCancel = () => {
-    setDraft("");
-    setSaveError(null);
-    setComposing(false);
+  const toggleRecording = () => {
+    if (recording) {
+      recognitionRef.current?.stop();
+      return;
+    }
+    const Ctor = getSpeechRecognitionCtor();
+    if (!Ctor) return;
+    const recognition = new Ctor();
+    recognition.lang = "en-US";
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    draftBeforeRecordRef.current = draft;
+    recognition.onresult = (event) => {
+      let interim = "";
+      let finalAdd = "";
+      for (let i = event.resultIndex; i < event.results.length; i += 1) {
+        const r = event.results[i];
+        const chunk = r[0].transcript;
+        if (r.isFinal) finalAdd += chunk;
+        else interim += chunk;
+      }
+      const base = draftBeforeRecordRef.current;
+      const combined = `${base}${base && (finalAdd || interim) ? " " : ""}${finalAdd}${
+        finalAdd && interim ? " " : ""
+      }${interim}`;
+      setDraft(combined);
+      if (finalAdd) {
+        draftBeforeRecordRef.current = `${base}${base ? " " : ""}${finalAdd}`.trimEnd();
+      }
+    };
+    recognition.onend = () => {
+      setRecording(false);
+      recognitionRef.current = null;
+    };
+    recognition.onerror = () => {
+      setRecording(false);
+      recognitionRef.current = null;
+    };
+    try {
+      recognition.start();
+      recognitionRef.current = recognition;
+      setRecording(true);
+    } catch {
+      setRecording(false);
+    }
   };
 
   return (
-    <div ref={scrollRef} style={{ padding: "0 20px 24px" }}>
-      {/* Section header with a quiet "+ Add Note" text link on the right.
+    <>
+      <style>{`
+        @keyframes handled-sheet-in {
+          from { transform: translateY(100%); }
+          to { transform: translateY(0); }
+        }
+        @keyframes handled-sheet-backdrop-in {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes handled-mic-pulse {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(220,38,38,0.45); }
+          50% { box-shadow: 0 0 0 10px rgba(220,38,38,0); }
+        }
+      `}</style>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Add note"
+        onClick={onClose}
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 1100,
+          backgroundColor: "rgba(15,23,42,0.45)",
+          display: "flex",
+          alignItems: "flex-end",
+          justifyContent: "center",
+          animation: "handled-sheet-backdrop-in 140ms ease-out",
+        }}
+      >
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            width: "100%",
+            maxWidth: 640,
+            maxHeight: "90vh",
+            display: "flex",
+            flexDirection: "column",
+            backgroundColor: colors.white,
+            borderTopLeftRadius: 16,
+            borderTopRightRadius: 16,
+            boxShadow: "0 -8px 32px rgba(15,23,42,0.18)",
+            fontFamily: fonts.body,
+            color: colors.navy,
+            animation: "handled-sheet-in 220ms cubic-bezier(0.2,0.9,0.25,1)",
+            paddingBottom: "env(safe-area-inset-bottom)",
+          }}
+        >
+          {/* Drag handle */}
+          <div
+            aria-hidden
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              padding: "8px 0 0",
+            }}
+          >
+            <div
+              style={{
+                width: 40,
+                height: 4,
+                borderRadius: 2,
+                background: colors.borderLight,
+              }}
+            />
+          </div>
+
+          {/* Header */}
+          <div
+            style={{
+              padding: "10px 20px 8px",
+              display: "flex",
+              alignItems: "flex-start",
+              justifyContent: "space-between",
+              gap: 12,
+            }}
+          >
+            <div style={{ minWidth: 0 }}>
+              <div
+                style={{
+                  fontFamily: fonts.body,
+                  fontSize: 15,
+                  fontWeight: 700,
+                  color: colors.navy,
+                  lineHeight: 1.2,
+                }}
+              >
+                Add note
+              </div>
+              <div
+                style={{
+                  marginTop: 2,
+                  fontFamily: fonts.body,
+                  fontSize: 12,
+                  color: colors.muted,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {contactName} · {stageLabel}
+              </div>
+            </div>
+            <button
+              type="button"
+              aria-label="Close"
+              onClick={onClose}
+              style={{
+                background: "transparent",
+                border: "none",
+                padding: 4,
+                cursor: "pointer",
+                fontSize: 20,
+                lineHeight: 1,
+                color: colors.muted,
+              }}
+            >
+              ×
+            </button>
+          </div>
+
+          {/* Textarea */}
+          <div style={{ padding: "6px 20px 0" }}>
+            <textarea
+              autoFocus
+              value={draft}
+              onChange={(e) => {
+                setDraft(e.target.value);
+                draftBeforeRecordRef.current = e.target.value;
+              }}
+              onKeyDown={(e) => {
+                if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+                  e.preventDefault();
+                  void handleSave();
+                }
+                if (e.key === "Escape") {
+                  e.preventDefault();
+                  onClose();
+                }
+              }}
+              placeholder={placeholder}
+              rows={5}
+              style={{
+                width: "100%",
+                boxSizing: "border-box",
+                padding: "12px 14px",
+                backgroundColor: colors.bg,
+                border: `1px solid ${colors.border}`,
+                borderRadius: 8,
+                fontFamily: fonts.body,
+                fontSize: 15,
+                lineHeight: 1.5,
+                color: colors.navy,
+                resize: "none",
+                outline: "none",
+                minHeight: 140,
+              }}
+            />
+            {error ? (
+              <div
+                style={{
+                  marginTop: 8,
+                  fontFamily: fonts.body,
+                  fontSize: 12,
+                  color: colors.red,
+                }}
+              >
+                {error}
+              </div>
+            ) : null}
+            <div
+              style={{
+                marginTop: 8,
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                fontFamily: fonts.body,
+                fontSize: 11,
+                color: colors.mutedLight,
+              }}
+            >
+              <span
+                aria-hidden
+                style={{
+                  width: 4,
+                  height: 4,
+                  borderRadius: "50%",
+                  background: recording ? colors.red : colors.mutedLight,
+                }}
+              />
+              <span>
+                {recording
+                  ? "Listening… tap the mic to stop."
+                  : "AI will extract tags & next step."}
+              </span>
+            </div>
+          </div>
+
+          {/* Footer: mic left, save right */}
+          <div
+            style={{
+              padding: "14px 20px 20px",
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+            }}
+          >
+            <button
+              type="button"
+              onClick={toggleRecording}
+              disabled={!speechSupported || saving}
+              aria-pressed={recording}
+              aria-label={recording ? "Stop dictation" : "Dictate note"}
+              title={
+                speechSupported
+                  ? recording
+                    ? "Stop dictation"
+                    : "Dictate note"
+                  : "Voice input isn't supported in this browser"
+              }
+              style={{
+                width: 44,
+                height: 44,
+                flexShrink: 0,
+                borderRadius: 999,
+                border: `1px solid ${recording ? colors.red : colors.border}`,
+                background: recording ? colors.red : colors.white,
+                color: recording ? colors.white : colors.navy,
+                cursor: !speechSupported ? "not-allowed" : "pointer",
+                opacity: !speechSupported ? 0.4 : 1,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                animation: recording
+                  ? "handled-mic-pulse 1.4s ease-in-out infinite"
+                  : "none",
+                transition: "background 160ms ease, color 160ms ease, border-color 160ms ease",
+              }}
+            >
+              <MicIcon size={18} />
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving || !draft.trim()}
+              style={{
+                flex: 1,
+                minHeight: 44,
+                padding: "12px 16px",
+                backgroundColor: colors.navy,
+                color: colors.white,
+                border: "none",
+                borderRadius: 999,
+                cursor: saving || !draft.trim() ? "default" : "pointer",
+                opacity: saving || !draft.trim() ? 0.55 : 1,
+                fontFamily: fonts.body,
+                fontSize: 14,
+                fontWeight: 700,
+                letterSpacing: "0.02em",
+              }}
+            >
+              {saving ? "Saving…" : "Save note"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function MicIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <rect x="9" y="3" width="6" height="12" rx="3" />
+      <path d="M5 11a7 7 0 0 0 14 0" />
+      <line x1="12" y1="18" x2="12" y2="22" />
+      <line x1="8" y1="22" x2="16" y2="22" />
+    </svg>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// What Happened — quiet activity timeline
+// ---------------------------------------------------------------------------
+
+function WhatHappenedTimeline({
+  activities,
+  onStartComposing,
+}: {
+  activities: ActivityLogEntry[];
+  onStartComposing: () => void;
+}) {
+  // API returns oldest → newest for the chronological "story" read. The modal
+  // inverts that so the contractor lands on the most recent activity first —
+  // they care about "what just happened" more than "how this lead started".
+  const ordered = useMemo(() => [...activities].reverse(), [activities]);
+
+  return (
+    <div style={{ padding: "0 20px 24px" }}>
+      {/* Section header with a quiet "+ Add note" text link on the right.
           The prominent add-note CTA lives in the modal's secondary action
           row; this is just a convenience repeat in context. */}
       <div
@@ -1705,139 +2119,25 @@ function WhatHappenedTimeline({
         >
           What Happened
         </div>
-        {!composing ? (
-          <button
-            type="button"
-            onClick={() => setComposing(true)}
-            style={{
-              background: "transparent",
-              color: colors.muted,
-              border: "none",
-              padding: 0,
-              cursor: "pointer",
-              fontFamily: fonts.body,
-              fontSize: 11,
-              fontWeight: 500,
-              letterSpacing: 0,
-              textTransform: "none",
-            }}
-          >
-            + Add note
-          </button>
-        ) : null}
-      </div>
-
-      {/* Inline composer — appears above the timeline when "Add Note" is
-          tapped. Submitting calls the /notes endpoint which inserts a
-          user_note activity_log row; we then bubble the new entry up so
-          the parent can merge it into its activity cache without a full
-          page refresh. */}
-      {composing ? (
-        <div
+        <button
+          type="button"
+          onClick={onStartComposing}
           style={{
-            marginBottom: 16,
-            padding: 12,
-            backgroundColor: colors.amberBgSoft,
-            borderLeft: `3px solid ${colors.navy}`,
+            background: "transparent",
+            color: colors.muted,
+            border: "none",
+            padding: 0,
+            cursor: "pointer",
+            fontFamily: fonts.body,
+            fontSize: 11,
+            fontWeight: 500,
+            letterSpacing: 0,
+            textTransform: "none",
           }}
         >
-          <textarea
-            autoFocus
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-                e.preventDefault();
-                void handleSave();
-              }
-              if (e.key === "Escape") {
-                e.preventDefault();
-                handleCancel();
-              }
-            }}
-            placeholder="Add a note about this customer..."
-            rows={3}
-            style={{
-              width: "100%",
-              boxSizing: "border-box",
-              padding: "8px 10px",
-              backgroundColor: colors.white,
-              border: `1px solid ${colors.border}`,
-              borderRadius: 0,
-              fontFamily: fonts.body,
-              fontSize: 13,
-              lineHeight: 1.4,
-              color: colors.navy,
-              resize: "vertical",
-              outline: "none",
-            }}
-          />
-          {saveError ? (
-            <div
-              style={{
-                marginTop: 6,
-                fontFamily: fonts.body,
-                fontSize: 11,
-                color: colors.alertMuted,
-              }}
-            >
-              {saveError}
-            </div>
-          ) : null}
-          <div
-            style={{
-              marginTop: 8,
-              display: "flex",
-              justifyContent: "flex-end",
-              gap: 8,
-            }}
-          >
-            <button
-              type="button"
-              onClick={handleCancel}
-              disabled={saving}
-              style={{
-                minHeight: 32,
-                padding: "6px 12px",
-                backgroundColor: "transparent",
-                color: colors.muted,
-                border: `1px solid ${colors.border}`,
-                borderRadius: 0,
-                cursor: saving ? "default" : "pointer",
-                fontFamily: fonts.body,
-                fontSize: 11,
-                fontWeight: 600,
-                letterSpacing: "0.04em",
-                textTransform: "uppercase",
-              }}
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={saving || !draft.trim()}
-              style={{
-                minHeight: 32,
-                padding: "6px 12px",
-                backgroundColor: colors.navy,
-                color: colors.white,
-                border: "none",
-                borderRadius: 0,
-                cursor: saving || !draft.trim() ? "default" : "pointer",
-                opacity: saving || !draft.trim() ? 0.55 : 1,
-                fontFamily: fonts.body,
-                fontSize: 11,
-                fontWeight: 700,
-                letterSpacing: "0.04em",
-                textTransform: "uppercase",
-              }}
-            >
-              {saving ? "Saving…" : "Save Note"}
-            </button>
-          </div>
-        </div>
-      ) : null}
+          + Add note
+        </button>
+      </div>
 
       {ordered.length === 0 ? (
         <div
