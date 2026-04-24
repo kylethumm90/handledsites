@@ -63,6 +63,9 @@ type ReviewResponseRow = {
   feedback: string | null;
   is_positive: boolean | null;
   lead_id: string | null;
+  tech_name: string | null;
+  professionalism: string | null;
+  communication: string | null;
 };
 
 type CuratedReviewRow = {
@@ -118,7 +121,9 @@ export default async function ContractorReputationPage({
   const buildReviewsQuery = () => {
     let q = supabase
       .from("review_responses")
-      .select("id, created_at, rating, feedback, is_positive, lead_id")
+      .select(
+        "id, created_at, rating, feedback, is_positive, lead_id, tech_name, professionalism, communication"
+      )
       .eq("business_id", businessId)
       .order("created_at", { ascending: false })
       .limit(30);
@@ -173,7 +178,9 @@ export default async function ContractorReputationPage({
   ] = await Promise.all([
     supabase
       .from("businesses")
-      .select("name, google_rating, google_review_count, google_reviews")
+      .select(
+        "name, google_rating, google_review_count, google_reviews, google_review_url"
+      )
       .eq("id", businessId)
       .single(),
     buildReviewsQuery(),
@@ -285,7 +292,8 @@ export default async function ContractorReputationPage({
   //    reviews table don't render twice.
   const reviews: ReviewItem[] = buildReviewsFromGoogleAndCurated(
     googleReviewRows,
-    curatedReviewRows
+    curatedReviewRows,
+    business?.google_review_url ?? null
   );
 
   const referrals: ReferralItem[] = referralRows.map((lead) => {
@@ -391,6 +399,7 @@ function toFeedbackItem(
 
   return {
     id: row.id,
+    leadId: row.lead_id,
     name,
     initials: getInitials(name),
     job: lead?.service_needed?.trim() || "Job complete",
@@ -400,18 +409,27 @@ function toFeedbackItem(
     comment: row.feedback?.trim() ?? "",
     sentiment,
     reviewSent,
+    survey: {
+      rating,
+      feedback: row.feedback?.trim() ?? "",
+      techName: row.tech_name,
+      professionalism: row.professionalism,
+      communication: row.communication,
+    },
   };
 }
 
 function buildReviewsFromGoogleAndCurated(
   googleRows: GoogleReviewRow[],
-  curatedRows: CuratedReviewRow[]
+  curatedRows: CuratedReviewRow[],
+  googleReviewUrl: string | null
 ): ReviewItem[] {
   const out: ReviewItem[] = [];
   const seen = new Set<string>();
 
   // Google My Business scraped reviews first — they're the canonical "posted"
   // public reviews. No per-review timestamp, so surface them as "Posted".
+  // No per-review URL is stored; link all to the business-wide GMB profile.
   googleRows.forEach((g, i) => {
     const name = g.author?.trim() || "Google reviewer";
     const rating = typeof g.rating === "number" ? g.rating : 0;
@@ -430,11 +448,10 @@ function buildReviewsFromGoogleAndCurated(
       status: "posted",
       text: text || "Left a Google review.",
       sentiment: ratingToSentiment(rating),
+      externalUrl: googleReviewUrl,
     });
   });
 
-  // Curated rows in the `reviews` table (featured / manually logged public
-  // reviews). These have real review_date timestamps.
   curatedRows.forEach((r) => {
     const name = r.reviewer_name?.trim() || "Customer";
     const rating = typeof r.rating === "number" ? r.rating : 0;
@@ -442,6 +459,7 @@ function buildReviewsFromGoogleAndCurated(
     const key = dedupeKey(name, rating, text);
     if (seen.has(key)) return;
     seen.add(key);
+    const isGoogleSource = /google/i.test(r.source || "");
     out.push({
       id: `curated-${r.id}`,
       name,
@@ -453,6 +471,7 @@ function buildReviewsFromGoogleAndCurated(
       status: "posted",
       text: text || "Left a review.",
       sentiment: ratingToSentiment(rating),
+      externalUrl: isGoogleSource ? googleReviewUrl : null,
     });
   });
 
@@ -500,6 +519,8 @@ function toReferralItem(
 
   return {
     id: lead.id,
+    referredLeadId: lead.id,
+    referrerLeadId: referrer?.id ?? null,
     name: referrerName,
     initials: getInitials(referrerName),
     referredName,

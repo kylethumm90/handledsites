@@ -8,6 +8,34 @@ import {
 } from "@/lib/ai-summary";
 import type { Lead } from "@/lib/supabase";
 
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const auth = await validateSessionFromRequest(request);
+  if (!auth) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const { businessId } = auth;
+
+  const supabase = getSupabaseAdmin();
+  const { data: lead, error } = await supabase
+    .from("leads")
+    .select("*")
+    .eq("id", params.id)
+    .eq("business_id", businessId)
+    .maybeSingle();
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+  if (!lead) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  return NextResponse.json({ lead: lead as Lead });
+}
+
 export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }

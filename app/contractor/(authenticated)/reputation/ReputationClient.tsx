@@ -10,8 +10,10 @@
  */
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import type { ActivityLogEntry, Lead } from "@/lib/supabase";
 import { colors, fonts } from "@/lib/design-system";
+import ContactDetailModal from "@/components/pipeline/contact-detail-modal";
 
 // ---------------------------------------------------------------------------
 // Shared types (also re-exported for server page.tsx)
@@ -19,8 +21,17 @@ import { colors, fonts } from "@/lib/design-system";
 
 export type TimeRange = "7d" | "30d" | "90d" | "All";
 
+export type SurveyAnswers = {
+  rating: number;
+  feedback: string;
+  techName: string | null;
+  professionalism: string | null;
+  communication: string | null;
+};
+
 export type FeedbackItem = {
   id: string;
+  leadId: string | null;
   name: string;
   initials: string;
   job: string;
@@ -30,6 +41,7 @@ export type FeedbackItem = {
   comment: string;
   sentiment: number;
   reviewSent: boolean;
+  survey: SurveyAnswers;
 };
 
 export type ReviewStatus = "posted" | "awaiting review" | "needs attention";
@@ -46,12 +58,15 @@ export type ReviewItem = {
   text: string;
   sentiment: number;
   alert?: string;
+  externalUrl: string | null;
 };
 
 export type ReferralStatus = "booked" | "contacted" | "new lead";
 
 export type ReferralItem = {
   id: string;
+  referrerLeadId: string | null;
+  referredLeadId: string | null;
   name: string;
   initials: string;
   referredName: string;
@@ -92,7 +107,7 @@ export type ReputationData = {
 // Config
 // ---------------------------------------------------------------------------
 
-type TabKey = "feedback" | "reviews" | "advocates";
+type FilterKey = "feedback" | "reviews" | "advocates";
 
 const TIME_RANGES: TimeRange[] = ["7d", "30d", "90d", "All"];
 
@@ -122,7 +137,16 @@ const STELLA_FUNNEL_HEIGHT = 76;
 // ---------------------------------------------------------------------------
 
 export default function ReputationClient({ data }: { data: ReputationData }) {
-  const [activeTab, setActiveTab] = useState<TabKey>("reviews");
+  const [activeFilter, setActiveFilter] = useState<FilterKey>("reviews");
+  const [openSurvey, setOpenSurvey] = useState<FeedbackItem | null>(null);
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [selectedLeadError, setSelectedLeadError] = useState<string | null>(
+    null
+  );
+  const [activitiesByLead, setActivitiesByLead] = useState<
+    Record<string, ActivityLogEntry[]>
+  >({});
   const router = useRouter();
 
   function setRange(next: TimeRange) {
@@ -132,6 +156,54 @@ export default function ReputationClient({ data }: { data: ReputationData }) {
     const qs = params.toString();
     router.push(`/contractor/reputation${qs ? `?${qs}` : ""}`);
   }
+
+  function openContact(leadId: string | null | undefined) {
+    if (!leadId) return;
+    setSelectedLeadError(null);
+    setSelectedLead(null);
+    setSelectedLeadId(leadId);
+  }
+
+  // Fetch the Lead + its activity log when a customer row is tapped.
+  useEffect(() => {
+    if (!selectedLeadId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const [leadRes, actRes] = await Promise.all([
+          fetch(`/api/contractor/customers/${selectedLeadId}`, {
+            cache: "no-store",
+          }),
+          fetch(`/api/contractor/customers/${selectedLeadId}/activities`, {
+            cache: "no-store",
+          }),
+        ]);
+        if (!leadRes.ok) {
+          throw new Error("Couldn't load customer.");
+        }
+        const { lead } = (await leadRes.json()) as { lead: Lead };
+        if (cancelled) return;
+        setSelectedLead(lead);
+        if (actRes.ok) {
+          const { activities } = (await actRes.json()) as {
+            activities?: ActivityLogEntry[];
+          };
+          setActivitiesByLead((prev) => ({
+            ...prev,
+            [selectedLeadId]: activities ?? [],
+          }));
+        }
+      } catch (err) {
+        if (cancelled) return;
+        setSelectedLeadError(
+          err instanceof Error ? err.message : "Couldn't load customer."
+        );
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedLeadId]);
 
   return (
     <div
@@ -171,7 +243,7 @@ export default function ReputationClient({ data }: { data: ReputationData }) {
         </div>
       </div>
 
-      {/* Stats row */}
+      {/* Stats row — also acts as the filter tabs */}
       <div
         style={{
           display: "flex",
@@ -182,15 +254,35 @@ export default function ReputationClient({ data }: { data: ReputationData }) {
           overflow: "hidden",
         }}
       >
-        <StatBox value={String(data.stats.feedback)} label="Feedback" color={colors.green} border />
-        <StatBox value={String(data.stats.reviews)} label="Reviews" color="#1C1B18" border />
+        <StatBox
+          value={String(data.stats.feedback)}
+          label="Feedback"
+          color={colors.green}
+          border
+          active={activeFilter === "feedback"}
+          onClick={() => setActiveFilter("feedback")}
+        />
+        <StatBox
+          value={String(data.stats.reviews)}
+          label="Reviews"
+          color="#1C1B18"
+          border
+          active={activeFilter === "reviews"}
+          onClick={() => setActiveFilter("reviews")}
+        />
         <StatBox
           value={data.stats.avgRating > 0 ? data.stats.avgRating.toFixed(1) : "—"}
           label="Avg Rating"
           color={colors.amber}
           border
         />
-        <StatBox value={String(data.stats.advocates)} label="Advocates" color={colors.green} />
+        <StatBox
+          value={String(data.stats.advocates)}
+          label="Advocates"
+          color={colors.green}
+          active={activeFilter === "advocates"}
+          onClick={() => setActiveFilter("advocates")}
+        />
       </div>
 
       {/* Time filter */}
@@ -227,37 +319,9 @@ export default function ReputationClient({ data }: { data: ReputationData }) {
         })}
       </div>
 
-      {/* Sub-tabs */}
-      <div
-        style={{
-          display: "flex",
-          margin: "12px 20px 0",
-          borderBottom: `1px solid ${colors.border}`,
-        }}
-      >
-        <SubTab
-          label="Feedback"
-          active={activeTab === "feedback"}
-          count={data.feedback.length}
-          onClick={() => setActiveTab("feedback")}
-        />
-        <SubTab
-          label="Reviews"
-          active={activeTab === "reviews"}
-          count={data.reviews.length}
-          onClick={() => setActiveTab("reviews")}
-        />
-        <SubTab
-          label="Advocates"
-          active={activeTab === "advocates"}
-          count={data.referrals.length}
-          onClick={() => setActiveTab("advocates")}
-        />
-      </div>
-
       {/* Content */}
-      <div style={{ padding: "12px 20px 24px" }}>
-        {activeTab === "reviews" &&
+      <div style={{ padding: "16px 20px 24px" }}>
+        {activeFilter === "reviews" &&
           (data.reviews.length > 0 ? (
             data.reviews.map((r) => <ReviewCard key={r.id} review={r} />)
           ) : (
@@ -267,9 +331,16 @@ export default function ReputationClient({ data }: { data: ReputationData }) {
             />
           ))}
 
-        {activeTab === "feedback" &&
+        {activeFilter === "feedback" &&
           (data.feedback.length > 0 ? (
-            data.feedback.map((f) => <FeedbackCard key={f.id} item={f} />)
+            data.feedback.map((f) => (
+              <FeedbackCard
+                key={f.id}
+                item={f}
+                onOpenContact={() => openContact(f.leadId)}
+                onViewSurvey={() => setOpenSurvey(f)}
+              />
+            ))
           ) : (
             <EmptyState
               title="No feedback yet"
@@ -277,14 +348,20 @@ export default function ReputationClient({ data }: { data: ReputationData }) {
             />
           ))}
 
-        {activeTab === "advocates" && (
+        {activeFilter === "advocates" && (
           <>
             <RevenueSummary
               amount={data.advocateRevenue.amount}
               conversionPct={data.advocateRevenue.conversionPct}
             />
             {data.referrals.length > 0 ? (
-              data.referrals.map((r) => <ReferralCard key={r.id} referral={r} />)
+              data.referrals.map((r) => (
+                <ReferralCard
+                  key={r.id}
+                  referral={r}
+                  onOpenContact={() => openContact(r.referrerLeadId)}
+                />
+              ))
             ) : (
               <EmptyState
                 title="No referrals yet"
@@ -296,6 +373,46 @@ export default function ReputationClient({ data }: { data: ReputationData }) {
       </div>
 
       <StellaFunnel steps={data.funnel} />
+
+      {openSurvey && (
+        <SurveyModal item={openSurvey} onClose={() => setOpenSurvey(null)} />
+      )}
+
+      {selectedLeadId && selectedLead && (
+        <ContactDetailModal
+          lead={selectedLead}
+          activities={activitiesByLead[selectedLeadId]}
+          onUpdate={() => {
+            setActivitiesByLead((prev) => {
+              const next = { ...prev };
+              delete next[selectedLeadId];
+              return next;
+            });
+            router.refresh();
+          }}
+          onNoteAdded={(entry) => {
+            setActivitiesByLead((prev) => {
+              const existing = prev[selectedLeadId] ?? [];
+              return { ...prev, [selectedLeadId]: [...existing, entry] };
+            });
+          }}
+          onClose={() => {
+            setSelectedLeadId(null);
+            setSelectedLead(null);
+            setSelectedLeadError(null);
+          }}
+        />
+      )}
+
+      {selectedLeadId && !selectedLead && selectedLeadError && (
+        <ErrorToast
+          message={selectedLeadError}
+          onClose={() => {
+            setSelectedLeadId(null);
+            setSelectedLeadError(null);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -309,19 +426,35 @@ function StatBox({
   label,
   color,
   border,
+  active,
+  onClick,
 }: {
   value: string;
   label: string;
   color: string;
   border?: boolean;
+  active?: boolean;
+  onClick?: () => void;
 }) {
+  const clickable = typeof onClick === "function";
+  const Wrapper = clickable ? "button" : "div";
   return (
-    <div
+    <Wrapper
+      type={clickable ? "button" : undefined}
+      aria-pressed={clickable ? !!active : undefined}
+      onClick={onClick}
       style={{
         flex: 1,
         textAlign: "center",
-        padding: "12px 4px",
+        padding: "12px 4px 10px",
         borderRight: border ? `1px solid ${colors.border}` : "none",
+        background: active ? "#F1F5F9" : "transparent",
+        borderTop: active
+          ? `2px solid ${colors.navy}`
+          : "2px solid transparent",
+        cursor: clickable ? "pointer" : "default",
+        fontFamily: fonts.body,
+        color: "inherit",
       }}
     >
       <div
@@ -339,7 +472,7 @@ function StatBox({
         style={{
           fontSize: 10,
           fontWeight: 700,
-          color: colors.muted,
+          color: active ? colors.navy : colors.muted,
           textTransform: "uppercase",
           letterSpacing: "0.06em",
           marginTop: 4,
@@ -348,74 +481,7 @@ function StatBox({
       >
         {label}
       </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Sub-tab
-// ---------------------------------------------------------------------------
-
-function SubTab({
-  label,
-  active,
-  count,
-  onClick,
-}: {
-  label: string;
-  active: boolean;
-  count: number;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      role="tab"
-      aria-selected={active}
-      onClick={onClick}
-      style={{
-        flex: 1,
-        padding: "10px 0",
-        background: active ? colors.white : "transparent",
-        border: "none",
-        borderBottom: active
-          ? `2px solid ${colors.navy}`
-          : "2px solid transparent",
-        cursor: "pointer",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 6,
-        transition: "all 0.15s ease",
-      }}
-    >
-      <span
-        style={{
-          fontSize: 13,
-          fontWeight: active ? 700 : 500,
-          color: active ? colors.navy : colors.muted,
-          fontFamily: fonts.body,
-          letterSpacing: "0.01em",
-        }}
-      >
-        {label}
-      </span>
-      <span
-        style={{
-          fontSize: 11,
-          fontWeight: 700,
-          color: active ? colors.white : colors.mutedLight,
-          background: active ? colors.navy : "#F8F8F8",
-          borderRadius: 10,
-          padding: "1px 7px",
-          minWidth: 20,
-          textAlign: "center",
-          fontFamily: fonts.body,
-        }}
-      >
-        {count}
-      </span>
-    </button>
+    </Wrapper>
   );
 }
 
@@ -554,14 +620,24 @@ function SentimentBar({ score }: { score: number }) {
 function ActionButtons({
   primary,
   secondary,
+  onPrimary,
+  onSecondary,
+  primaryDisabled,
+  secondaryDisabled,
 }: {
   primary: string;
   secondary: string;
+  onPrimary?: () => void;
+  onSecondary?: () => void;
+  primaryDisabled?: boolean;
+  secondaryDisabled?: boolean;
 }) {
   return (
     <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
       <button
         type="button"
+        onClick={onPrimary}
+        disabled={primaryDisabled}
         style={{
           flex: 1,
           padding: "12px 0",
@@ -571,7 +647,8 @@ function ActionButtons({
           borderRadius: 6,
           fontSize: 13,
           fontWeight: 700,
-          cursor: "pointer",
+          cursor: primaryDisabled ? "not-allowed" : "pointer",
+          opacity: primaryDisabled ? 0.5 : 1,
           letterSpacing: "0.05em",
           fontFamily: fonts.body,
         }}
@@ -580,6 +657,8 @@ function ActionButtons({
       </button>
       <button
         type="button"
+        onClick={onSecondary}
+        disabled={secondaryDisabled}
         style={{
           flex: 1,
           padding: "12px 0",
@@ -589,7 +668,8 @@ function ActionButtons({
           borderRadius: 6,
           fontSize: 13,
           fontWeight: 700,
-          cursor: "pointer",
+          cursor: secondaryDisabled ? "not-allowed" : "pointer",
+          opacity: secondaryDisabled ? 0.5 : 1,
           letterSpacing: "0.05em",
           fontFamily: fonts.body,
         }}
@@ -597,6 +677,57 @@ function ActionButtons({
         {secondary}
       </button>
     </div>
+  );
+}
+
+function ClickableAvatar({
+  initials,
+  onClick,
+}: {
+  initials: string;
+  onClick?: () => void;
+}) {
+  if (!onClick) return <Avatar initials={initials} />;
+  return (
+    <button
+      type="button"
+      aria-label="Open customer details"
+      onClick={onClick}
+      style={{
+        background: "transparent",
+        border: "none",
+        padding: 0,
+        cursor: "pointer",
+      }}
+    >
+      <Avatar initials={initials} />
+    </button>
+  );
+}
+
+function ClickableName({
+  name,
+  onClick,
+}: {
+  name: string;
+  onClick?: () => void;
+}) {
+  if (!onClick) return <div style={bodyRowName}>{name}</div>;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        ...bodyRowName,
+        background: "transparent",
+        border: "none",
+        padding: 0,
+        cursor: "pointer",
+        textAlign: "left",
+      }}
+    >
+      {name}
+    </button>
   );
 }
 
@@ -632,6 +763,7 @@ const greyContentBox: React.CSSProperties = {
 function ReviewCard({ review }: { review: ReviewItem }) {
   const statusColor = REVIEW_STATUS_COLOR[review.status];
   const isAttention = review.status === "needs attention";
+  const canOpenExternal = !isAttention && !!review.externalUrl;
   return (
     <Card accentColor={statusColor}>
       <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
@@ -681,6 +813,17 @@ function ReviewCard({ review }: { review: ReviewItem }) {
           <ActionButtons
             primary={isAttention ? "CALL" : "VIEW"}
             secondary={isAttention ? "ASSIGN REP" : "SHARE"}
+            primaryDisabled={!isAttention && !canOpenExternal}
+            onPrimary={
+              canOpenExternal
+                ? () =>
+                    window.open(
+                      review.externalUrl!,
+                      "_blank",
+                      "noopener,noreferrer"
+                    )
+                : undefined
+            }
           />
         </div>
       </div>
@@ -692,17 +835,29 @@ function ReviewCard({ review }: { review: ReviewItem }) {
 // Feedback card
 // ---------------------------------------------------------------------------
 
-function FeedbackCard({ item }: { item: FeedbackItem }) {
+function FeedbackCard({
+  item,
+  onOpenContact,
+  onViewSurvey,
+}: {
+  item: FeedbackItem;
+  onOpenContact: () => void;
+  onViewSurvey: () => void;
+}) {
   const sentColor =
     item.sentiment >= 80
       ? colors.green
       : item.sentiment >= 60
         ? colors.amber
         : colors.red;
+  const canOpenContact = !!item.leadId;
   return (
     <Card accentColor={sentColor}>
       <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-        <Avatar initials={item.initials} />
+        <ClickableAvatar
+          initials={item.initials}
+          onClick={canOpenContact ? onOpenContact : undefined}
+        />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div
             style={{
@@ -712,7 +867,10 @@ function FeedbackCard({ item }: { item: FeedbackItem }) {
             }}
           >
             <div>
-              <div style={bodyRowName}>{item.name}</div>
+              <ClickableName
+                name={item.name}
+                onClick={canOpenContact ? onOpenContact : undefined}
+              />
               <div style={bodyRowMeta}>
                 {item.job} · {item.time}
               </div>
@@ -758,6 +916,7 @@ function FeedbackCard({ item }: { item: FeedbackItem }) {
           <ActionButtons
             primary={item.sentiment < 60 ? "CALL" : "NUDGE REVIEW"}
             secondary={item.sentiment < 60 ? "ASSIGN REP" : "VIEW SURVEY"}
+            onSecondary={item.sentiment < 60 ? undefined : onViewSurvey}
           />
         </div>
       </div>
@@ -843,12 +1002,22 @@ function RevenueSummary({
   );
 }
 
-function ReferralCard({ referral }: { referral: ReferralItem }) {
+function ReferralCard({
+  referral,
+  onOpenContact,
+}: {
+  referral: ReferralItem;
+  onOpenContact: () => void;
+}) {
   const statusColor = REFERRAL_STATUS_COLOR[referral.status];
+  const canOpenContact = !!referral.referrerLeadId;
   return (
     <Card accentColor={statusColor}>
       <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-        <Avatar initials={referral.initials} />
+        <ClickableAvatar
+          initials={referral.initials}
+          onClick={canOpenContact ? onOpenContact : undefined}
+        />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div
             style={{
@@ -858,7 +1027,10 @@ function ReferralCard({ referral }: { referral: ReferralItem }) {
             }}
           >
             <div>
-              <div style={bodyRowName}>{referral.name}</div>
+              <ClickableName
+                name={referral.name}
+                onClick={canOpenContact ? onOpenContact : undefined}
+              />
               <div style={bodyRowMeta}>
                 referred {referral.referredName} · {referral.time}
               </div>
@@ -945,6 +1117,209 @@ function EmptyState({ title, body }: { title: string; body: string }) {
         }}
       >
         {body}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Survey modal (VIEW SURVEY button)
+// ---------------------------------------------------------------------------
+
+function SurveyModal({
+  item,
+  onClose,
+}: {
+  item: FeedbackItem;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(15,23,42,0.45)",
+        display: "flex",
+        alignItems: "flex-end",
+        justifyContent: "center",
+        zIndex: 60,
+        padding: "40px 16px 16px",
+      }}
+    >
+      <div
+        role="dialog"
+        aria-label="Survey response"
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: "100%",
+          maxWidth: 420,
+          background: colors.white,
+          borderRadius: 12,
+          padding: "18px 20px 22px",
+          fontFamily: fonts.body,
+          color: colors.navy,
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "flex-start",
+            justifyContent: "space-between",
+            gap: 12,
+            marginBottom: 14,
+          }}
+        >
+          <div>
+            <div
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                color: colors.muted,
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+              }}
+            >
+              Survey response
+            </div>
+            <div style={{ fontSize: 17, fontWeight: 800, marginTop: 2 }}>
+              {item.name}
+            </div>
+            <div style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>
+              {item.job} · {item.time}
+            </div>
+          </div>
+          <button
+            type="button"
+            aria-label="Close"
+            onClick={onClose}
+            style={{
+              background: "transparent",
+              border: "none",
+              fontSize: 22,
+              lineHeight: 1,
+              cursor: "pointer",
+              color: colors.muted,
+              padding: 4,
+            }}
+          >
+            ×
+          </button>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            padding: "10px 12px",
+            background: "#F8F8F8",
+            borderRadius: 8,
+            marginBottom: 10,
+          }}
+        >
+          <span style={{ fontSize: 22 }}>{item.emoji}</span>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700 }}>{item.label}</div>
+            <div style={{ fontSize: 11, color: colors.muted }}>
+              Rating: {item.survey.rating || "—"} / 5
+            </div>
+          </div>
+        </div>
+
+        <SurveyField label="Feedback" value={item.survey.feedback} />
+        <SurveyField label="Technician" value={item.survey.techName} />
+        <SurveyField
+          label="Professionalism"
+          value={item.survey.professionalism}
+        />
+        <SurveyField label="Communication" value={item.survey.communication} />
+      </div>
+    </div>
+  );
+}
+
+function SurveyField({ label, value }: { label: string; value: string | null }) {
+  return (
+    <div style={{ marginTop: 10 }}>
+      <div
+        style={{
+          fontSize: 10,
+          fontWeight: 700,
+          color: colors.muted,
+          textTransform: "uppercase",
+          letterSpacing: "0.08em",
+          marginBottom: 4,
+        }}
+      >
+        {label}
+      </div>
+      <div
+        style={{
+          fontSize: 13,
+          lineHeight: 1.5,
+          color: value ? colors.navy : colors.mutedLight,
+          fontStyle: value ? "normal" : "italic",
+        }}
+      >
+        {value || "Not answered"}
+      </div>
+    </div>
+  );
+}
+
+function ErrorToast({
+  message,
+  onClose,
+}: {
+  message: string;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      style={{
+        position: "fixed",
+        top: 20,
+        left: 0,
+        right: 0,
+        display: "flex",
+        justifyContent: "center",
+        zIndex: 70,
+        padding: "0 16px",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          gap: 10,
+          alignItems: "center",
+          padding: "10px 14px",
+          background: colors.white,
+          border: `1px solid ${colors.border}`,
+          borderLeft: `3px solid ${colors.red}`,
+          borderRadius: 8,
+          fontFamily: fonts.body,
+          fontSize: 13,
+          color: colors.navy,
+          boxShadow: "0 4px 16px rgba(15,23,42,0.12)",
+        }}
+      >
+        <span>{message}</span>
+        <button
+          type="button"
+          onClick={onClose}
+          style={{
+            background: "transparent",
+            border: "none",
+            padding: 0,
+            cursor: "pointer",
+            fontSize: 16,
+            color: colors.muted,
+          }}
+          aria-label="Dismiss"
+        >
+          ×
+        </button>
       </div>
     </div>
   );
