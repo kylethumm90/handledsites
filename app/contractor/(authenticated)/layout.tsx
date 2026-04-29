@@ -39,6 +39,27 @@ export default function ContractorAuthLayout({
           to { opacity: 1; transform: translateY(0); }
         }
         .hs-nav { animation: navFadeIn 0.5s cubic-bezier(0.25,0.1,0.25,1) both; }
+
+        @keyframes hs-logo-dot-pulse {
+          0%, 100% {
+            text-shadow:
+              0 0 2px rgba(232,146,42,0.55),
+              0 0 4px rgba(232,146,42,0.35);
+          }
+          50% {
+            text-shadow:
+              0 0 6px rgba(232,146,42,0.95),
+              0 0 14px rgba(232,146,42,0.65),
+              0 0 22px rgba(232,146,42,0.35);
+          }
+        }
+        .hs-logo-dot {
+          color: #E8922A;
+          animation: hs-logo-dot-pulse 1.8s ease-in-out infinite;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .hs-logo-dot { animation: none; }
+        }
       `}</style>
 
       {/* Frosted glass nav */}
@@ -58,10 +79,10 @@ export default function ContractorAuthLayout({
         }}>
           {/* Logo */}
           <span style={{
-            fontSize: 15, fontWeight: 600, color: "#1d1d1f",
+            fontSize: 15, fontWeight: 700, color: "#1d1d1f",
             letterSpacing: "-0.02em",
           }}>
-            handled<span style={{ fontWeight: 400, color: "#86868b" }}>.sites</span>
+            handled<span className="hs-logo-dot" aria-hidden>.</span>
           </span>
 
           {/* Segmented control */}
