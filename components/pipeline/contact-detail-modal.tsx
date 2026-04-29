@@ -24,8 +24,8 @@
  * reference mockup at docs/mockups/pipeline-contact-modal.png.
  */
 
-import { useEffect, useMemo, useState } from "react";
-import type { ActivityLogEntry, Lead, LeadStatus } from "@/lib/supabase";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { ActivityLogEntry, Employee, Lead, LeadStatus } from "@/lib/supabase";
 import { colors, fonts, stageColors, type StageKey } from "@/lib/design-system";
 import { pipelineStageFor, postSaleStageFor } from "@/lib/pipeline-v2";
 
@@ -55,7 +55,46 @@ type Props = {
    * without a full refresh.
    */
   onNoteAdded?: (entry: ActivityLogEntry) => void;
+  /**
+   * Per-partner stats (referral_code + counts + last activity) for this
+   * lead, or null if the customer hasn't been enrolled. The parent rolls
+   * this up server-side so the modal can render the activity card without
+   * a per-open round trip.
+   */
+  referralStats?: ReferralStats | null;
+  /**
+   * Per-business reward amount in cents, used to personalize the nudge
+   * template. Optional — the message degrades gracefully when null.
+   */
+  referralRewardCents?: number | null;
+  /**
+   * Used in the nudge template ("Hey Jess — share your link with anyone
+   * who could use {businessName}"). Falls back to a generic line.
+   */
+  businessName?: string | null;
+  /**
+   * Optional — fired after the contractor taps "Make referral partner" and
+   * the POST returns a code. Lets the parent seed a fresh stats row so a
+   * close/reopen still shows the activity card (zero clicks/leads).
+   */
+  onReferralCodeChange?: (
+    leadId: string,
+    code: string,
+    createdAt: string,
+  ) => void;
   onClose: () => void;
+};
+
+/**
+ * Mirror of the parent's ReferralStats shape — duplicated here to avoid a
+ * circular dep between the pipeline module and this generic modal.
+ */
+export type ReferralStats = {
+  referralCode: string;
+  partnerSince: string;
+  clicks: number;
+  leads: number;
+  lastActivityAt: string;
 };
 
 // Pipeline-only: status → next status (post-sale advancement is driven by
@@ -165,22 +204,6 @@ function firstNameUpper(name: string): string {
   return first ? first.toUpperCase() : "CUSTOMER";
 }
 
-function secondaryActionFor(stage: StageKey): string {
-  switch (stage) {
-    case "job_done":
-    case "feedback":
-      return "SEND FEEDBACK REQUEST";
-    case "reviewed":
-      return "ASK FOR REFERRAL";
-    case "referrer":
-      return "FOLLOW UP";
-    case "recovery":
-      return "EMAIL";
-    default:
-      return "EMAIL";
-  }
-}
-
 function fallbackAiContext(
   lead: Lead,
   stage: StageKey,
@@ -239,6 +262,10 @@ export default function ContactDetailModal({
   activities,
   onUpdate,
   onNoteAdded,
+  referralStats,
+  referralRewardCents,
+  businessName,
+  onReferralCodeChange,
   onClose,
 }: Props) {
   // Local status that we can optimistically advance without waiting on a
@@ -260,12 +287,34 @@ export default function ContactDetailModal({
   // Reset on lead change so we don't leak one customer's patch into
   // another's render.
   const [leadPatch, setLeadPatch] = useState<Partial<Lead>>({});
+  // Local mirror of the parent-supplied stats. Lets the modal flip from
+  // "Make referral partner" CTA → activity card the moment the POST
+  // returns, without waiting for the parent to refetch. Reset whenever the
+  // parent prop or the open lead changes so the right partner's numbers
+  // win on reopen.
+  const [stats, setStats] = useState<ReferralStats | null>(
+    referralStats ?? null,
+  );
+  const [referralLoading, setReferralLoading] = useState(false);
+  // "view" | "nudge" → shows the inline disclosure beneath the activity
+  // card. Only one open at a time; tapping the active button collapses it.
+  const [referralPanel, setReferralPanel] = useState<
+    "view" | "nudge" | null
+  >(null);
+  const [referralCopied, setReferralCopied] = useState(false);
+  // Note composer is a bottom-sheet now (AddNoteSheet); this just gates
+  // its mount/unmount.
+  const [composing, setComposing] = useState(false);
+  const handleStartNote = () => setComposing(true);
   useEffect(() => {
     setCurrentStatus(lead.status);
     setAdvanceError(null);
     setCurrentAiSummary(lead.ai_summary ?? null);
     setLeadPatch({});
-  }, [lead.id, lead.status, lead.ai_summary]);
+    setStats(referralStats ?? null);
+    setReferralPanel(null);
+    setReferralCopied(false);
+  }, [lead.id, lead.status, lead.ai_summary, referralStats]);
 
   const effectiveLead = useMemo<Lead>(
     () => ({ ...lead, ...leadPatch }),
@@ -308,7 +357,6 @@ export default function ContactDetailModal({
     resolvedStage === "job_done"
       ? "SEND FEEDBACK REQUEST"
       : `CALL ${firstNameUpper(lead.name)}`;
-  const secondaryActionLabel = secondaryActionFor(resolvedStage);
 
   const handleAdvance = async () => {
     const next = NEXT_STATUS[currentStatus];
@@ -375,6 +423,42 @@ export default function ContactDetailModal({
       setAdvanceError("Network error — check your connection and try again.");
     } finally {
       setAdvancing(false);
+    }
+  };
+
+  // Enroll the customer as a referral partner. Idempotent on the server:
+  // re-tapping returns the same code, so a stale local state doesn't create
+  // duplicate rows. On success we seed a fresh local stats row (zero
+  // clicks/leads, "just now" last activity) and bubble the new code up so
+  // the parent's cache stays in sync across closes/reopens.
+  const handleMakeReferralPartner = async () => {
+    if (referralLoading || stats) return;
+    setReferralLoading(true);
+    try {
+      const res = await fetch("/api/contractor/referral-partner", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ customer_id: lead.id }),
+      });
+      if (!res.ok) return;
+      const data = (await res.json()) as { referral_code?: string };
+      if (data.referral_code) {
+        const nowIso = new Date().toISOString();
+        const fresh: ReferralStats = {
+          referralCode: data.referral_code,
+          partnerSince: nowIso,
+          clicks: 0,
+          leads: 0,
+          lastActivityAt: nowIso,
+        };
+        setStats(fresh);
+        onReferralCodeChange?.(lead.id, data.referral_code, nowIso);
+      }
+    } catch {
+      // Silent — the button stays so the contractor can retry.
+    } finally {
+      setReferralLoading(false);
     }
   };
 
@@ -667,27 +751,60 @@ export default function ContactDetailModal({
             </button>
             <button
               type="button"
+              onClick={handleStartNote}
               style={{
                 minHeight: 44,
                 padding: "12px 16px",
-                backgroundColor: colors.white,
-                color: colors.muted,
-                border: `1px solid ${colors.border}`,
+                backgroundColor: colors.navy,
+                color: colors.white,
+                border: "none",
                 borderRadius: 0,
                 cursor: "pointer",
                 fontFamily: fonts.body,
-                fontWeight: 500,
+                fontWeight: 700,
                 fontSize: 13,
                 letterSpacing: "0.04em",
                 textTransform: "uppercase",
               }}
             >
-              {secondaryActionLabel}
+              + Add Note
             </button>
           </div>
 
           {/* Contact info card — quiet rows of metadata */}
           <ContactInfoCard lead={lead} />
+
+          {/* Rep assignment dropdown (independent of referral). */}
+          <AssignSection
+            lead={effectiveLead}
+            onEmployeeChanged={(employeeId) =>
+              setLeadPatch((prev) => ({ ...prev, employee_id: employeeId }))
+            }
+          />
+
+          {/* Referral partner — activity card once enrolled (clicks, leads,
+              last activity, View link / Send nudge), otherwise the "Make
+              referral partner" CTA. Only shown post-sale. */}
+          {currentStatus === "customer" ? (
+            <ReferralPartnerSection
+              stats={stats}
+              loading={referralLoading}
+              copied={referralCopied}
+              activePanel={referralPanel}
+              firstName={(lead.name || "").trim().split(/\s+/)[0] || "there"}
+              businessName={businessName ?? null}
+              rewardCents={referralRewardCents ?? null}
+              onMakePartner={handleMakeReferralPartner}
+              onTogglePanel={(panel) =>
+                setReferralPanel((prev) => (prev === panel ? null : panel))
+              }
+              onCopy={(text) => {
+                navigator.clipboard.writeText(text);
+                setReferralCopied(true);
+                window.setTimeout(() => setReferralCopied(false), 1500);
+              }}
+            />
+          ) : null}
 
           {/* AI Details — expandable structured fields the AI extracted.
               Pass `effectiveLead` so fields the note-time extractor just
@@ -696,13 +813,8 @@ export default function ContactDetailModal({
 
           {/* What Happened — quiet activity timeline */}
           <WhatHappenedTimeline
-            leadId={lead.id}
             activities={activities ?? []}
-            onNoteAdded={onNoteAdded}
-            onAiSummaryUpdated={(summary) => setCurrentAiSummary(summary)}
-            onLeadPatched={(patch) =>
-              setLeadPatch((prev) => ({ ...prev, ...patch }))
-            }
+            onStartComposing={handleStartNote}
           />
 
           </div>
@@ -718,6 +830,21 @@ export default function ContactDetailModal({
           />
         </div>
       </div>
+
+      {/* Bottom-sheet note composer — floats above the modal panel. */}
+      {composing && (
+        <AddNoteSheet
+          leadId={lead.id}
+          contactName={lead.name}
+          stage={resolvedStage}
+          onClose={() => setComposing(false)}
+          onNoteAdded={onNoteAdded}
+          onAiSummaryUpdated={(summary) => setCurrentAiSummary(summary)}
+          onLeadPatched={(patch) =>
+            setLeadPatch((prev) => ({ ...prev, ...patch }))
+          }
+        />
+      )}
     </>
   );
 }
@@ -909,6 +1036,414 @@ function PipelineFooter({
       ) : null}
     </div>
   );
+}
+
+// ---------------------------------------------------------------------------
+// Referral partner — when enrolled, renders the activity card (Active since
+// · Sharing pill · Clicks · Leads · Last activity · View link · Send nudge).
+// Otherwise renders the "Make referral partner" CTA. Render decision is
+// driven entirely by the `stats` prop, so both a fresh server fetch and a
+// just-finished POST flow through the same path.
+// ---------------------------------------------------------------------------
+
+function ReferralPartnerSection({
+  stats,
+  loading,
+  copied,
+  activePanel,
+  firstName,
+  businessName,
+  rewardCents,
+  onMakePartner,
+  onTogglePanel,
+  onCopy,
+}: {
+  stats: ReferralStats | null;
+  loading: boolean;
+  copied: boolean;
+  activePanel: "view" | "nudge" | null;
+  firstName: string;
+  businessName: string | null;
+  rewardCents: number | null;
+  onMakePartner: () => void;
+  onTogglePanel: (panel: "view" | "nudge") => void;
+  onCopy: (text: string) => void;
+}) {
+  if (!stats) {
+    return (
+      <div style={{ padding: "0 20px 20px" }}>
+        <button
+          type="button"
+          onClick={onMakePartner}
+          disabled={loading}
+          style={{
+            width: "100%",
+            minHeight: 44,
+            padding: "12px 16px",
+            backgroundColor: colors.white,
+            color: colors.muted,
+            border: `1px solid ${colors.border}`,
+            borderRadius: 0,
+            cursor: loading ? "default" : "pointer",
+            fontFamily: fonts.body,
+            fontWeight: 600,
+            fontSize: 13,
+            letterSpacing: "0.04em",
+            textTransform: "uppercase",
+            opacity: loading ? 0.6 : 1,
+          }}
+        >
+          {loading ? "Creating…" : "Make referral partner"}
+        </button>
+      </div>
+    );
+  }
+
+  // Build the share URL only on the client — window is unavailable during
+  // the initial server render the modal still gets bundled into.
+  const shareUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/refer/${stats.referralCode}`
+      : `/refer/${stats.referralCode}`;
+
+  // Nudge template — degrades gracefully when reward / business name are
+  // missing. Once Twilio is wired this becomes the SMS body; today the
+  // contractor copies it and texts manually.
+  const rewardDollars =
+    typeof rewardCents === "number" && rewardCents > 0
+      ? Math.round(rewardCents / 100)
+      : null;
+  const businessLabel = businessName?.trim() || "us";
+  const nudgeMessage = rewardDollars
+    ? `Hey ${firstName} — quick reminder: every friend you send our way earns you $${rewardDollars}. Your link: ${shareUrl}`
+    : `Hey ${firstName} — friendly nudge to share your referral link with anyone who could use ${businessLabel}. Your link: ${shareUrl}`;
+
+  return (
+    <div style={{ padding: "0 20px 20px" }}>
+      <div
+        style={{
+          fontFamily: fonts.body,
+          fontSize: 9,
+          fontWeight: 600,
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
+          color: colors.mutedLight,
+          marginBottom: 10,
+        }}
+      >
+        Referral Activity
+      </div>
+
+      <div
+        style={{
+          backgroundColor: colors.white,
+          border: `1px solid ${colors.borderLight}`,
+          padding: "14px 16px",
+        }}
+      >
+        {/* Header row: "Active partner since X"  +  Sharing pill */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 10,
+            marginBottom: 14,
+          }}
+        >
+          <div
+            style={{
+              fontFamily: fonts.body,
+              fontSize: 13,
+              fontWeight: 700,
+              color: colors.navy,
+              minWidth: 0,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Active partner since {formatShortDate(stats.partnerSince)}
+          </div>
+          <div
+            aria-label="Sharing"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "3px 8px",
+              border: `1px solid ${colors.greenBg}`,
+              backgroundColor: colors.greenBg,
+              color: colors.green,
+              fontFamily: fonts.body,
+              fontSize: 11,
+              fontWeight: 600,
+              letterSpacing: "0.02em",
+              flexShrink: 0,
+            }}
+          >
+            <span
+              aria-hidden
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: "50%",
+                backgroundColor: colors.green,
+              }}
+            />
+            Sharing
+          </div>
+        </div>
+
+        {/* Stats grid: Clicks · Leads. Shares dropped — no tracking yet. */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 8,
+            marginBottom: 14,
+          }}
+        >
+          <StatTile label="Clicks" value={stats.clicks} />
+          <StatTile label="Leads" value={stats.leads} />
+        </div>
+
+        {/* Footer row: last activity (left) · View link / Send nudge (right) */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 10,
+            flexWrap: "wrap",
+          }}
+        >
+          <div
+            style={{
+              fontFamily: fonts.body,
+              fontSize: 12,
+              color: colors.muted,
+            }}
+          >
+            Last activity {formatRelativeShort(stats.lastActivityAt)}
+          </div>
+          <div style={{ display: "flex", gap: 6 }}>
+            <ActivityButton
+              label="View link"
+              active={activePanel === "view"}
+              onClick={() => onTogglePanel("view")}
+            />
+            <ActivityButton
+              label="Send nudge"
+              active={activePanel === "nudge"}
+              onClick={() => onTogglePanel("nudge")}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Inline disclosure — copy-pastable URL or nudge message. Stays
+          inside the same section so the contractor doesn't lose context. */}
+      {activePanel ? (
+        <DisclosurePanel
+          label={activePanel === "view" ? "Referral link" : "Nudge message"}
+          body={activePanel === "view" ? shareUrl : nudgeMessage}
+          mono={activePanel === "view"}
+          copied={copied}
+          onCopy={() =>
+            onCopy(activePanel === "view" ? shareUrl : nudgeMessage)
+          }
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function StatTile({
+  label,
+  value,
+}: {
+  label: string;
+  value: number;
+}) {
+  return (
+    <div
+      style={{
+        backgroundColor: colors.bg,
+        border: `1px solid ${colors.borderLight}`,
+        padding: "10px 12px",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: 4,
+      }}
+    >
+      <span
+        style={{
+          fontFamily: fonts.mono,
+          fontWeight: 700,
+          fontSize: 22,
+          lineHeight: 1,
+          color: colors.navy,
+          fontVariantNumeric: "tabular-nums",
+        }}
+      >
+        {value}
+      </span>
+      <span
+        style={{
+          fontFamily: fonts.body,
+          fontSize: 9,
+          fontWeight: 600,
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
+          color: colors.muted,
+        }}
+      >
+        {label}
+      </span>
+    </div>
+  );
+}
+
+function ActivityButton({
+  label,
+  active,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      style={{
+        padding: "6px 12px",
+        backgroundColor: active ? colors.navy : "transparent",
+        color: active ? colors.white : colors.navy,
+        border: `1px solid ${active ? colors.navy : colors.border}`,
+        borderRadius: 0,
+        cursor: "pointer",
+        fontFamily: fonts.body,
+        fontSize: 11,
+        fontWeight: 600,
+        letterSpacing: "0.04em",
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
+function DisclosurePanel({
+  label,
+  body,
+  mono,
+  copied,
+  onCopy,
+}: {
+  label: string;
+  body: string;
+  mono: boolean;
+  copied: boolean;
+  onCopy: () => void;
+}) {
+  return (
+    <div
+      style={{
+        marginTop: 8,
+        backgroundColor: colors.white,
+        border: `1px solid ${colors.borderLight}`,
+        padding: "10px 12px",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 10,
+          marginBottom: 6,
+        }}
+      >
+        <span
+          style={{
+            fontFamily: fonts.body,
+            fontSize: 9,
+            fontWeight: 600,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            color: colors.mutedLight,
+          }}
+        >
+          {label}
+        </span>
+        <button
+          type="button"
+          onClick={onCopy}
+          style={{
+            padding: "2px 8px",
+            background: "transparent",
+            border: "none",
+            cursor: "pointer",
+            fontFamily: fonts.body,
+            fontSize: 11,
+            fontWeight: 600,
+            letterSpacing: "0.06em",
+            textTransform: "uppercase",
+            color: copied ? colors.green : colors.muted,
+          }}
+        >
+          {copied ? "Copied" : "Copy"}
+        </button>
+      </div>
+      <div
+        style={{
+          fontFamily: mono ? fonts.mono : fonts.body,
+          fontSize: mono ? 12 : 13,
+          lineHeight: 1.45,
+          color: colors.navy,
+          whiteSpace: mono ? "nowrap" : "normal",
+          overflowWrap: mono ? "normal" : "break-word",
+          overflow: mono ? "hidden" : "visible",
+          textOverflow: mono ? "ellipsis" : "clip",
+          userSelect: "text",
+        }}
+      >
+        {body}
+      </div>
+    </div>
+  );
+}
+
+// "Apr 24" — small chip label on the activity card header. Uses local time
+// since the contractor is the audience.
+function formatShortDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+// "just now" / "5h ago" / "3d ago" / "Apr 12". Avoids the heavier intl
+// relative formatter — the activity card just needs a glanceable stamp.
+function formatRelativeShort(iso: string): string {
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return "—";
+  const diffMs = Date.now() - then;
+  if (diffMs < 60_000) return "just now";
+  const minutes = Math.floor(diffMs / 60_000);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  return new Date(iso).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -1172,6 +1707,134 @@ function ContactInfoCard({ lead }: { lead: Lead }) {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Assigned-to select + Make referral partner
+// ---------------------------------------------------------------------------
+
+function AssignSection({
+  lead,
+  onEmployeeChanged,
+}: {
+  lead: Lead;
+  onEmployeeChanged: (employeeId: string | null) => void;
+}) {
+  const [employees, setEmployees] = useState<Employee[] | null>(null);
+  const [assigned, setAssigned] = useState<string | null>(
+    lead.employee_id ?? null,
+  );
+  const [savingAssign, setSavingAssign] = useState(false);
+  const [assignError, setAssignError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/contractor/employees", {
+          cache: "no-store",
+        });
+        if (!res.ok) return;
+        const data = (await res.json()) as Employee[];
+        if (!cancelled) setEmployees(data ?? []);
+      } catch {
+        /* modal still renders without the dropdown */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    setAssigned(lead.employee_id ?? null);
+  }, [lead.employee_id]);
+
+  if (employees === null || employees.length === 0) return null;
+
+  const handleAssign = async (empId: string | null) => {
+    setSavingAssign(true);
+    setAssignError(null);
+    const prev = assigned;
+    setAssigned(empId);
+    try {
+      const res = await fetch(`/api/contractor/customers/${lead.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ employee_id: empId }),
+      });
+      if (!res.ok) {
+        setAssigned(prev);
+        setAssignError("Couldn't save assignment.");
+        return;
+      }
+      onEmployeeChanged(empId);
+    } catch {
+      setAssigned(prev);
+      setAssignError("Couldn't save assignment.");
+    } finally {
+      setSavingAssign(false);
+    }
+  };
+
+  return (
+    <div style={{ padding: "8px 20px 4px" }}>
+      <div
+        style={{
+          fontFamily: fonts.body,
+          fontSize: 9,
+          fontWeight: 600,
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
+          color: colors.mutedLight,
+          marginBottom: 8,
+        }}
+      >
+        Assigned To
+      </div>
+      <select
+        value={assigned ?? ""}
+        disabled={savingAssign}
+        onChange={(e) => handleAssign(e.target.value || null)}
+        style={{
+          width: "100%",
+          padding: "12px 14px",
+          border: `1px solid ${colors.border}`,
+          background: colors.white,
+          fontSize: 14,
+          fontWeight: 600,
+          color: assigned ? colors.navy : colors.muted,
+          fontFamily: fonts.body,
+          borderRadius: 0,
+          cursor: savingAssign ? "wait" : "pointer",
+          appearance: "none",
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='12' height='12' viewBox='0 0 12 12' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M3 4.5L6 7.5L9 4.5' stroke='%239CA3AF' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`,
+          backgroundRepeat: "no-repeat",
+          backgroundPosition: "right 14px center",
+        }}
+      >
+        <option value="">Unassigned</option>
+        {employees.map((emp) => (
+          <option key={emp.id} value={emp.id}>
+            {emp.name}
+          </option>
+        ))}
+      </select>
+      {assignError && (
+        <div
+          style={{
+            marginTop: 6,
+            fontSize: 11,
+            color: colors.red,
+            fontFamily: fonts.body,
+          }}
+        >
+          {assignError}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function InfoRow({
   icon,
   label,
@@ -1306,34 +1969,108 @@ function isUserNote(entry: ActivityLogEntry): boolean {
   return entry.type === "user_note";
 }
 
-function WhatHappenedTimeline({
+// ---------------------------------------------------------------------------
+// Add Note bottom sheet
+// ---------------------------------------------------------------------------
+
+const ADD_NOTE_PLACEHOLDERS: Partial<Record<StageKey, string>> = {
+  new: "What's the context on this lead?",
+  contacted: "How'd the call go?",
+  appt_set: "What's planned for the appointment?",
+  job_done: "What happened on the job?",
+  feedback: "What did they say?",
+  reviewed: "Any review follow-up notes?",
+  referrer: "What's the referral update?",
+  recovery: "What's going on with the customer?",
+};
+
+// Minimal subset of the Web Speech API we actually call.
+type SpeechRecognitionResultShape = {
+  readonly isFinal: boolean;
+  readonly length: number;
+  readonly 0: { readonly transcript: string };
+};
+type SpeechRecognitionEventShape = {
+  readonly resultIndex: number;
+  readonly results: ArrayLike<SpeechRecognitionResultShape>;
+};
+type SpeechRecognitionInstance = {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  onresult: ((e: SpeechRecognitionEventShape) => void) | null;
+  onend: (() => void) | null;
+  onerror: ((e: { error?: string }) => void) | null;
+  start: () => void;
+  stop: () => void;
+};
+type SpeechRecognitionCtor = new () => SpeechRecognitionInstance;
+
+function getSpeechRecognitionCtor(): SpeechRecognitionCtor | null {
+  if (typeof window === "undefined") return null;
+  const w = window as unknown as {
+    SpeechRecognition?: SpeechRecognitionCtor;
+    webkitSpeechRecognition?: SpeechRecognitionCtor;
+  };
+  return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
+}
+
+function AddNoteSheet({
   leadId,
-  activities,
+  contactName,
+  stage,
+  onClose,
   onNoteAdded,
   onAiSummaryUpdated,
   onLeadPatched,
 }: {
   leadId: string;
-  activities: ActivityLogEntry[];
+  contactName: string;
+  stage: StageKey;
+  onClose: () => void;
   onNoteAdded?: (entry: ActivityLogEntry) => void;
   onAiSummaryUpdated?: (summary: string) => void;
   onLeadPatched?: (patch: Partial<Lead>) => void;
 }) {
-  const [composing, setComposing] = useState(false);
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [recording, setRecording] = useState(false);
+  const [speechSupported, setSpeechSupported] = useState<boolean>(false);
+  const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
+  const draftBeforeRecordRef = useRef<string>("");
 
-  // API returns oldest → newest for the chronological "story" read. The modal
-  // inverts that so the contractor lands on the most recent activity first —
-  // they care about "what just happened" more than "how this lead started".
-  const ordered = useMemo(() => [...activities].reverse(), [activities]);
+  const placeholder = ADD_NOTE_PLACEHOLDERS[stage] ?? "What do you want to remember?";
+  const stageLabel = STAGE_LABELS[stage];
+
+  useEffect(() => {
+    setSpeechSupported(getSpeechRecognitionCtor() !== null);
+  }, []);
+
+  // Lock body scroll while the sheet is open. The modal already does this;
+  // we layer ours so closing the sheet doesn't accidentally release it.
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      recognitionRef.current?.stop();
+      recognitionRef.current = null;
+    };
+  }, []);
 
   const handleSave = async () => {
     const summary = draft.trim();
     if (!summary || saving) return;
     setSaving(true);
-    setSaveError(null);
+    setError(null);
+    // Stop any active dictation so its final result isn't racing with save.
+    recognitionRef.current?.stop();
     try {
       const res = await fetch(`/api/contractor/customers/${leadId}/notes`, {
         method: "POST",
@@ -1349,7 +2086,7 @@ function WhatHappenedTimeline({
         } catch {
           /* not JSON */
         }
-        setSaveError(msg);
+        setError(msg);
         return;
       }
       const entry = (await res.json()) as ActivityLogEntry & {
@@ -1359,25 +2096,376 @@ function WhatHappenedTimeline({
       onNoteAdded?.(entry);
       if (entry.ai_summary) onAiSummaryUpdated?.(entry.ai_summary);
       if (entry.lead_patch) onLeadPatched?.(entry.lead_patch);
-      setDraft("");
-      setComposing(false);
+      onClose();
     } catch (err) {
       console.error("add note threw:", err);
-      setSaveError("Network error — check your connection and try again.");
+      setError("Network error — check your connection and try again.");
     } finally {
       setSaving(false);
     }
   };
 
-  const handleCancel = () => {
-    setDraft("");
-    setSaveError(null);
-    setComposing(false);
+  const toggleRecording = () => {
+    if (recording) {
+      recognitionRef.current?.stop();
+      return;
+    }
+    const Ctor = getSpeechRecognitionCtor();
+    if (!Ctor) return;
+    const recognition = new Ctor();
+    recognition.lang = "en-US";
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    draftBeforeRecordRef.current = draft;
+    recognition.onresult = (event) => {
+      let interim = "";
+      let finalAdd = "";
+      for (let i = event.resultIndex; i < event.results.length; i += 1) {
+        const r = event.results[i];
+        const chunk = r[0].transcript;
+        if (r.isFinal) finalAdd += chunk;
+        else interim += chunk;
+      }
+      const base = draftBeforeRecordRef.current;
+      const combined = `${base}${base && (finalAdd || interim) ? " " : ""}${finalAdd}${
+        finalAdd && interim ? " " : ""
+      }${interim}`;
+      setDraft(combined);
+      if (finalAdd) {
+        draftBeforeRecordRef.current = `${base}${base ? " " : ""}${finalAdd}`.trimEnd();
+      }
+    };
+    recognition.onend = () => {
+      setRecording(false);
+      recognitionRef.current = null;
+    };
+    recognition.onerror = () => {
+      setRecording(false);
+      recognitionRef.current = null;
+    };
+    try {
+      recognition.start();
+      recognitionRef.current = recognition;
+      setRecording(true);
+    } catch {
+      setRecording(false);
+    }
   };
 
   return (
+    <>
+      <style>{`
+        @keyframes handled-sheet-in {
+          from { transform: translateY(100%); }
+          to { transform: translateY(0); }
+        }
+        @keyframes handled-sheet-backdrop-in {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes handled-mic-pulse {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(220,38,38,0.45); }
+          50% { box-shadow: 0 0 0 10px rgba(220,38,38,0); }
+        }
+      `}</style>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Add note"
+        onClick={onClose}
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 1100,
+          backgroundColor: "rgba(15,23,42,0.45)",
+          display: "flex",
+          alignItems: "flex-end",
+          justifyContent: "center",
+          animation: "handled-sheet-backdrop-in 140ms ease-out",
+        }}
+      >
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            width: "100%",
+            maxWidth: 640,
+            maxHeight: "90vh",
+            display: "flex",
+            flexDirection: "column",
+            backgroundColor: colors.white,
+            borderTopLeftRadius: 16,
+            borderTopRightRadius: 16,
+            boxShadow: "0 -8px 32px rgba(15,23,42,0.18)",
+            fontFamily: fonts.body,
+            color: colors.navy,
+            animation: "handled-sheet-in 220ms cubic-bezier(0.2,0.9,0.25,1)",
+            paddingBottom: "env(safe-area-inset-bottom)",
+          }}
+        >
+          {/* Drag handle */}
+          <div
+            aria-hidden
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              padding: "8px 0 0",
+            }}
+          >
+            <div
+              style={{
+                width: 40,
+                height: 4,
+                borderRadius: 2,
+                background: colors.borderLight,
+              }}
+            />
+          </div>
+
+          {/* Header */}
+          <div
+            style={{
+              padding: "10px 20px 8px",
+              display: "flex",
+              alignItems: "flex-start",
+              justifyContent: "space-between",
+              gap: 12,
+            }}
+          >
+            <div style={{ minWidth: 0 }}>
+              <div
+                style={{
+                  fontFamily: fonts.body,
+                  fontSize: 15,
+                  fontWeight: 700,
+                  color: colors.navy,
+                  lineHeight: 1.2,
+                }}
+              >
+                Add note
+              </div>
+              <div
+                style={{
+                  marginTop: 2,
+                  fontFamily: fonts.body,
+                  fontSize: 12,
+                  color: colors.muted,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {contactName} · {stageLabel}
+              </div>
+            </div>
+            <button
+              type="button"
+              aria-label="Close"
+              onClick={onClose}
+              style={{
+                background: "transparent",
+                border: "none",
+                padding: 4,
+                cursor: "pointer",
+                fontSize: 20,
+                lineHeight: 1,
+                color: colors.muted,
+              }}
+            >
+              ×
+            </button>
+          </div>
+
+          {/* Textarea */}
+          <div style={{ padding: "6px 20px 0" }}>
+            <textarea
+              autoFocus
+              value={draft}
+              onChange={(e) => {
+                setDraft(e.target.value);
+                draftBeforeRecordRef.current = e.target.value;
+              }}
+              onKeyDown={(e) => {
+                if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+                  e.preventDefault();
+                  void handleSave();
+                }
+                if (e.key === "Escape") {
+                  e.preventDefault();
+                  onClose();
+                }
+              }}
+              placeholder={placeholder}
+              rows={5}
+              style={{
+                width: "100%",
+                boxSizing: "border-box",
+                padding: "12px 14px",
+                backgroundColor: colors.bg,
+                border: `1px solid ${colors.border}`,
+                borderRadius: 8,
+                fontFamily: fonts.body,
+                fontSize: 15,
+                lineHeight: 1.5,
+                color: colors.navy,
+                resize: "none",
+                outline: "none",
+                minHeight: 140,
+              }}
+            />
+            {error ? (
+              <div
+                style={{
+                  marginTop: 8,
+                  fontFamily: fonts.body,
+                  fontSize: 12,
+                  color: colors.red,
+                }}
+              >
+                {error}
+              </div>
+            ) : null}
+            <div
+              style={{
+                marginTop: 8,
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                fontFamily: fonts.body,
+                fontSize: 11,
+                color: colors.mutedLight,
+              }}
+            >
+              <span
+                aria-hidden
+                style={{
+                  width: 4,
+                  height: 4,
+                  borderRadius: "50%",
+                  background: recording ? colors.red : colors.mutedLight,
+                }}
+              />
+              <span>
+                {recording
+                  ? "Listening… tap the mic to stop."
+                  : "AI will extract tags & next step."}
+              </span>
+            </div>
+          </div>
+
+          {/* Footer: mic left, save right */}
+          <div
+            style={{
+              padding: "14px 20px 20px",
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+            }}
+          >
+            <button
+              type="button"
+              onClick={toggleRecording}
+              disabled={!speechSupported || saving}
+              aria-pressed={recording}
+              aria-label={recording ? "Stop dictation" : "Dictate note"}
+              title={
+                speechSupported
+                  ? recording
+                    ? "Stop dictation"
+                    : "Dictate note"
+                  : "Voice input isn't supported in this browser"
+              }
+              style={{
+                width: 44,
+                height: 44,
+                flexShrink: 0,
+                borderRadius: 999,
+                border: `1px solid ${recording ? colors.red : colors.border}`,
+                background: recording ? colors.red : colors.white,
+                color: recording ? colors.white : colors.navy,
+                cursor: !speechSupported ? "not-allowed" : "pointer",
+                opacity: !speechSupported ? 0.4 : 1,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                animation: recording
+                  ? "handled-mic-pulse 1.4s ease-in-out infinite"
+                  : "none",
+                transition: "background 160ms ease, color 160ms ease, border-color 160ms ease",
+              }}
+            >
+              <MicIcon size={18} />
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving || !draft.trim()}
+              style={{
+                flex: 1,
+                minHeight: 44,
+                padding: "12px 16px",
+                backgroundColor: colors.navy,
+                color: colors.white,
+                border: "none",
+                borderRadius: 999,
+                cursor: saving || !draft.trim() ? "default" : "pointer",
+                opacity: saving || !draft.trim() ? 0.55 : 1,
+                fontFamily: fonts.body,
+                fontSize: 14,
+                fontWeight: 700,
+                letterSpacing: "0.02em",
+              }}
+            >
+              {saving ? "Saving…" : "Save note"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function MicIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <rect x="9" y="3" width="6" height="12" rx="3" />
+      <path d="M5 11a7 7 0 0 0 14 0" />
+      <line x1="12" y1="18" x2="12" y2="22" />
+      <line x1="8" y1="22" x2="16" y2="22" />
+    </svg>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// What Happened — quiet activity timeline
+// ---------------------------------------------------------------------------
+
+function WhatHappenedTimeline({
+  activities,
+  onStartComposing,
+}: {
+  activities: ActivityLogEntry[];
+  onStartComposing: () => void;
+}) {
+  // API returns oldest → newest for the chronological "story" read. The modal
+  // inverts that so the contractor lands on the most recent activity first —
+  // they care about "what just happened" more than "how this lead started".
+  const ordered = useMemo(() => [...activities].reverse(), [activities]);
+
+  return (
     <div style={{ padding: "0 20px 24px" }}>
-      {/* Section header with an inline "+ Add Note" action on the right. */}
+      {/* Section header with a quiet "+ Add note" text link on the right.
+          The prominent add-note CTA lives in the modal's secondary action
+          row; this is just a convenience repeat in context. */}
       <div
         style={{
           display: "flex",
@@ -1398,141 +2486,25 @@ function WhatHappenedTimeline({
         >
           What Happened
         </div>
-        {!composing ? (
-          <button
-            type="button"
-            onClick={() => setComposing(true)}
-            style={{
-              minHeight: 28,
-              padding: "4px 10px",
-              backgroundColor: "transparent",
-              color: colors.navy,
-              border: `1px solid ${colors.border}`,
-              borderRadius: 0,
-              cursor: "pointer",
-              fontFamily: fonts.body,
-              fontSize: 10,
-              fontWeight: 600,
-              letterSpacing: "0.06em",
-              textTransform: "uppercase",
-            }}
-          >
-            + Add Note
-          </button>
-        ) : null}
-      </div>
-
-      {/* Inline composer — appears above the timeline when "Add Note" is
-          tapped. Submitting calls the /notes endpoint which inserts a
-          user_note activity_log row; we then bubble the new entry up so
-          the parent can merge it into its activity cache without a full
-          page refresh. */}
-      {composing ? (
-        <div
+        <button
+          type="button"
+          onClick={onStartComposing}
           style={{
-            marginBottom: 16,
-            padding: 12,
-            backgroundColor: colors.amberBgSoft,
-            borderLeft: `3px solid ${colors.navy}`,
+            background: "transparent",
+            color: colors.muted,
+            border: "none",
+            padding: 0,
+            cursor: "pointer",
+            fontFamily: fonts.body,
+            fontSize: 11,
+            fontWeight: 500,
+            letterSpacing: 0,
+            textTransform: "none",
           }}
         >
-          <textarea
-            autoFocus
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-                e.preventDefault();
-                void handleSave();
-              }
-              if (e.key === "Escape") {
-                e.preventDefault();
-                handleCancel();
-              }
-            }}
-            placeholder="Add a note about this customer..."
-            rows={3}
-            style={{
-              width: "100%",
-              boxSizing: "border-box",
-              padding: "8px 10px",
-              backgroundColor: colors.white,
-              border: `1px solid ${colors.border}`,
-              borderRadius: 0,
-              fontFamily: fonts.body,
-              fontSize: 13,
-              lineHeight: 1.4,
-              color: colors.navy,
-              resize: "vertical",
-              outline: "none",
-            }}
-          />
-          {saveError ? (
-            <div
-              style={{
-                marginTop: 6,
-                fontFamily: fonts.body,
-                fontSize: 11,
-                color: colors.alertMuted,
-              }}
-            >
-              {saveError}
-            </div>
-          ) : null}
-          <div
-            style={{
-              marginTop: 8,
-              display: "flex",
-              justifyContent: "flex-end",
-              gap: 8,
-            }}
-          >
-            <button
-              type="button"
-              onClick={handleCancel}
-              disabled={saving}
-              style={{
-                minHeight: 32,
-                padding: "6px 12px",
-                backgroundColor: "transparent",
-                color: colors.muted,
-                border: `1px solid ${colors.border}`,
-                borderRadius: 0,
-                cursor: saving ? "default" : "pointer",
-                fontFamily: fonts.body,
-                fontSize: 11,
-                fontWeight: 600,
-                letterSpacing: "0.04em",
-                textTransform: "uppercase",
-              }}
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={saving || !draft.trim()}
-              style={{
-                minHeight: 32,
-                padding: "6px 12px",
-                backgroundColor: colors.navy,
-                color: colors.white,
-                border: "none",
-                borderRadius: 0,
-                cursor: saving || !draft.trim() ? "default" : "pointer",
-                opacity: saving || !draft.trim() ? 0.55 : 1,
-                fontFamily: fonts.body,
-                fontSize: 11,
-                fontWeight: 700,
-                letterSpacing: "0.04em",
-                textTransform: "uppercase",
-              }}
-            >
-              {saving ? "Saving…" : "Save Note"}
-            </button>
-          </div>
-        </div>
-      ) : null}
+          + Add note
+        </button>
+      </div>
 
       {ordered.length === 0 ? (
         <div

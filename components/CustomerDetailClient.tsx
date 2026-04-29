@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Lead, ActivityLogEntry } from "@/lib/supabase";
@@ -110,6 +110,12 @@ export default function CustomerDetailClient({ lead, timeline: initialTimeline, 
   const [referralCode, setReferralCode] = useState<string | null>(existingReferralCode || null);
   const [referralLoading, setReferralLoading] = useState(false);
   const [referralCopied, setReferralCopied] = useState(false);
+  // Sync local state when the server prop changes — covers navigation
+  // between customers (Next.js may reuse this client instance) and a
+  // post-enroll router.refresh() picking up the new partner row.
+  useEffect(() => {
+    setReferralCode(existingReferralCode || null);
+  }, [existingReferralCode]);
   const [assignedEmployee, setAssignedEmployee] = useState<string | null>(lead.employee_id || null);
   const [addingNote, setAddingNote] = useState(false);
   const [noteDraft, setNoteDraft] = useState("");
