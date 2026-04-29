@@ -6,6 +6,7 @@ import ReputationClient, {
   type AdvocatesData,
   type FeedbackItem,
   type FunnelStep,
+  type ReferralStats,
   type ReputationData,
   type ReviewItem,
   type TimeRange,
@@ -179,7 +180,7 @@ export default async function ContractorReputationPage({
     supabase
       .from("businesses")
       .select(
-        "name, google_rating, google_review_count, google_reviews, google_review_url, google_place_id"
+        "name, google_rating, google_review_count, google_reviews, google_review_url, google_place_id, referral_reward_amount_cents"
       )
       .eq("id", businessId)
       .single(),
@@ -294,6 +295,20 @@ export default async function ContractorReputationPage({
     partnerReferralRows = (data ?? []) as PartnerReferralRow[];
   }
 
+  // Per-partner click events for the activity card in the contact modal.
+  // Same query the pipeline page does — keyed by referral_partners.id, then
+  // re-keyed below to customer_id (which is what the modal opens on).
+  const { data: eventRows } = await supabase
+    .from("referral_events")
+    .select("referral_partner_id, event_type, created_at")
+    .eq("business_id", businessId);
+
+  const referralStatsByLead = buildReferralStatsByLead(
+    partnerRows,
+    partnerReferralRows,
+    eventRows ?? [],
+  );
+
   // -----------------------------------------------------------------
   // Shape rows → view models
   // -----------------------------------------------------------------
@@ -402,6 +417,8 @@ export default async function ContractorReputationPage({
     feedback,
     reviews,
     advocates,
+    referralStatsByLead,
+    referralRewardCents: business?.referral_reward_amount_cents ?? null,
   };
 
   return <ReputationClient data={data} />;
@@ -610,6 +627,67 @@ function buildAdvocates(
   });
 
   return { newAdvocates, rankedAdvocates: rest };
+}
+
+// Per-partner stats for the modal's referral activity card. Keyed by
+// customer_id (the lead the modal opens on, identical to the activity
+// rollup that customers/page.tsx ships to PipelineV2). Counts collapse
+// across the partner's full history — the time-range pill on the
+// reputation page only filters the leaderboard rows, not the modal.
+function buildReferralStatsByLead(
+  partnerRows: ReferralPartnerRow[],
+  partnerReferralRows: PartnerReferralRow[],
+  eventRows: Array<{
+    referral_partner_id: string;
+    event_type: string;
+    created_at: string;
+  }>,
+): Record<string, ReferralStats> {
+  // Clicks per partner_id, plus newest event timestamp.
+  const clicksByPartnerId = new Map<string, number>();
+  const lastEventByPartnerId = new Map<string, string>();
+  for (const e of eventRows) {
+    if (e.event_type !== "click") continue;
+    clicksByPartnerId.set(
+      e.referral_partner_id,
+      (clicksByPartnerId.get(e.referral_partner_id) ?? 0) + 1,
+    );
+    const prev = lastEventByPartnerId.get(e.referral_partner_id);
+    if (!prev || e.created_at > prev) {
+      lastEventByPartnerId.set(e.referral_partner_id, e.created_at);
+    }
+  }
+
+  // Leads per partner (keyed by the partner's customer_id since that's how
+  // referred_by_lead_id is stored on the referred lead row). Lead count is
+  // every referral they've ever submitted; "Last activity" can stretch back
+  // to the partner's enrollment timestamp on partners with no clicks/leads.
+  const leadsByPartnerLeadId = new Map<string, number>();
+  for (const r of partnerReferralRows) {
+    if (!r.referred_by_lead_id) continue;
+    leadsByPartnerLeadId.set(
+      r.referred_by_lead_id,
+      (leadsByPartnerLeadId.get(r.referred_by_lead_id) ?? 0) + 1,
+    );
+  }
+
+  const out: Record<string, ReferralStats> = {};
+  for (const p of partnerRows) {
+    if (!p.customer_id || !p.referral_code) continue;
+    const clicks = clicksByPartnerId.get(p.id) ?? 0;
+    const leads = leadsByPartnerLeadId.get(p.customer_id) ?? 0;
+    const lastEvent = lastEventByPartnerId.get(p.id);
+    const lastActivityAt =
+      lastEvent && lastEvent > p.created_at ? lastEvent : p.created_at;
+    out[p.customer_id] = {
+      referralCode: p.referral_code,
+      partnerSince: p.created_at,
+      clicks,
+      leads,
+      lastActivityAt,
+    };
+  }
+  return out;
 }
 
 function emojiForRating(rating: number): string {

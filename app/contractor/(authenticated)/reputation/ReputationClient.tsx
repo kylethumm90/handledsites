@@ -86,6 +86,21 @@ export type FunnelStep = {
   colorKey: FunnelColorKey;
 };
 
+/**
+ * Per-partner stats shipped server-side from page.tsx so the contact
+ * modal's referral activity card has its data the moment a leaderboard
+ * row is tapped — no extra round trip. Keyed by lead id (customer_id on
+ * the referral_partners row), identical to the shape the pipeline page
+ * passes to PipelineV2.
+ */
+export type ReferralStats = {
+  referralCode: string;
+  partnerSince: string;
+  clicks: number;
+  leads: number;
+  lastActivityAt: string;
+};
+
 export type ReputationData = {
   companyName: string;
   range: TimeRange;
@@ -103,6 +118,8 @@ export type ReputationData = {
   feedback: FeedbackItem[];
   reviews: ReviewItem[];
   advocates: AdvocatesData;
+  referralStatsByLead: Record<string, ReferralStats>;
+  referralRewardCents: number | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -363,6 +380,9 @@ export default function ReputationClient({ data }: { data: ReputationData }) {
         <ContactDetailModal
           lead={selectedLead}
           activities={activitiesByLead[selectedLeadId]}
+          referralStats={data.referralStatsByLead[selectedLeadId] ?? null}
+          referralRewardCents={data.referralRewardCents}
+          businessName={data.companyName}
           onUpdate={() => {
             setActivitiesByLead((prev) => {
               const next = { ...prev };
