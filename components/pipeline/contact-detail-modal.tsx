@@ -55,6 +55,19 @@ type Props = {
    * without a full refresh.
    */
   onNoteAdded?: (entry: ActivityLogEntry) => void;
+  /**
+   * Existing referral_partners.referral_code for this lead, or null if the
+   * customer hasn't been enrolled. The parent fetches this so the modal can
+   * decide between rendering the share link vs. the "Make referral partner"
+   * CTA — without a per-open round trip.
+   */
+  existingReferralCode?: string | null;
+  /**
+   * Optional — fired after the contractor taps "Make referral partner" and
+   * the POST returns a code. Lets the parent update its cached map so
+   * closing and reopening the modal still shows the link.
+   */
+  onReferralCodeChange?: (leadId: string, code: string) => void;
   onClose: () => void;
 };
 
@@ -239,6 +252,8 @@ export default function ContactDetailModal({
   activities,
   onUpdate,
   onNoteAdded,
+  existingReferralCode,
+  onReferralCodeChange,
   onClose,
 }: Props) {
   // Local status that we can optimistically advance without waiting on a
@@ -260,12 +275,24 @@ export default function ContactDetailModal({
   // Reset on lead change so we don't leak one customer's patch into
   // another's render.
   const [leadPatch, setLeadPatch] = useState<Partial<Lead>>({});
+  // Local mirror of the parent-supplied referral code. Lets the modal flip
+  // from "Make referral partner" CTA to the share link the moment the POST
+  // returns, without waiting for the parent to refetch and pass a new prop.
+  // Reset when the parent prop changes so opening a different lead — or
+  // re-receiving a value the parent fetched server-side — wins.
+  const [referralCode, setReferralCode] = useState<string | null>(
+    existingReferralCode ?? null,
+  );
+  const [referralLoading, setReferralLoading] = useState(false);
+  const [referralCopied, setReferralCopied] = useState(false);
   useEffect(() => {
     setCurrentStatus(lead.status);
     setAdvanceError(null);
     setCurrentAiSummary(lead.ai_summary ?? null);
     setLeadPatch({});
-  }, [lead.id, lead.status, lead.ai_summary]);
+    setReferralCode(existingReferralCode ?? null);
+    setReferralCopied(false);
+  }, [lead.id, lead.status, lead.ai_summary, existingReferralCode]);
 
   const effectiveLead = useMemo<Lead>(
     () => ({ ...lead, ...leadPatch }),
@@ -375,6 +402,33 @@ export default function ContactDetailModal({
       setAdvanceError("Network error — check your connection and try again.");
     } finally {
       setAdvancing(false);
+    }
+  };
+
+  // Enroll the customer as a referral partner. Idempotent on the server:
+  // re-tapping returns the same code, so a stale local state doesn't create
+  // duplicate rows. On success we mirror the new code locally and bubble it
+  // up so the parent's cache stays in sync across modal closes/reopens.
+  const handleMakeReferralPartner = async () => {
+    if (referralLoading || referralCode) return;
+    setReferralLoading(true);
+    try {
+      const res = await fetch("/api/contractor/referral-partner", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ customer_id: lead.id }),
+      });
+      if (!res.ok) return;
+      const data = (await res.json()) as { referral_code?: string };
+      if (data.referral_code) {
+        setReferralCode(data.referral_code);
+        onReferralCodeChange?.(lead.id, data.referral_code);
+      }
+    } catch {
+      // Silent — the button stays so the contractor can retry.
+    } finally {
+      setReferralLoading(false);
     }
   };
 
@@ -689,6 +743,26 @@ export default function ContactDetailModal({
           {/* Contact info card — quiet rows of metadata */}
           <ContactInfoCard lead={lead} />
 
+          {/* Referral partner section — only relevant once the job is sold.
+              Shows the share link if the customer has already been enrolled
+              (either by tapping this button or via the public review-funnel
+              opt-in), otherwise the "Make referral partner" CTA. */}
+          {currentStatus === "customer" ? (
+            <ReferralPartnerSection
+              referralCode={referralCode}
+              loading={referralLoading}
+              copied={referralCopied}
+              onMakePartner={handleMakeReferralPartner}
+              onCopy={() => {
+                if (!referralCode) return;
+                const url = `${window.location.origin}/refer/${referralCode}`;
+                navigator.clipboard.writeText(url);
+                setReferralCopied(true);
+                window.setTimeout(() => setReferralCopied(false), 1500);
+              }}
+            />
+          ) : null}
+
           {/* AI Details — expandable structured fields the AI extracted.
               Pass `effectiveLead` so fields the note-time extractor just
               filled show up immediately without a reload. */}
@@ -907,6 +981,128 @@ function PipelineFooter({
             : "Post-sale — advancement happens as the customer responds."}
         </div>
       ) : null}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Referral partner — share link if enrolled, "Make referral partner" CTA
+// otherwise. Render decision is driven entirely by `referralCode` so a fresh
+// fetch (parent prop) and a just-finished POST (local state) both work the
+// same way.
+// ---------------------------------------------------------------------------
+
+function ReferralPartnerSection({
+  referralCode,
+  loading,
+  copied,
+  onMakePartner,
+  onCopy,
+}: {
+  referralCode: string | null;
+  loading: boolean;
+  copied: boolean;
+  onMakePartner: () => void;
+  onCopy: () => void;
+}) {
+  // Build the share URL only on the client — window is unavailable during
+  // the initial server render the modal still gets bundled into.
+  const shareUrl =
+    referralCode && typeof window !== "undefined"
+      ? `${window.location.origin}/refer/${referralCode}`
+      : referralCode
+        ? `/refer/${referralCode}`
+        : "";
+
+  return (
+    <div style={{ padding: "0 20px 20px" }}>
+      {referralCode ? (
+        <div
+          style={{
+            backgroundColor: colors.white,
+            border: `1px solid ${colors.borderLight}`,
+            padding: "12px 14px",
+          }}
+        >
+          <div
+            style={{
+              fontFamily: fonts.body,
+              fontSize: 9,
+              fontWeight: 600,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              color: colors.mutedLight,
+              marginBottom: 8,
+            }}
+          >
+            Referral Link
+          </div>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+            <span
+              style={{
+                flex: 1,
+                minWidth: 0,
+                fontFamily: fonts.mono,
+                fontSize: 12,
+                color: colors.navy,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {shareUrl}
+            </span>
+            <button
+              type="button"
+              onClick={onCopy}
+              style={{
+                padding: "4px 10px",
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                fontFamily: fonts.body,
+                fontSize: 11,
+                fontWeight: 600,
+                letterSpacing: "0.06em",
+                textTransform: "uppercase",
+                color: copied ? colors.green : colors.muted,
+              }}
+            >
+              {copied ? "Copied" : "Copy"}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={onMakePartner}
+          disabled={loading}
+          style={{
+            width: "100%",
+            minHeight: 44,
+            padding: "12px 16px",
+            backgroundColor: colors.white,
+            color: colors.muted,
+            border: `1px solid ${colors.border}`,
+            borderRadius: 0,
+            cursor: loading ? "default" : "pointer",
+            fontFamily: fonts.body,
+            fontWeight: 600,
+            fontSize: 13,
+            letterSpacing: "0.04em",
+            textTransform: "uppercase",
+            opacity: loading ? 0.6 : 1,
+          }}
+        >
+          {loading ? "Creating…" : "Make referral partner"}
+        </button>
+      )}
     </div>
   );
 }

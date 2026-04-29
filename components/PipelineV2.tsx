@@ -57,12 +57,21 @@ type Props = {
   leads: Lead[];
   businessName: string;
   avaEnabled: boolean;
+  /**
+   * customer_id → referral_partners.referral_code for every customer in this
+   * business that has been enrolled (either by tapping "Make referral
+   * partner" in the modal or via the public review-funnel opt-in). Server-
+   * fetched in customers/page.tsx; the modal flips its CTA to the share link
+   * when the open lead's id is in here.
+   */
+  referralCodesByLead?: Record<string, string>;
 };
 
 export default function PipelineV2({
   leads,
   businessName,
   avaEnabled,
+  referralCodesByLead,
 }: Props) {
   const router = useRouter();
   const plan = useCurrentPlan();
@@ -73,6 +82,15 @@ export default function PipelineV2({
   const [activitiesByLead, setActivitiesByLead] = useState<
     Record<string, ActivityLogEntry[]>
   >({});
+  // Local mirror of the server-supplied referral codes map. Lets a freshly
+  // enrolled partner stay visible after the modal closes and reopens
+  // without waiting for router.refresh() to repaint the prop.
+  const [referralCodes, setReferralCodes] = useState<Record<string, string>>(
+    () => referralCodesByLead ?? {},
+  );
+  useEffect(() => {
+    setReferralCodes(referralCodesByLead ?? {});
+  }, [referralCodesByLead]);
 
   // Tier is driven by (plan has Ava) AND (business has flipped Ava on).
   // Matches the "both flags must be true" rule used by PipelineClient.
@@ -262,6 +280,10 @@ export default function PipelineV2({
                 [selectedLead.id]: [...existing, entry],
               };
             });
+          }}
+          existingReferralCode={referralCodes[selectedLead.id] ?? null}
+          onReferralCodeChange={(leadId, code) => {
+            setReferralCodes((prev) => ({ ...prev, [leadId]: code }));
           }}
           onClose={() => setSelectedLeadId(null)}
         />
