@@ -785,61 +785,79 @@ function ReviewCard({
   const statusColor = REVIEW_STATUS_COLOR[review.status];
   const isAttention = review.status === "needs attention";
   const canOpenExternal = !isAttention && !!review.externalUrl;
-  const [shareLabel, setShareLabel] = useState<"SHARE" | "COPIED" | "SHARED">(
-    "SHARE"
-  );
+  const [shareOpen, setShareOpen] = useState(false);
+  const [copyState, setCopyState] = useState<"idle" | "copied">("idle");
 
-  // Build a payload with the review excerpt, stars, reviewer, and company so
-  // a paste lands as readable social proof anywhere — iMessage, email,
-  // Slack, GBP posts. We bias toward text rather than just dropping the
-  // Google link because raw Google review URLs don't preview well.
-  async function handleShare() {
-    const stars = review.rating ? "★".repeat(Math.round(review.rating)) : "";
-    const truncated =
-      review.text.length > 240
-        ? `${review.text.slice(0, 237).trimEnd()}…`
-        : review.text;
-    const lines = [
-      stars ? `${stars} ${review.name}` : `Review from ${review.name}`,
-      "",
-      `"${truncated}"`,
-      "",
-      `— ${companyName}`,
-    ];
-    // Prefer the contractor's hosted handled. review wall over the raw
-    // Google review URL — it's branded, has a CTA back to the
-    // contractor, and previews better in messaging apps. Fall back to
-    // the Google link if the wall isn't provisioned yet.
-    const landingUrl = reviewWallUrl ?? review.externalUrl;
-    if (landingUrl) lines.push("", landingUrl);
-    const shareText = lines.join("\n");
+  // Build the share payload once. Stars + reviewer + truncated text +
+  // company so it reads as social proof on its own. The landing URL
+  // prefers the contractor's branded handled. wall over the raw Google
+  // link — it previews better in social embeds and routes the click
+  // back to the contractor instead of Google.
+  const stars = review.rating ? "★".repeat(Math.round(review.rating)) : "";
+  const truncated =
+    review.text.length > 240
+      ? `${review.text.slice(0, 237).trimEnd()}…`
+      : review.text;
+  const shareText = [
+    stars ? `${stars} ${review.name}` : `Review from ${review.name}`,
+    "",
+    `"${truncated}"`,
+    "",
+    `— ${companyName}`,
+  ].join("\n");
+  const landingUrl = reviewWallUrl ?? review.externalUrl;
 
-    if (
-      typeof navigator !== "undefined" &&
-      typeof navigator.share === "function"
-    ) {
-      try {
-        await navigator.share({
-          title: `Review of ${companyName}`,
-          text: shareText,
-        });
-        setShareLabel("SHARED");
-        setTimeout(() => setShareLabel("SHARE"), 1500);
-        return;
-      } catch (err) {
-        // User dismissed the sheet — leave the button untouched. Any other
-        // failure falls through to the clipboard path below.
-        if (err instanceof DOMException && err.name === "AbortError") return;
-      }
+  useEffect(() => {
+    if (!shareOpen) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setShareOpen(false);
     }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [shareOpen]);
 
+  function openIntent(url: string) {
+    window.open(url, "_blank", "noopener,noreferrer,width=600,height=600");
+  }
+  function shareToFacebook() {
+    if (!landingUrl) return;
+    openIntent(
+      `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(
+        landingUrl
+      )}&quote=${encodeURIComponent(shareText)}`
+    );
+  }
+  function shareToX() {
+    const params = new URLSearchParams();
+    params.set("text", shareText);
+    if (landingUrl) params.set("url", landingUrl);
+    openIntent(`https://twitter.com/intent/tweet?${params.toString()}`);
+  }
+  function shareToLinkedIn() {
+    if (!landingUrl) return;
+    // LinkedIn dropped &summary= and &title= support in 2021 — only
+    // the URL renders, so we don't bother passing the quote.
+    openIntent(
+      `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(
+        landingUrl
+      )}`
+    );
+  }
+  function shareViaEmail() {
+    const subject = `Review of ${companyName}`;
+    const body = landingUrl ? `${shareText}\n\n${landingUrl}` : shareText;
+    window.location.href = `mailto:?subject=${encodeURIComponent(
+      subject
+    )}&body=${encodeURIComponent(body)}`;
+  }
+  async function copyAll() {
     try {
-      await navigator.clipboard.writeText(shareText);
-      setShareLabel("COPIED");
-      setTimeout(() => setShareLabel("SHARE"), 1500);
+      const full = landingUrl ? `${shareText}\n\n${landingUrl}` : shareText;
+      await navigator.clipboard.writeText(full);
+      setCopyState("copied");
+      setTimeout(() => setCopyState("idle"), 1500);
     } catch {
-      // Clipboard blocked (insecure context, denied permission). Nothing
-      // graceful to do without a popover, so swallow rather than throw.
+      // Clipboard blocked (insecure context / denied) — silent.
     }
   }
 
@@ -891,7 +909,9 @@ function ReviewCard({
           <SentimentBar score={review.sentiment} />
           <ActionButtons
             primary={isAttention ? "CALL" : "VIEW"}
-            secondary={isAttention ? "ASSIGN REP" : shareLabel}
+            secondary={
+              isAttention ? "ASSIGN REP" : shareOpen ? "CLOSE" : "SHARE"
+            }
             primaryDisabled={!isAttention && !canOpenExternal}
             onPrimary={
               canOpenExternal
@@ -903,11 +923,187 @@ function ReviewCard({
                     )
                 : undefined
             }
-            onSecondary={isAttention ? undefined : handleShare}
+            onSecondary={
+              isAttention ? undefined : () => setShareOpen((o) => !o)
+            }
           />
+          {shareOpen && !isAttention && (
+            <ShareTargets
+              hasUrl={!!landingUrl}
+              copyState={copyState}
+              onFacebook={shareToFacebook}
+              onX={shareToX}
+              onLinkedIn={shareToLinkedIn}
+              onEmail={shareViaEmail}
+              onCopy={copyAll}
+            />
+          )}
         </div>
       </div>
     </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Share targets drawer (rendered inline below a review card's action row)
+// ---------------------------------------------------------------------------
+
+function ShareTargets({
+  hasUrl,
+  copyState,
+  onFacebook,
+  onX,
+  onLinkedIn,
+  onEmail,
+  onCopy,
+}: {
+  hasUrl: boolean;
+  copyState: "idle" | "copied";
+  onFacebook: () => void;
+  onX: () => void;
+  onLinkedIn: () => void;
+  onEmail: () => void;
+  onCopy: () => void;
+}) {
+  return (
+    <div
+      role="group"
+      aria-label="Share to social media"
+      style={{
+        marginTop: 10,
+        paddingTop: 10,
+        borderTop: `1px solid ${colors.borderLight}`,
+        display: "flex",
+        gap: 8,
+        alignItems: "center",
+        flexWrap: "wrap",
+      }}
+    >
+      <ShareIconButton
+        label="Share on Facebook"
+        onClick={onFacebook}
+        disabled={!hasUrl}
+        svg={
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+            <path d="M9.101 23.691v-7.98H6.627v-3.667h2.474v-1.58c0-4.085 1.848-5.978 5.858-5.978.401 0 .955.042 1.468.103a8.68 8.68 0 0 1 1.141.195v3.325a8.623 8.623 0 0 0-.653-.036 26.805 26.805 0 0 0-.733-.009c-.707 0-1.259.096-1.675.309a1.686 1.686 0 0 0-.679.622c-.258.42-.374.995-.374 1.752v1.297h3.919l-.386 2.103-.287 1.564h-3.246v8.245C19.396 23.238 24 18.179 24 12.044c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.628 3.874 10.35 9.101 11.647Z" />
+          </svg>
+        }
+      />
+      <ShareIconButton
+        label="Share on X"
+        onClick={onX}
+        svg={
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+          </svg>
+        }
+      />
+      <ShareIconButton
+        label="Share on LinkedIn"
+        onClick={onLinkedIn}
+        disabled={!hasUrl}
+        svg={
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+            <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.063 2.063 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+          </svg>
+        }
+      />
+      <ShareIconButton
+        label="Share via email"
+        onClick={onEmail}
+        svg={
+          <svg
+            viewBox="0 0 24 24"
+            width="16"
+            height="16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <rect x="3" y="5" width="18" height="14" rx="2" />
+            <path d="m3 7 9 6 9-6" />
+          </svg>
+        }
+      />
+      <ShareIconButton
+        label={copyState === "copied" ? "Copied" : "Copy text + link"}
+        onClick={onCopy}
+        active={copyState === "copied"}
+        svg={
+          copyState === "copied" ? (
+            <svg
+              viewBox="0 0 24 24"
+              width="16"
+              height="16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M20 6 9 17l-5-5" />
+            </svg>
+          ) : (
+            <svg
+              viewBox="0 0 24 24"
+              width="16"
+              height="16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <rect x="9" y="9" width="11" height="11" rx="2" />
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+            </svg>
+          )
+        }
+      />
+    </div>
+  );
+}
+
+function ShareIconButton({
+  label,
+  onClick,
+  disabled,
+  active,
+  svg,
+}: {
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+  active?: boolean;
+  svg: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      title={label}
+      aria-label={label}
+      style={{
+        width: 36,
+        height: 36,
+        borderRadius: 6,
+        border: `1px solid ${colors.border}`,
+        background: active ? colors.navy : colors.white,
+        color: active ? colors.white : colors.navy,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        cursor: disabled ? "not-allowed" : "pointer",
+        opacity: disabled ? 0.4 : 1,
+        transition: "background 120ms ease, color 120ms ease",
+        padding: 0,
+      }}
+    >
+      {svg}
+    </button>
   );
 }
 
