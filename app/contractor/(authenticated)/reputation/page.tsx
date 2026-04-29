@@ -176,6 +176,10 @@ export default async function ContractorReputationPage({
     revenueRes,
     conversionTotalRes,
     conversionClosedRes,
+    // Review wall slug — used to build the shareable handled. URL on
+    // each review's SHARE button. May be null if onboarding hasn't
+    // provisioned a review_wall site yet.
+    reviewWallSiteRes,
   ] = await Promise.all([
     supabase
       .from("businesses")
@@ -236,6 +240,13 @@ export default async function ContractorReputationPage({
       .eq("status", "customer")
       .not("referred_by_lead_id", "is", null)
       .gte("closed_at", thirtyDayCutoff),
+    supabase
+      .from("sites")
+      .select("slug")
+      .eq("business_id", businessId)
+      .eq("type", "review_wall")
+      .eq("is_active", true)
+      .maybeSingle(),
   ]);
 
   const business = businessRes.data;
@@ -405,8 +416,16 @@ export default async function ContractorReputationPage({
     },
   ];
 
+  const reviewWallSlug = reviewWallSiteRes.data?.slug ?? null;
+  const baseUrl =
+    process.env.NEXT_PUBLIC_BASE_URL || "https://www.handledsites.com";
+  const reviewWallUrl = reviewWallSlug
+    ? `${baseUrl.replace(/\/$/, "")}/reviews/${reviewWallSlug}`
+    : null;
+
   const data: ReputationData = {
     companyName: business?.name ?? "Your Business",
+    reviewWallUrl,
     range,
     stats,
     advocateRevenue: {

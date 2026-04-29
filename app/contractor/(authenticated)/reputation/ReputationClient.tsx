@@ -103,6 +103,11 @@ export type ReferralStats = {
 
 export type ReputationData = {
   companyName: string;
+  // Public, branded URL for this contractor's hosted review wall
+  // (`/reviews/[slug]`). Used as the share landing page on each review
+  // card so we send people to a handled. page rather than Google.
+  // Null when onboarding hasn't provisioned a review_wall site.
+  reviewWallUrl: string | null;
   range: TimeRange;
   stats: {
     feedback: number;
@@ -341,6 +346,7 @@ export default function ReputationClient({ data }: { data: ReputationData }) {
                 key={r.id}
                 review={r}
                 companyName={data.companyName}
+                reviewWallUrl={data.reviewWallUrl}
               />
             ))
           ) : (
@@ -770,9 +776,11 @@ const greyContentBox: React.CSSProperties = {
 function ReviewCard({
   review,
   companyName,
+  reviewWallUrl,
 }: {
   review: ReviewItem;
   companyName: string;
+  reviewWallUrl: string | null;
 }) {
   const statusColor = REVIEW_STATUS_COLOR[review.status];
   const isAttention = review.status === "needs attention";
@@ -798,7 +806,12 @@ function ReviewCard({
       "",
       `— ${companyName}`,
     ];
-    if (review.externalUrl) lines.push("", review.externalUrl);
+    // Prefer the contractor's hosted handled. review wall over the raw
+    // Google review URL — it's branded, has a CTA back to the
+    // contractor, and previews better in messaging apps. Fall back to
+    // the Google link if the wall isn't provisioned yet.
+    const landingUrl = reviewWallUrl ?? review.externalUrl;
+    if (landingUrl) lines.push("", landingUrl);
     const shareText = lines.join("\n");
 
     if (
