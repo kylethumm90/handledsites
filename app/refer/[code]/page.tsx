@@ -33,6 +33,8 @@ async function getReferralData(code: string) {
   if (!business) return null;
 
   return {
+    partnerId: partner.id,
+    businessId: partner.business_id,
     referralCode: partner.referral_code,
     partnerFirstName: (customer?.name || "").split(" ")[0],
     partnerFullName: customer?.name || "",
@@ -96,6 +98,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function ReferralPage({ params }: Props) {
   const data = await getReferralData(params.code);
   if (!data) notFound();
+
+  // Best-effort click log. Never block the render if it fails — a missed
+  // count is better than a broken referral page. Only logged from the
+  // page render (not generateMetadata) so a single visit is one click.
+  const supabase = getSupabaseAdmin();
+  await supabase
+    .from("referral_events")
+    .insert({
+      business_id: data.businessId,
+      referral_partner_id: data.partnerId,
+      event_type: "click",
+    })
+    .then(() => {}, () => {});
 
   return (
     <ReferralClient

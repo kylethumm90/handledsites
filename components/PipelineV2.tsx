@@ -53,25 +53,34 @@ const POST_SALE_STAGES: StageConfig[] = [
 
 type StageWithCount = StageConfig & { count: number };
 
+/**
+ * Per-partner stats rolled up server-side in customers/page.tsx so the
+ * modal's "Referral Activity" card can render without a per-open round
+ * trip. Keyed by customer_id (the lead the modal is opened on).
+ */
+export type ReferralStats = {
+  referralCode: string;
+  partnerSince: string;
+  clicks: number;
+  leads: number;
+  lastActivityAt: string;
+};
+
 type Props = {
   leads: Lead[];
   businessName: string;
   avaEnabled: boolean;
-  /**
-   * customer_id → referral_partners.referral_code for every customer in this
-   * business that has been enrolled (either by tapping "Make referral
-   * partner" in the modal or via the public review-funnel opt-in). Server-
-   * fetched in customers/page.tsx; the modal flips its CTA to the share link
-   * when the open lead's id is in here.
-   */
-  referralCodesByLead?: Record<string, string>;
+  referralStatsByLead?: Record<string, ReferralStats>;
+  /** Per-business reward in cents (used in the nudge template). */
+  referralRewardCents?: number | null;
 };
 
 export default function PipelineV2({
   leads,
   businessName,
   avaEnabled,
-  referralCodesByLead,
+  referralStatsByLead,
+  referralRewardCents,
 }: Props) {
   const router = useRouter();
   const plan = useCurrentPlan();
@@ -82,15 +91,16 @@ export default function PipelineV2({
   const [activitiesByLead, setActivitiesByLead] = useState<
     Record<string, ActivityLogEntry[]>
   >({});
-  // Local mirror of the server-supplied referral codes map. Lets a freshly
-  // enrolled partner stay visible after the modal closes and reopens
-  // without waiting for router.refresh() to repaint the prop.
-  const [referralCodes, setReferralCodes] = useState<Record<string, string>>(
-    () => referralCodesByLead ?? {},
-  );
+  // Local mirror of the server-supplied stats map. Lets a freshly enrolled
+  // partner stay visible after the modal closes and reopens without
+  // waiting for router.refresh() to repaint the prop. New partners default
+  // to zero clicks/leads — the row exists, the activity is just empty.
+  const [referralStats, setReferralStats] = useState<
+    Record<string, ReferralStats>
+  >(() => referralStatsByLead ?? {});
   useEffect(() => {
-    setReferralCodes(referralCodesByLead ?? {});
-  }, [referralCodesByLead]);
+    setReferralStats(referralStatsByLead ?? {});
+  }, [referralStatsByLead]);
 
   // Tier is driven by (plan has Ava) AND (business has flipped Ava on).
   // Matches the "both flags must be true" rule used by PipelineClient.
@@ -281,9 +291,23 @@ export default function PipelineV2({
               };
             });
           }}
-          existingReferralCode={referralCodes[selectedLead.id] ?? null}
-          onReferralCodeChange={(leadId, code) => {
-            setReferralCodes((prev) => ({ ...prev, [leadId]: code }));
+          referralStats={referralStats[selectedLead.id] ?? null}
+          referralRewardCents={referralRewardCents ?? null}
+          businessName={businessName}
+          onReferralCodeChange={(leadId, code, createdAt) => {
+            // Seed a fresh stats row so the card flips from CTA → activity
+            // immediately. Counts are zero until the partner gets actual
+            // clicks/leads, and last activity defaults to "just now".
+            setReferralStats((prev) => ({
+              ...prev,
+              [leadId]: prev[leadId] ?? {
+                referralCode: code,
+                partnerSince: createdAt,
+                clicks: 0,
+                leads: 0,
+                lastActivityAt: createdAt,
+              },
+            }));
           }}
           onClose={() => setSelectedLeadId(null)}
         />

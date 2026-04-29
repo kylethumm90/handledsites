@@ -56,19 +56,45 @@ type Props = {
    */
   onNoteAdded?: (entry: ActivityLogEntry) => void;
   /**
-   * Existing referral_partners.referral_code for this lead, or null if the
-   * customer hasn't been enrolled. The parent fetches this so the modal can
-   * decide between rendering the share link vs. the "Make referral partner"
-   * CTA — without a per-open round trip.
+   * Per-partner stats (referral_code + counts + last activity) for this
+   * lead, or null if the customer hasn't been enrolled. The parent rolls
+   * this up server-side so the modal can render the activity card without
+   * a per-open round trip.
    */
-  existingReferralCode?: string | null;
+  referralStats?: ReferralStats | null;
+  /**
+   * Per-business reward amount in cents, used to personalize the nudge
+   * template. Optional — the message degrades gracefully when null.
+   */
+  referralRewardCents?: number | null;
+  /**
+   * Used in the nudge template ("Hey Jess — share your link with anyone
+   * who could use {businessName}"). Falls back to a generic line.
+   */
+  businessName?: string | null;
   /**
    * Optional — fired after the contractor taps "Make referral partner" and
-   * the POST returns a code. Lets the parent update its cached map so
-   * closing and reopening the modal still shows the link.
+   * the POST returns a code. Lets the parent seed a fresh stats row so a
+   * close/reopen still shows the activity card (zero clicks/leads).
    */
-  onReferralCodeChange?: (leadId: string, code: string) => void;
+  onReferralCodeChange?: (
+    leadId: string,
+    code: string,
+    createdAt: string,
+  ) => void;
   onClose: () => void;
+};
+
+/**
+ * Mirror of the parent's ReferralStats shape — duplicated here to avoid a
+ * circular dep between the pipeline module and this generic modal.
+ */
+export type ReferralStats = {
+  referralCode: string;
+  partnerSince: string;
+  clicks: number;
+  leads: number;
+  lastActivityAt: string;
 };
 
 // Pipeline-only: status → next status (post-sale advancement is driven by
@@ -252,7 +278,9 @@ export default function ContactDetailModal({
   activities,
   onUpdate,
   onNoteAdded,
-  existingReferralCode,
+  referralStats,
+  referralRewardCents,
+  businessName,
   onReferralCodeChange,
   onClose,
 }: Props) {
@@ -275,24 +303,30 @@ export default function ContactDetailModal({
   // Reset on lead change so we don't leak one customer's patch into
   // another's render.
   const [leadPatch, setLeadPatch] = useState<Partial<Lead>>({});
-  // Local mirror of the parent-supplied referral code. Lets the modal flip
-  // from "Make referral partner" CTA to the share link the moment the POST
-  // returns, without waiting for the parent to refetch and pass a new prop.
-  // Reset when the parent prop changes so opening a different lead — or
-  // re-receiving a value the parent fetched server-side — wins.
-  const [referralCode, setReferralCode] = useState<string | null>(
-    existingReferralCode ?? null,
+  // Local mirror of the parent-supplied stats. Lets the modal flip from
+  // "Make referral partner" CTA → activity card the moment the POST
+  // returns, without waiting for the parent to refetch. Reset whenever the
+  // parent prop or the open lead changes so the right partner's numbers
+  // win on reopen.
+  const [stats, setStats] = useState<ReferralStats | null>(
+    referralStats ?? null,
   );
   const [referralLoading, setReferralLoading] = useState(false);
+  // "view" | "nudge" → shows the inline disclosure beneath the activity
+  // card. Only one open at a time; tapping the active button collapses it.
+  const [referralPanel, setReferralPanel] = useState<
+    "view" | "nudge" | null
+  >(null);
   const [referralCopied, setReferralCopied] = useState(false);
   useEffect(() => {
     setCurrentStatus(lead.status);
     setAdvanceError(null);
     setCurrentAiSummary(lead.ai_summary ?? null);
     setLeadPatch({});
-    setReferralCode(existingReferralCode ?? null);
+    setStats(referralStats ?? null);
+    setReferralPanel(null);
     setReferralCopied(false);
-  }, [lead.id, lead.status, lead.ai_summary, existingReferralCode]);
+  }, [lead.id, lead.status, lead.ai_summary, referralStats]);
 
   const effectiveLead = useMemo<Lead>(
     () => ({ ...lead, ...leadPatch }),
@@ -407,10 +441,11 @@ export default function ContactDetailModal({
 
   // Enroll the customer as a referral partner. Idempotent on the server:
   // re-tapping returns the same code, so a stale local state doesn't create
-  // duplicate rows. On success we mirror the new code locally and bubble it
-  // up so the parent's cache stays in sync across modal closes/reopens.
+  // duplicate rows. On success we seed a fresh local stats row (zero
+  // clicks/leads, "just now" last activity) and bubble the new code up so
+  // the parent's cache stays in sync across closes/reopens.
   const handleMakeReferralPartner = async () => {
-    if (referralLoading || referralCode) return;
+    if (referralLoading || stats) return;
     setReferralLoading(true);
     try {
       const res = await fetch("/api/contractor/referral-partner", {
@@ -422,8 +457,16 @@ export default function ContactDetailModal({
       if (!res.ok) return;
       const data = (await res.json()) as { referral_code?: string };
       if (data.referral_code) {
-        setReferralCode(data.referral_code);
-        onReferralCodeChange?.(lead.id, data.referral_code);
+        const nowIso = new Date().toISOString();
+        const fresh: ReferralStats = {
+          referralCode: data.referral_code,
+          partnerSince: nowIso,
+          clicks: 0,
+          leads: 0,
+          lastActivityAt: nowIso,
+        };
+        setStats(fresh);
+        onReferralCodeChange?.(lead.id, data.referral_code, nowIso);
       }
     } catch {
       // Silent — the button stays so the contractor can retry.
@@ -744,19 +787,24 @@ export default function ContactDetailModal({
           <ContactInfoCard lead={lead} />
 
           {/* Referral partner section — only relevant once the job is sold.
-              Shows the share link if the customer has already been enrolled
-              (either by tapping this button or via the public review-funnel
-              opt-in), otherwise the "Make referral partner" CTA. */}
+              When enrolled, renders the activity card (Active since, Sharing
+              pill, Clicks, Leads, Last activity, View link, Send nudge).
+              Otherwise renders the "Make referral partner" CTA. */}
           {currentStatus === "customer" ? (
             <ReferralPartnerSection
-              referralCode={referralCode}
+              stats={stats}
               loading={referralLoading}
               copied={referralCopied}
+              activePanel={referralPanel}
+              firstName={(lead.name || "").trim().split(/\s+/)[0] || "there"}
+              businessName={businessName ?? null}
+              rewardCents={referralRewardCents ?? null}
               onMakePartner={handleMakeReferralPartner}
-              onCopy={() => {
-                if (!referralCode) return;
-                const url = `${window.location.origin}/refer/${referralCode}`;
-                navigator.clipboard.writeText(url);
+              onTogglePanel={(panel) =>
+                setReferralPanel((prev) => (prev === panel ? null : panel))
+              }
+              onCopy={(text) => {
+                navigator.clipboard.writeText(text);
                 setReferralCopied(true);
                 window.setTimeout(() => setReferralCopied(false), 1500);
               }}
@@ -986,99 +1034,39 @@ function PipelineFooter({
 }
 
 // ---------------------------------------------------------------------------
-// Referral partner — share link if enrolled, "Make referral partner" CTA
-// otherwise. Render decision is driven entirely by `referralCode` so a fresh
-// fetch (parent prop) and a just-finished POST (local state) both work the
-// same way.
+// Referral partner — when enrolled, renders the activity card (Active since
+// · Sharing pill · Clicks · Leads · Last activity · View link · Send nudge).
+// Otherwise renders the "Make referral partner" CTA. Render decision is
+// driven entirely by the `stats` prop, so both a fresh server fetch and a
+// just-finished POST flow through the same path.
 // ---------------------------------------------------------------------------
 
 function ReferralPartnerSection({
-  referralCode,
+  stats,
   loading,
   copied,
+  activePanel,
+  firstName,
+  businessName,
+  rewardCents,
   onMakePartner,
+  onTogglePanel,
   onCopy,
 }: {
-  referralCode: string | null;
+  stats: ReferralStats | null;
   loading: boolean;
   copied: boolean;
+  activePanel: "view" | "nudge" | null;
+  firstName: string;
+  businessName: string | null;
+  rewardCents: number | null;
   onMakePartner: () => void;
-  onCopy: () => void;
+  onTogglePanel: (panel: "view" | "nudge") => void;
+  onCopy: (text: string) => void;
 }) {
-  // Build the share URL only on the client — window is unavailable during
-  // the initial server render the modal still gets bundled into.
-  const shareUrl =
-    referralCode && typeof window !== "undefined"
-      ? `${window.location.origin}/refer/${referralCode}`
-      : referralCode
-        ? `/refer/${referralCode}`
-        : "";
-
-  return (
-    <div style={{ padding: "0 20px 20px" }}>
-      {referralCode ? (
-        <div
-          style={{
-            backgroundColor: colors.white,
-            border: `1px solid ${colors.borderLight}`,
-            padding: "12px 14px",
-          }}
-        >
-          <div
-            style={{
-              fontFamily: fonts.body,
-              fontSize: 9,
-              fontWeight: 600,
-              letterSpacing: "0.08em",
-              textTransform: "uppercase",
-              color: colors.mutedLight,
-              marginBottom: 8,
-            }}
-          >
-            Referral Link
-          </div>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-            }}
-          >
-            <span
-              style={{
-                flex: 1,
-                minWidth: 0,
-                fontFamily: fonts.mono,
-                fontSize: 12,
-                color: colors.navy,
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {shareUrl}
-            </span>
-            <button
-              type="button"
-              onClick={onCopy}
-              style={{
-                padding: "4px 10px",
-                background: "transparent",
-                border: "none",
-                cursor: "pointer",
-                fontFamily: fonts.body,
-                fontSize: 11,
-                fontWeight: 600,
-                letterSpacing: "0.06em",
-                textTransform: "uppercase",
-                color: copied ? colors.green : colors.muted,
-              }}
-            >
-              {copied ? "Copied" : "Copy"}
-            </button>
-          </div>
-        </div>
-      ) : (
+  if (!stats) {
+    return (
+      <div style={{ padding: "0 20px 20px" }}>
         <button
           type="button"
           onClick={onMakePartner}
@@ -1102,9 +1090,355 @@ function ReferralPartnerSection({
         >
           {loading ? "Creating…" : "Make referral partner"}
         </button>
-      )}
+      </div>
+    );
+  }
+
+  // Build the share URL only on the client — window is unavailable during
+  // the initial server render the modal still gets bundled into.
+  const shareUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/refer/${stats.referralCode}`
+      : `/refer/${stats.referralCode}`;
+
+  // Nudge template — degrades gracefully when reward / business name are
+  // missing. Once Twilio is wired this becomes the SMS body; today the
+  // contractor copies it and texts manually.
+  const rewardDollars =
+    typeof rewardCents === "number" && rewardCents > 0
+      ? Math.round(rewardCents / 100)
+      : null;
+  const businessLabel = businessName?.trim() || "us";
+  const nudgeMessage = rewardDollars
+    ? `Hey ${firstName} — quick reminder: every friend you send our way earns you $${rewardDollars}. Your link: ${shareUrl}`
+    : `Hey ${firstName} — friendly nudge to share your referral link with anyone who could use ${businessLabel}. Your link: ${shareUrl}`;
+
+  return (
+    <div style={{ padding: "0 20px 20px" }}>
+      <div
+        style={{
+          fontFamily: fonts.body,
+          fontSize: 9,
+          fontWeight: 600,
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
+          color: colors.mutedLight,
+          marginBottom: 10,
+        }}
+      >
+        Referral Activity
+      </div>
+
+      <div
+        style={{
+          backgroundColor: colors.white,
+          border: `1px solid ${colors.borderLight}`,
+          padding: "14px 16px",
+        }}
+      >
+        {/* Header row: "Active partner since X"  +  Sharing pill */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 10,
+            marginBottom: 14,
+          }}
+        >
+          <div
+            style={{
+              fontFamily: fonts.body,
+              fontSize: 13,
+              fontWeight: 700,
+              color: colors.navy,
+              minWidth: 0,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Active partner since {formatShortDate(stats.partnerSince)}
+          </div>
+          <div
+            aria-label="Sharing"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "3px 8px",
+              border: `1px solid ${colors.greenBg}`,
+              backgroundColor: colors.greenBg,
+              color: colors.green,
+              fontFamily: fonts.body,
+              fontSize: 11,
+              fontWeight: 600,
+              letterSpacing: "0.02em",
+              flexShrink: 0,
+            }}
+          >
+            <span
+              aria-hidden
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: "50%",
+                backgroundColor: colors.green,
+              }}
+            />
+            Sharing
+          </div>
+        </div>
+
+        {/* Stats grid: Clicks · Leads. Shares dropped — no tracking yet. */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 8,
+            marginBottom: 14,
+          }}
+        >
+          <StatTile label="Clicks" value={stats.clicks} />
+          <StatTile label="Leads" value={stats.leads} />
+        </div>
+
+        {/* Footer row: last activity (left) · View link / Send nudge (right) */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 10,
+            flexWrap: "wrap",
+          }}
+        >
+          <div
+            style={{
+              fontFamily: fonts.body,
+              fontSize: 12,
+              color: colors.muted,
+            }}
+          >
+            Last activity {formatRelativeShort(stats.lastActivityAt)}
+          </div>
+          <div style={{ display: "flex", gap: 6 }}>
+            <ActivityButton
+              label="View link"
+              active={activePanel === "view"}
+              onClick={() => onTogglePanel("view")}
+            />
+            <ActivityButton
+              label="Send nudge"
+              active={activePanel === "nudge"}
+              onClick={() => onTogglePanel("nudge")}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Inline disclosure — copy-pastable URL or nudge message. Stays
+          inside the same section so the contractor doesn't lose context. */}
+      {activePanel ? (
+        <DisclosurePanel
+          label={activePanel === "view" ? "Referral link" : "Nudge message"}
+          body={activePanel === "view" ? shareUrl : nudgeMessage}
+          mono={activePanel === "view"}
+          copied={copied}
+          onCopy={() =>
+            onCopy(activePanel === "view" ? shareUrl : nudgeMessage)
+          }
+        />
+      ) : null}
     </div>
   );
+}
+
+function StatTile({
+  label,
+  value,
+}: {
+  label: string;
+  value: number;
+}) {
+  return (
+    <div
+      style={{
+        backgroundColor: colors.bg,
+        border: `1px solid ${colors.borderLight}`,
+        padding: "10px 12px",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: 4,
+      }}
+    >
+      <span
+        style={{
+          fontFamily: fonts.mono,
+          fontWeight: 700,
+          fontSize: 22,
+          lineHeight: 1,
+          color: colors.navy,
+          fontVariantNumeric: "tabular-nums",
+        }}
+      >
+        {value}
+      </span>
+      <span
+        style={{
+          fontFamily: fonts.body,
+          fontSize: 9,
+          fontWeight: 600,
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
+          color: colors.muted,
+        }}
+      >
+        {label}
+      </span>
+    </div>
+  );
+}
+
+function ActivityButton({
+  label,
+  active,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      style={{
+        padding: "6px 12px",
+        backgroundColor: active ? colors.navy : "transparent",
+        color: active ? colors.white : colors.navy,
+        border: `1px solid ${active ? colors.navy : colors.border}`,
+        borderRadius: 0,
+        cursor: "pointer",
+        fontFamily: fonts.body,
+        fontSize: 11,
+        fontWeight: 600,
+        letterSpacing: "0.04em",
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
+function DisclosurePanel({
+  label,
+  body,
+  mono,
+  copied,
+  onCopy,
+}: {
+  label: string;
+  body: string;
+  mono: boolean;
+  copied: boolean;
+  onCopy: () => void;
+}) {
+  return (
+    <div
+      style={{
+        marginTop: 8,
+        backgroundColor: colors.white,
+        border: `1px solid ${colors.borderLight}`,
+        padding: "10px 12px",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 10,
+          marginBottom: 6,
+        }}
+      >
+        <span
+          style={{
+            fontFamily: fonts.body,
+            fontSize: 9,
+            fontWeight: 600,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            color: colors.mutedLight,
+          }}
+        >
+          {label}
+        </span>
+        <button
+          type="button"
+          onClick={onCopy}
+          style={{
+            padding: "2px 8px",
+            background: "transparent",
+            border: "none",
+            cursor: "pointer",
+            fontFamily: fonts.body,
+            fontSize: 11,
+            fontWeight: 600,
+            letterSpacing: "0.06em",
+            textTransform: "uppercase",
+            color: copied ? colors.green : colors.muted,
+          }}
+        >
+          {copied ? "Copied" : "Copy"}
+        </button>
+      </div>
+      <div
+        style={{
+          fontFamily: mono ? fonts.mono : fonts.body,
+          fontSize: mono ? 12 : 13,
+          lineHeight: 1.45,
+          color: colors.navy,
+          whiteSpace: mono ? "nowrap" : "normal",
+          overflowWrap: mono ? "normal" : "break-word",
+          overflow: mono ? "hidden" : "visible",
+          textOverflow: mono ? "ellipsis" : "clip",
+          userSelect: "text",
+        }}
+      >
+        {body}
+      </div>
+    </div>
+  );
+}
+
+// "Apr 24" — small chip label on the activity card header. Uses local time
+// since the contractor is the audience.
+function formatShortDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+// "just now" / "5h ago" / "3d ago" / "Apr 12". Avoids the heavier intl
+// relative formatter — the activity card just needs a glanceable stamp.
+function formatRelativeShort(iso: string): string {
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return "—";
+  const diffMs = Date.now() - then;
+  if (diffMs < 60_000) return "just now";
+  const minutes = Math.floor(diffMs / 60_000);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  return new Date(iso).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
 }
 
 // ---------------------------------------------------------------------------
