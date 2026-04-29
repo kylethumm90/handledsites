@@ -336,7 +336,13 @@ export default function ReputationClient({ data }: { data: ReputationData }) {
       <div style={{ padding: "16px 20px 24px" }}>
         {activeFilter === "reviews" &&
           (data.reviews.length > 0 ? (
-            data.reviews.map((r) => <ReviewCard key={r.id} review={r} />)
+            data.reviews.map((r) => (
+              <ReviewCard
+                key={r.id}
+                review={r}
+                companyName={data.companyName}
+              />
+            ))
           ) : (
             <EmptyState
               title="No reviews yet"
@@ -761,10 +767,69 @@ const greyContentBox: React.CSSProperties = {
 // Review card
 // ---------------------------------------------------------------------------
 
-function ReviewCard({ review }: { review: ReviewItem }) {
+function ReviewCard({
+  review,
+  companyName,
+}: {
+  review: ReviewItem;
+  companyName: string;
+}) {
   const statusColor = REVIEW_STATUS_COLOR[review.status];
   const isAttention = review.status === "needs attention";
   const canOpenExternal = !isAttention && !!review.externalUrl;
+  const [shareLabel, setShareLabel] = useState<"SHARE" | "COPIED" | "SHARED">(
+    "SHARE"
+  );
+
+  // Build a payload with the review excerpt, stars, reviewer, and company so
+  // a paste lands as readable social proof anywhere — iMessage, email,
+  // Slack, GBP posts. We bias toward text rather than just dropping the
+  // Google link because raw Google review URLs don't preview well.
+  async function handleShare() {
+    const stars = review.rating ? "★".repeat(Math.round(review.rating)) : "";
+    const truncated =
+      review.text.length > 240
+        ? `${review.text.slice(0, 237).trimEnd()}…`
+        : review.text;
+    const lines = [
+      stars ? `${stars} ${review.name}` : `Review from ${review.name}`,
+      "",
+      `"${truncated}"`,
+      "",
+      `— ${companyName}`,
+    ];
+    if (review.externalUrl) lines.push("", review.externalUrl);
+    const shareText = lines.join("\n");
+
+    if (
+      typeof navigator !== "undefined" &&
+      typeof navigator.share === "function"
+    ) {
+      try {
+        await navigator.share({
+          title: `Review of ${companyName}`,
+          text: shareText,
+        });
+        setShareLabel("SHARED");
+        setTimeout(() => setShareLabel("SHARE"), 1500);
+        return;
+      } catch (err) {
+        // User dismissed the sheet — leave the button untouched. Any other
+        // failure falls through to the clipboard path below.
+        if (err instanceof DOMException && err.name === "AbortError") return;
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(shareText);
+      setShareLabel("COPIED");
+      setTimeout(() => setShareLabel("SHARE"), 1500);
+    } catch {
+      // Clipboard blocked (insecure context, denied permission). Nothing
+      // graceful to do without a popover, so swallow rather than throw.
+    }
+  }
+
   return (
     <Card accentColor={statusColor}>
       <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
@@ -813,7 +878,7 @@ function ReviewCard({ review }: { review: ReviewItem }) {
           <SentimentBar score={review.sentiment} />
           <ActionButtons
             primary={isAttention ? "CALL" : "VIEW"}
-            secondary={isAttention ? "ASSIGN REP" : "SHARE"}
+            secondary={isAttention ? "ASSIGN REP" : shareLabel}
             primaryDisabled={!isAttention && !canOpenExternal}
             onPrimary={
               canOpenExternal
@@ -825,6 +890,7 @@ function ReviewCard({ review }: { review: ReviewItem }) {
                     )
                 : undefined
             }
+            onSecondary={isAttention ? undefined : handleShare}
           />
         </div>
       </div>
