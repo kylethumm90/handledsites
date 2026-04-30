@@ -92,7 +92,7 @@ export default function ContractorLoginPage() {
 
               <div style={s.hint}>
                 Don&apos;t have an account?{" "}
-                <Link href="/" style={s.link}>Create your site</Link>
+                <Link href="/sites" style={s.link}>Create your site</Link>
               </div>
             </>
           ) : (

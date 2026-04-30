@@ -17,7 +17,7 @@ export default function SiteNav() {
   return (
     <nav className="px-6 pt-6">
       <div className="mx-auto flex max-w-5xl items-center justify-between">
-        <Link href="/">
+        <Link href="/sites">
           <img src="/logo-dark.png" alt="handled." className="h-7 w-auto" />
         </Link>
         <div className="flex items-center gap-4">
@@ -89,7 +89,7 @@ export default function SiteNav() {
             Sign in
           </Link>
           <Link
-            href="/#get-started"
+            href="/sites#get-started"
             className="hidden rounded-full bg-gray-900 px-5 py-2 text-sm font-semibold text-white hover:bg-gray-800 sm:inline-block"
           >
             Create Free Page
