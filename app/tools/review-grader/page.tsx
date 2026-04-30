@@ -450,7 +450,7 @@ export default function ReviewGrader() {
                   <p style={{ fontSize: 14, color: "rgba(255,255,255,0.6)", lineHeight: 1.6, marginBottom: 20 }}>
                     Stella automatically collects reviews, responds to every one, and keeps your reputation growing on autopilot.
                   </p>
-                  <a href="/" style={{
+                  <a href="/sites" style={{
                     display: "inline-block", padding: "14px 32px", fontSize: 15, fontWeight: 700,
                     background: AMBER, color: "#fff", borderRadius: 10, textDecoration: "none",
                   }}>

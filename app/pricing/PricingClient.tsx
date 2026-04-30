@@ -121,7 +121,7 @@ export default function PricingClient() {
               <span style={{ fontSize: 46, fontWeight: 800, letterSpacing: "-1.5px", color: "#1C1B18", lineHeight: 1 }}>Free</span>
             </div>
             <div style={{ fontSize: "14.5px", color: "#6D6A60", marginBottom: 24, lineHeight: 1.5, minHeight: 44 }}>A digital business card you can share with any customer in 30 seconds. No tech skills needed.</div>
-            <a className="pc-cta-light" href="/" style={{ display: "block", width: "100%", padding: "14px 0", borderRadius: 10, fontSize: 15, fontWeight: 600, textAlign: "center", textDecoration: "none", marginBottom: 24, background: "#F0EDE6", color: "#1C1B18", border: "1.5px solid #E4E0D6", transition: "all 0.2s" }}>Build your card</a>
+            <a className="pc-cta-light" href="/sites" style={{ display: "block", width: "100%", padding: "14px 0", borderRadius: 10, fontSize: 15, fontWeight: 600, textAlign: "center", textDecoration: "none", marginBottom: 24, background: "#F0EDE6", color: "#1C1B18", border: "1.5px solid #E4E0D6", transition: "all 0.2s" }}>Build your card</a>
             <div style={{ height: "1.5px", background: "#F0EDE6", marginBottom: 20 }} />
             <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "#9B9789", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 500, marginBottom: 14 }}>What you get</div>
             <ul style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: 11, flex: 1, padding: 0 }}>
@@ -255,7 +255,7 @@ export default function PricingClient() {
             <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 40% 40%, rgba(224,138,30,0.12) 0%, transparent 70%)", pointerEvents: "none" }} />
             <h2 style={{ fontSize: 32, fontWeight: 800, color: "#fff", letterSpacing: "-1px", marginBottom: 8, position: "relative" }}>Your page is 60 seconds away.</h2>
             <p style={{ fontSize: 15, color: "rgba(255,255,255,0.5)", marginBottom: 28, position: "relative" }}>Free. No credit card. No tech skills required.</p>
-            <a className="pc-final-btn" href="/" style={{ display: "inline-block", background: "#E08A1E", color: "#fff", padding: "14px 36px", borderRadius: 100, fontSize: 15, fontWeight: 600, textDecoration: "none", transition: "background 0.2s", position: "relative" }}>Build your free page</a>
+            <a className="pc-final-btn" href="/sites" style={{ display: "inline-block", background: "#E08A1E", color: "#fff", padding: "14px 36px", borderRadius: 100, fontSize: 15, fontWeight: 600, textDecoration: "none", transition: "background 0.2s", position: "relative" }}>Build your free page</a>
             <div style={{ marginTop: 14, fontSize: 12, color: "rgba(255,255,255,0.35)", position: "relative" }}>Join hundreds of contractors already on handled.</div>
           </div>
 

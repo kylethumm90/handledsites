@@ -341,7 +341,7 @@ export default function EmployeeCard({ employee, business, coverImage, reviewFun
 
       {/* handled. footer */}
       <div className="pt-4 text-center">
-        <a href="/" className="inline-block">
+        <a href="/sites" className="inline-block">
           <img
             src="/logo-light.png"
             alt="handled."

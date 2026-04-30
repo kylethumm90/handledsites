@@ -23,26 +23,26 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://handledsites.com"),
-  title: "handled.sites — Free Business Cards for Home Service Contractors",
+  title: "handled. — Founding Partner Pilot",
   description:
-    "Create a free mobile business card website for your home service business. Get found by AI search, convert visitors to calls, and share anywhere.",
+    "Looking for 15 home service contractors to test the future of their front office. Free for 90 days.",
   icons: {
     icon: "/handled-favicon.png",
   },
   openGraph: {
-    title: "handled.sites — Free Business Cards for Home Service Contractors",
+    title: "handled. — Founding Partner Pilot",
     description:
-      "Create a free mobile business card website for your home service business. Get found by AI search, convert visitors to calls, and share anywhere.",
+      "Looking for 15 home service contractors to test the future of their front office. Free for 90 days.",
     url: "https://handledsites.com",
-    siteName: "handled.sites",
+    siteName: "handled.",
     images: [{ url: "/api/og/home", width: 1200, height: 630 }],
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "handled.sites — Free Business Cards for Home Service Contractors",
+    title: "handled. — Founding Partner Pilot",
     description:
-      "Create a free mobile business card website for your home service business. Get found by AI search, convert visitors to calls, and share anywhere.",
+      "Looking for 15 home service contractors to test the future of their front office. Free for 90 days.",
     images: ["/api/og/home"],
   },
 };
