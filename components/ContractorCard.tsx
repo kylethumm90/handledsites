@@ -7,10 +7,12 @@ import AvailabilityDot from "./AvailabilityDot";
 import CTAButtons from "./CTAButtons";
 import ServicesGrid from "./ServicesGrid";
 import ReviewStars from "./ReviewStars";
+import PublicGallery, { type PublicGalleryPhoto } from "./PublicGallery";
 import type { LucideIcon } from "lucide-react";
 
 type Props = {
   contractor: ContractorSite;
+  galleryPhotos?: PublicGalleryPhoto[];
 };
 
 const BADGE_CONFIG: { key: keyof ContractorSite; label: string; icon: LucideIcon }[] = [
@@ -20,7 +22,7 @@ const BADGE_CONFIG: { key: keyof ContractorSite; label: string; icon: LucideIcon
   { key: "badge_family_owned", label: "Family Owned", icon: Heart },
 ];
 
-export default function ContractorCard({ contractor }: Props) {
+export default function ContractorCard({ contractor, galleryPhotos = [] }: Props) {
   const initials = contractor.business_name
     .split(/\s+/)
     .slice(0, 2)
@@ -123,6 +125,9 @@ export default function ContractorCard({ contractor }: Props) {
       {contractor.services.length > 0 && (
         <ServicesGrid services={contractor.services} />
       )}
+
+      {/* Gallery */}
+      {galleryPhotos.length > 0 && <PublicGallery photos={galleryPhotos} />}
 
       {/* Reviews */}
       <ReviewStars

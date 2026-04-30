@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { Metadata } from "next";
 import { getSupabaseAdmin, ContractorSite } from "@/lib/supabase";
 import ContractorCard from "@/components/ContractorCard";
+import type { PublicGalleryPhoto } from "@/components/PublicGallery";
 import PulsePageView from "@/components/PulsePageView";
 
 export const revalidate = 60;
@@ -23,6 +24,7 @@ async function getContractor(slug: string): Promise<ContractorSite | null> {
   // Map sites_full view to ContractorSite shape for backward compatibility
   return {
     id: data.id,
+    business_id: data.business_id,
     type: "business_card" as const,
     business_name: data.business_name,
     owner_name: data.owner_name,
@@ -82,9 +84,26 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
+async function getGalleryPhotos(businessId: string): Promise<PublicGalleryPhoto[]> {
+  const { data, error } = await getSupabaseAdmin()
+    .from("business_gallery_photos")
+    .select("id, public_url, caption, service_type, width, height")
+    .eq("business_id", businessId)
+    .eq("is_visible", true)
+    .order("display_order", { ascending: true })
+    .order("created_at", { ascending: true });
+
+  if (error || !data) return [];
+  return data as PublicGalleryPhoto[];
+}
+
 export default async function CardPage({ params }: Props) {
   const contractor = await getContractor(params.slug);
   if (!contractor) notFound();
+
+  const galleryPhotos = contractor.business_id
+    ? await getGalleryPhotos(contractor.business_id)
+    : [];
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -115,7 +134,7 @@ export default async function CardPage({ params }: Props) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <ContractorCard contractor={contractor} />
+      <ContractorCard contractor={contractor} galleryPhotos={galleryPhotos} />
     </div>
   );
 }

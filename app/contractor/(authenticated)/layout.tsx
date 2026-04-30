@@ -15,6 +15,7 @@ type Tab = {
 const TABS: Tab[] = [
   { label: "Dashboard", href: "/contractor/dashboard" },
   { label: "Sites", href: "/contractor/sites" },
+  { label: "Gallery", href: "/contractor/gallery" },
   { label: "Pipeline", href: "/contractor/customers" },
   { label: "Reputation", href: "/contractor/reputation" },
   { label: "Settings", href: "/contractor/settings", icon: "settings" },
