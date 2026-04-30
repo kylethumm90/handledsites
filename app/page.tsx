@@ -319,7 +319,11 @@ function Bio() {
           I&apos;m Kyle.
         </h2>
         <div className="grid grid-cols-1 gap-8 md:grid-cols-[140px_1fr] md:gap-10">
-          <div className="aspect-square w-full max-w-[140px] rounded-xl bg-gray-100 ring-1 ring-gray-200" />
+          <img
+            src="/kyle-headshot.png"
+            alt="Kyle Adams"
+            className="aspect-square w-full max-w-[140px] rounded-xl object-cover ring-1 ring-gray-200"
+          />
           <div className="text-base leading-relaxed text-gray-700 md:text-[15px]">
             <p className="mb-4">
               I&apos;ve spent the last decade running marketing for home service
