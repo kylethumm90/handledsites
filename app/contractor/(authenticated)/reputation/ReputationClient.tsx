@@ -805,7 +805,15 @@ function ReviewCard({
     "",
     `— ${companyName}`,
   ].join("\n");
-  const landingUrl = reviewWallUrl ?? review.externalUrl;
+  // When we have a hosted wall, deep-link the share to ?r=<reviewId>.
+  // The wall's generateMetadata reads that param and serves a per-review
+  // OG image card to FB / LinkedIn / X scrapers — turning the share
+  // preview into branded social proof for THIS review instead of a
+  // generic wall summary. Falls back to the raw Google URL only when
+  // the contractor hasn't provisioned a review wall yet.
+  const landingUrl = reviewWallUrl
+    ? `${reviewWallUrl}?r=${encodeURIComponent(review.id)}`
+    : review.externalUrl;
 
   useEffect(() => {
     if (!shareOpen) return;

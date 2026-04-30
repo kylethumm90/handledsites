@@ -87,26 +87,144 @@ function fmtPhone(p: string): string {
   return p;
 }
 
-export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
+const OG_BASE_URL =
+  process.env.NEXT_PUBLIC_BASE_URL || "https://www.handledsites.com";
+
+// "Jeff Souza" → "Jeff S." for OG card attribution. Privacy-respecting and
+// matches the convention contractors expect on testimonial graphics.
+function formatReviewerName(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "Customer";
+  if (parts.length === 1) return parts[0];
+  const last = parts[parts.length - 1];
+  return `${parts[0]} ${last[0]?.toUpperCase() ?? ""}.`;
+}
+
+function truncateForOg(text: string, max = 180): string {
+  if (text.length <= max) return text;
+  return `${text.slice(0, max - 1).trimEnd()}…`;
+}
+
+// Build the /api/og/review URL with the review's data baked in. Edge OG
+// route doesn't hit Supabase — same convention as /api/og/refer.
+function buildReviewOgImageUrl(args: {
+  businessName: string;
+  logoUrl: string | null;
+  reviewerName: string;
+  rating: number;
+  text: string;
+}): string {
+  const params = new URLSearchParams();
+  params.set("business", args.businessName);
+  params.set("reviewer", formatReviewerName(args.reviewerName));
+  params.set("rating", String(args.rating));
+  params.set("text", truncateForOg(args.text, 240));
+  if (args.logoUrl) params.set("logo", args.logoUrl);
+  return `${OG_BASE_URL.replace(/\/$/, "")}/api/og/review?${params.toString()}`;
+}
+
+// Next.js 14 hands us `string | string[] | undefined` for query params.
+// Take the first value so we always work with a single string.
+function pickFirst(v: string | string[] | undefined): string | undefined {
+  if (Array.isArray(v)) return v[0];
+  return v;
+}
+
+export async function generateMetadata({
+  params,
+  searchParams,
+}: {
+  params: { slug: string };
+  searchParams?: { [key: string]: string | string[] | undefined };
+}): Promise<Metadata> {
   const result = await getSiteData(params.slug);
   if (!result) return { title: "Not Found" };
   const { site, reviews } = result;
   const avgRating = reviews.length > 0
     ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
     : site.google_rating?.toString() || "5.0";
-  const title = `${site.business_name} Reviews | ${site.trade} in ${site.city}, ${site.state}`;
   const metaCount = site.google_review_count || reviews.length;
+
+  // Per-review share path: /reviews/[slug]?r=<reviewId> from the
+  // contractor's SHARE button. Surface a review-specific card so
+  // Facebook / X / LinkedIn show that single review's testimonial
+  // instead of a generic wall summary.
+  const reviewIdParam = pickFirst(searchParams?.r);
+  const targetReview = reviewIdParam
+    ? reviews.find((r) => r.id === reviewIdParam)
+    : undefined;
+
+  if (targetReview) {
+    const reviewerLabel = formatReviewerName(targetReview.reviewer_name);
+    const ratingFloor = Math.max(1, Math.min(5, Math.round(targetReview.rating)));
+    const stars = "★".repeat(ratingFloor);
+    const title = `${stars} from ${reviewerLabel} — ${site.business_name}`;
+    const description = truncateForOg(targetReview.review_text, 180);
+    const image = buildReviewOgImageUrl({
+      businessName: site.business_name,
+      logoUrl: site.logo_url,
+      reviewerName: targetReview.reviewer_name,
+      rating: ratingFloor,
+      text: targetReview.review_text,
+    });
+    return {
+      title,
+      description,
+      openGraph: {
+        title,
+        description,
+        type: "article",
+        images: [{ url: image, width: 1200, height: 630, alt: title }],
+      },
+      twitter: {
+        card: "summary_large_image",
+        title,
+        description,
+        images: [image],
+      },
+    };
+  }
+
+  const title = `${site.business_name} Reviews | ${site.trade} in ${site.city}, ${site.state}`;
   const description = `See what ${site.city} homeowners are saying about ${site.business_name}. ${metaCount} reviews with a ${avgRating} star average.`;
+  // Default wall-level card: even without a target review, Facebook's
+  // scrape gets a branded image instead of a plain text card.
+  const fallbackImage = buildReviewOgImageUrl({
+    businessName: site.business_name,
+    logoUrl: site.logo_url,
+    reviewerName: "",
+    rating: Math.round(Number(avgRating)) || 5,
+    text: `${metaCount} reviews · ${avgRating} star average`,
+  });
   return {
-    title, description,
-    openGraph: { title, description, type: "website" },
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: "website",
+      images: [{ url: fallbackImage, width: 1200, height: 630, alt: title }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [fallbackImage],
+    },
   };
 }
 
-export default async function ReviewWallPage({ params }: { params: { slug: string } }) {
+export default async function ReviewWallPage({
+  params,
+  searchParams,
+}: {
+  params: { slug: string };
+  searchParams?: { [key: string]: string | string[] | undefined };
+}) {
   const result = await getSiteData(params.slug);
   if (!result) notFound();
   const { site, reviews } = result;
+  const highlightedReviewId = pickFirst(searchParams?.r) ?? null;
 
   const avgRating = site.google_rating?.toString()
     || (reviews.length > 0 ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1) : "5.0");
@@ -198,6 +316,7 @@ export default async function ReviewWallPage({ params }: { params: { slug: strin
           phone={site.phone}
           city={site.city}
           state={site.state}
+          highlightedReviewId={highlightedReviewId}
         />
 
         {/* Footer */}

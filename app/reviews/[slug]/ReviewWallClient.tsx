@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Review } from "@/lib/supabase";
 
 type Props = {
@@ -13,7 +13,25 @@ type Props = {
   phone: string;
   city: string;
   state: string;
+  // When a contractor lands here from a SHARE link
+  // (`/reviews/[slug]?r=<id>`), scroll that specific review into view and
+  // pulse it briefly so the visitor sees the testimonial they were
+  // promised in the social card.
+  highlightedReviewId?: string | null;
 };
+
+const HIGHLIGHT_CSS = `
+.rw-review-card.rw-review-highlighted,
+.rw-featured-card.rw-review-highlighted {
+  box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.45), 0 12px 32px rgba(15, 23, 42, 0.12);
+  animation: rw-highlight-pulse 2.4s ease-out 1;
+}
+@keyframes rw-highlight-pulse {
+  0%   { box-shadow: 0 0 0 0   rgba(26, 86, 219, 0.55), 0 0 0 0 rgba(26, 86, 219, 0); }
+  35%  { box-shadow: 0 0 0 8px rgba(26, 86, 219, 0.15), 0 12px 32px rgba(15, 23, 42, 0.12); }
+  100% { box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.45), 0 12px 32px rgba(15, 23, 42, 0.12); }
+}
+`;
 
 const AVATAR_COLORS = ["#1A56DB", "#0F3BAA", "#F97316", "#10b981", "#6366f1", "#ec4899", "#ef4444", "#14b8a6"];
 function avatarColor(name: string): string {
@@ -39,16 +57,26 @@ function StarRow({ rating }: { rating: number }) {
   );
 }
 
-function ReviewCard({ review, featured }: { review: Review; featured?: boolean }) {
+function ReviewCard({
+  review,
+  featured,
+  highlighted,
+}: {
+  review: Review;
+  featured?: boolean;
+  highlighted?: boolean;
+}) {
   const [expanded, setExpanded] = useState(false);
   const isLong = review.review_text.length > 200;
   const displayText = isLong && !expanded
     ? review.review_text.slice(0, 200) + "..."
     : review.review_text;
   const initials = review.reviewer_name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+  const baseClass = featured ? "rw-featured-card" : "rw-review-card";
+  const className = highlighted ? `${baseClass} rw-review-highlighted` : baseClass;
 
   return (
-    <div className={featured ? "rw-featured-card" : "rw-review-card"}>
+    <div id={`review-${review.id}`} className={className}>
       <StarRow rating={review.rating} />
       <p className="rw-review-text">
         &ldquo;{displayText}&rdquo;
@@ -77,9 +105,22 @@ export default function ReviewWallClient({
   avgRating,
   totalCount,
   recommendedPct,
+  highlightedReviewId,
 }: Props) {
   const [filter, setFilter] = useState("all");
   const [sort, setSort] = useState("newest");
+
+  // Scroll the highlighted review into view on mount. Wrapped in
+  // requestAnimationFrame so the masonry layout has settled (the css
+  // column layout is computed after first paint) before we measure.
+  useEffect(() => {
+    if (!highlightedReviewId) return;
+    const target = document.getElementById(`review-${highlightedReviewId}`);
+    if (!target) return;
+    requestAnimationFrame(() => {
+      target.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  }, [highlightedReviewId]);
 
   const featuredReviews = reviews.filter((r) => r.is_featured);
 
@@ -101,13 +142,20 @@ export default function ReviewWallClient({
 
   return (
     <div className="rw-container">
+      <style dangerouslySetInnerHTML={{ __html: HIGHLIGHT_CSS }} />
+
       {/* Featured */}
       {featuredReviews.length > 0 && filter === "all" && (
         <section className="rw-section">
           <div className="rw-section-label">Featured Reviews</div>
           <div className="rw-featured-grid">
             {featuredReviews.map((r) => (
-              <ReviewCard key={r.id} review={r} featured />
+              <ReviewCard
+                key={r.id}
+                review={r}
+                featured
+                highlighted={r.id === highlightedReviewId}
+              />
             ))}
           </div>
         </section>
@@ -141,7 +189,11 @@ export default function ReviewWallClient({
         ) : (
           <div className="rw-masonry">
             {filteredReviews.map((r) => (
-              <ReviewCard key={r.id} review={r} />
+              <ReviewCard
+                key={r.id}
+                review={r}
+                highlighted={r.id === highlightedReviewId}
+              />
             ))}
           </div>
         )}
