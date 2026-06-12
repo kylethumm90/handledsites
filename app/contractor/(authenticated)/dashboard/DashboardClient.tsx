@@ -7,6 +7,21 @@ import { relativeTime, avatarColor, initials } from "@/lib/utils";
 import ProfileCompleter from "@/components/ProfileCompleter";
 import DemoBanner from "@/components/DemoBanner";
 
+// Design tokens (Handled hi-fi mockups)
+const NAVY = "#0F2A4A";
+const AMBER = "#F59E0B";
+const INK = "#1A2433";
+const MUTED = "#66707E";
+const GRAY = "#8A93A0";
+const BORDER = "#E6E3DC";
+const HAIRLINE = "#EFEDE7";
+
+const card: React.CSSProperties = {
+  background: "#FFFFFF",
+  border: `1px solid ${BORDER}`,
+  borderRadius: 12,
+};
+
 type ProfileData = {
   owner_name: string | null;
   years_in_business: number | null;
@@ -60,13 +75,27 @@ function serviceFromLead(lead: Lead): string | null {
 
 function Stars({ rating }: { rating: number }) {
   return (
-    <span style={{ display: "inline-flex", gap: 1, marginLeft: 4, position: "relative", top: 1 }}>
+    <span style={{ display: "inline-flex", gap: 1, marginLeft: 6, position: "relative", top: 1 }}>
       {[1, 2, 3, 4, 5].map((i) => (
-        <svg key={i} width="11" height="11" viewBox="0 0 20 20" fill={i <= Math.round(rating) ? "#d99a1e" : "#ddd"}>
+        <svg key={i} width="12" height="12" viewBox="0 0 20 20" fill={i <= Math.round(rating) ? AMBER : "#DAD6CD"}>
           <path d="M10 1.5l2.47 5.01 5.53.8-4 3.9.94 5.49L10 14.27 5.06 16.7 6 11.21 2 7.31l5.53-.8z" />
         </svg>
       ))}
     </span>
+  );
+}
+
+function StatCard({ label, value, sub }: { label: string; value: React.ReactNode; sub: string }) {
+  return (
+    <div style={{ ...card, padding: "16px 18px" }}>
+      <div style={{ fontSize: 11.5, fontWeight: 700, color: GRAY, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+        {label}
+      </div>
+      <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: "-0.02em", marginTop: 6, color: INK, lineHeight: 1.15 }}>
+        {value}
+      </div>
+      <div style={{ fontSize: 12, fontWeight: 600, color: GRAY, marginTop: 4 }}>{sub}</div>
+    </div>
   );
 }
 
@@ -84,142 +113,242 @@ export default function DashboardClient({
 }: Props) {
   const router = useRouter();
 
+  const ownerFirst = profileData?.owner_name?.trim().split(/\s+/)[0] || null;
+  const today = new Date().toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
+  const subParts = [today];
+  subParts.push(
+    newLeadsThisWeek > 0
+      ? `${newLeadsThisWeek} new lead${newLeadsThisWeek === 1 ? "" : "s"} this week`
+      : "No new leads yet this week",
+  );
+
+  const reviewReady = Math.min(totalLeads, 5);
+
   return (
-    <div className="space-y-5">
+    <div style={{ color: INK }}>
+      <style>{`
+        .dash-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        .dash-cols { display: grid; grid-template-columns: 1fr; gap: 22px; align-items: start; }
+        @media (min-width: 880px) {
+          .dash-stats { grid-template-columns: repeat(4, 1fr); }
+        }
+        @media (min-width: 1100px) {
+          .dash-cols { grid-template-columns: 1fr 340px; }
+        }
+        .dash-lead-row { transition: background 0.12s ease; }
+        .dash-lead-row:hover { background: #FBFAF7; }
+      `}</style>
+
       {/* Greeting header */}
-      <div className="flex items-center gap-3">
+      <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 24 }}>
         {logoUrl ? (
-          <img src={logoUrl} alt={businessName} className="h-10 w-10 flex-shrink-0 rounded-full object-cover" />
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={logoUrl}
+            alt={businessName}
+            style={{ width: 42, height: 42, borderRadius: 999, objectFit: "cover", flex: "none" }}
+          />
         ) : (
-          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white" style={{ backgroundColor: avatarColor(businessName) }}>
+          <div
+            style={{
+              width: 42, height: 42, borderRadius: 999, flex: "none",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 14, fontWeight: 800, color: "#fff",
+              backgroundColor: avatarColor(businessName),
+            }}
+          >
             {initials(businessName)}
           </div>
         )}
         <div>
-          <p className="text-sm text-gray-400">{getGreeting()}</p>
-          <h1 className="text-xl font-bold text-gray-900" style={{ letterSpacing: "-0.02em" }}>
-            {businessName}
+          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, letterSpacing: "-0.015em", lineHeight: 1.2 }}>
+            {getGreeting()}{ownerFirst ? `, ${ownerFirst}` : ""}.
           </h1>
+          <div style={{ fontSize: 13.5, color: MUTED, marginTop: 4 }}>{subParts.join(" · ")}</div>
         </div>
       </div>
 
       {/* Profile completion chat */}
       {profileData && (
-        <ProfileCompleter businessName={businessName} existing={profileData} />
+        <div style={{ marginBottom: 20 }}>
+          <ProfileCompleter businessName={businessName} existing={profileData} />
+        </div>
       )}
 
-      {/* Stats row */}
-      <div style={{ display: "flex", border: "1px solid #eee", borderRadius: 10, overflow: "hidden" }}>
-        <div style={{ flex: 1, padding: "16px 14px", textAlign: "center" }}>
-          <div style={{ fontSize: 22, fontWeight: 700, color: "#111", letterSpacing: "-0.02em", lineHeight: 1.2 }}>{totalViews ?? 0}</div>
-          <div style={{ fontSize: 11, color: "#999", fontWeight: 500, marginTop: 4, textTransform: "uppercase", letterSpacing: "0.03em" }}>Page views</div>
-        </div>
-        <div style={{ flex: 1, padding: "16px 14px", textAlign: "center", borderLeft: "1px solid #eee" }}>
-          <div style={{ fontSize: 22, fontWeight: 700, color: "#111", letterSpacing: "-0.02em", lineHeight: 1.2 }}>{newLeadsThisWeek}</div>
-          <div style={{ fontSize: 11, color: "#999", fontWeight: 500, marginTop: 4, textTransform: "uppercase", letterSpacing: "0.03em" }}>New leads</div>
-        </div>
-        <div style={{ flex: 1, padding: "16px 14px", textAlign: "center", borderLeft: "1px solid #eee" }}>
-          <div style={{ fontSize: 22, fontWeight: 700, color: "#111", letterSpacing: "-0.02em", lineHeight: 1.2 }}>{totalLeads}</div>
-          <div style={{ fontSize: 11, color: "#999", fontWeight: 500, marginTop: 4, textTransform: "uppercase", letterSpacing: "0.03em" }}>Customers</div>
-        </div>
-        <div style={{ flex: 1, padding: "16px 14px", textAlign: "center", borderLeft: "1px solid #eee" }}>
-          <div style={{ fontSize: 22, fontWeight: 700, color: "#111", letterSpacing: "-0.02em", lineHeight: 1.2 }}>
-            {googleReviewCount ?? 0}
-            {googleRating ? <Stars rating={googleRating} /> : null}
-          </div>
-          <div style={{ fontSize: 11, color: "#999", fontWeight: 500, marginTop: 4, textTransform: "uppercase", letterSpacing: "0.03em" }}>Reviews</div>
-        </div>
+      {/* Stats */}
+      <div className="dash-stats" style={{ marginBottom: 26 }}>
+        <StatCard label="Page views" value={totalViews ?? 0} sub="Last 7 days" />
+        <StatCard label="New leads" value={newLeadsThisWeek} sub="This week" />
+        <StatCard label="Customers" value={totalLeads} sub="All time" />
+        <StatCard
+          label="Reviews"
+          value={
+            <>
+              {googleReviewCount ?? 0}
+              {googleRating ? <Stars rating={googleRating} /> : null}
+            </>
+          }
+          sub={googleRating ? `${googleRating.toFixed(1)} average on Google` : "On Google"}
+        />
       </div>
 
-      {/* Review nudge */}
-      {totalLeads > 0 && (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 14px", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 10, fontSize: 13 }}>
-          <div>
-            <span style={{ fontWeight: 600, color: "#111" }}>{Math.min(totalLeads, 5)} customers</span>
-            <span style={{ color: "#666" }}> are ready to leave a review.</span>
+      <div className="dash-cols">
+        {/* Recent leads */}
+        <div>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 12 }}>
+            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>Recent leads</h2>
+            <span style={{ fontSize: 12.5, fontWeight: 600, color: GRAY }}>
+              {totalLeads} total
+            </span>
           </div>
-          <button style={{ background: "#111", color: "#fff", border: "none", fontSize: 12, fontWeight: 600, padding: "7px 14px", borderRadius: 6, cursor: "pointer", whiteSpace: "nowrap" }}>
-            Send reminder
-          </button>
-        </div>
-      )}
 
-      {/* Recent leads */}
-      <div>
-        <p style={{ fontSize: 11, fontWeight: 600, color: "#bbb", letterSpacing: "0.05em", marginBottom: 8, textTransform: "uppercase" }}>
-          Recent leads
-        </p>
-
-        {leads.length === 0 ? (
-          <div style={{ border: "1px solid #eee", borderRadius: 10, padding: "40px 20px", textAlign: "center" }}>
-            <p className="text-sm text-gray-400">No leads yet.</p>
-            <p className="mt-1 text-xs text-gray-400">
-              Share your site and quiz funnel to start collecting leads.
-            </p>
-          </div>
-        ) : (
-          <>
-            <div style={{ border: "1px solid #eee", borderRadius: 10, overflow: "hidden" }}>
+          {leads.length === 0 ? (
+            <div
+              style={{
+                background: "#FFFFFF",
+                border: "1px dashed #D8D4CC",
+                borderRadius: 12,
+                padding: "32px 20px",
+                textAlign: "center",
+              }}
+            >
+              <p style={{ margin: 0, fontSize: 13.5, color: GRAY }}>No leads yet.</p>
+              <p style={{ margin: "6px 0 0", fontSize: 12.5, color: GRAY }}>
+                Share your site and quiz funnel to start collecting leads.
+              </p>
+            </div>
+          ) : (
+            <div style={{ ...card, overflow: "hidden" }}>
               {leads.map((lead, i) => {
                 const service = serviceFromLead(lead);
-                const color = avatarColor(lead.name);
-
                 return (
                   <button
                     key={lead.id}
+                    className="dash-lead-row"
                     onClick={() => router.push(`/contractor/customers/${lead.id}`)}
-                    className="flex w-full items-center gap-3 text-left hover:bg-gray-50"
                     style={{
-                      padding: "12px 14px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 12,
+                      width: "100%",
+                      textAlign: "left",
+                      padding: "13px 18px",
                       border: "none",
                       background: "none",
                       cursor: "pointer",
-                      borderBottom: i < leads.length - 1 ? "1px solid #f2f2f2" : "none",
+                      fontFamily: "inherit",
+                      borderTop: i > 0 ? `1px solid ${HAIRLINE}` : "none",
                     }}
                   >
                     <div
-                      className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white"
-                      style={{ backgroundColor: color }}
+                      style={{
+                        width: 36, height: 36, borderRadius: 999, flex: "none",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        fontSize: 12, fontWeight: 700, color: "#fff",
+                        backgroundColor: avatarColor(lead.name),
+                      }}
                     >
                       {initials(lead.name)}
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <p style={{ fontSize: 14, fontWeight: 600, color: "#111" }} className="truncate">
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div
+                        style={{
+                          fontSize: 13.5, fontWeight: 700, color: INK, lineHeight: 1.3,
+                          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                        }}
+                      >
                         {lead.name}
-                      </p>
-                      <p style={{ fontSize: 12, color: "#aaa", marginTop: 1 }} className="truncate">
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 12.5, color: GRAY, lineHeight: 1.35, marginTop: 1,
+                          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                        }}
+                      >
                         {service || "No service specified"}
-                        <span style={{ margin: "0 4px", color: "#ddd" }}>&middot;</span>
-                        {sourceLabel(lead.source)}
-                      </p>
+                      </div>
                     </div>
-                    <span style={{ fontSize: 12, color: "#ccc", fontWeight: 500, flexShrink: 0 }}>
+                    <span
+                      style={{
+                        flex: "none",
+                        fontSize: 11.5,
+                        fontWeight: 700,
+                        color: MUTED,
+                        background: "#F4F2EC",
+                        borderRadius: 999,
+                        padding: "3px 10px",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {sourceLabel(lead.source)}
+                    </span>
+                    <span style={{ flex: "none", fontSize: 12.5, color: "#A3AAB5", fontWeight: 500, whiteSpace: "nowrap" }}>
                       {relativeTime(lead.created_at)}
                     </span>
                   </button>
                 );
               })}
+              {totalLeads > leads.length && (
+                <Link
+                  href="/contractor/customers"
+                  style={{
+                    display: "block",
+                    textAlign: "center",
+                    padding: "13px 18px",
+                    fontSize: 13,
+                    fontWeight: 700,
+                    color: NAVY,
+                    textDecoration: "none",
+                    borderTop: `1px solid ${HAIRLINE}`,
+                  }}
+                >
+                  View all {totalLeads} customers →
+                </Link>
+              )}
             </div>
+          )}
+        </div>
 
-            {totalLeads > leads.length && (
-              <Link
-                href="/contractor/customers"
-                style={{ display: "block", textAlign: "center", padding: 14, fontSize: 13, color: "#888" }}
+        {/* Side column */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {totalLeads > 0 && (
+            <div style={{ ...card, padding: "16px 18px" }}>
+              <div style={{ fontSize: 13.5, fontWeight: 800, marginBottom: 6 }}>Reviews waiting</div>
+              <div style={{ fontSize: 13, color: MUTED, lineHeight: 1.55 }}>
+                <strong style={{ color: INK }}>{reviewReady} customer{reviewReady === 1 ? "" : "s"}</strong>{" "}
+                {reviewReady === 1 ? "is" : "are"} ready to leave a review.
+              </div>
+              <button
+                style={{
+                  marginTop: 12,
+                  width: "100%",
+                  background: AMBER,
+                  color: "#42300A",
+                  border: "none",
+                  fontSize: 13,
+                  fontWeight: 800,
+                  fontFamily: "inherit",
+                  padding: "9px 16px",
+                  borderRadius: 8,
+                  cursor: "pointer",
+                }}
               >
-                View all {totalLeads} customers
-              </Link>
-            )}
-          </>
-        )}
+                Send reminder
+              </button>
+            </div>
+          )}
+
+          {hasDemoLeads && <DemoBanner />}
+
+          <p style={{ textAlign: "center", fontSize: 12.5, color: "#A3AAB5", fontStyle: "italic", margin: "4px 0 0" }}>
+            That&apos;s everything. Go do the work.
+          </p>
+        </div>
       </div>
-
-      {/* Demo data banner */}
-      {hasDemoLeads && <DemoBanner />}
-
-      {/* Closing line */}
-      <p style={{ textAlign: "center", fontSize: 13, color: "#ddd", fontStyle: "italic", paddingTop: 8 }}>
-        That&apos;s everything. Go do the work.
-      </p>
     </div>
   );
 }

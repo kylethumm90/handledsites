@@ -110,15 +110,17 @@ export default async function CustomerDetailPage({
     .single();
 
   return (
-    <CustomerDetailClient
-      lead={lead as Lead}
-      timeline={(timeline || []) as ActivityLogEntry[]}
-      counts={{ lead: leadCount, contacted: contactedCount, booked: bookedCount, customer: customerCount }}
-      existingReferralCode={referralPartner?.referral_code || null}
-      referrerName={referrerName}
-      referrerId={referrerId}
-      employees={(employees || []).map(e => ({ id: e.id, name: e.name }))}
-      reviewFunnelSlug={reviewSite?.slug || null}
-    />
+    <div style={{ maxWidth: 760 }}>
+      <CustomerDetailClient
+        lead={lead as Lead}
+        timeline={(timeline || []) as ActivityLogEntry[]}
+        counts={{ lead: leadCount, contacted: contactedCount, booked: bookedCount, customer: customerCount }}
+        existingReferralCode={referralPartner?.referral_code || null}
+        referrerName={referrerName}
+        referrerId={referrerId}
+        employees={(employees || []).map(e => ({ id: e.id, name: e.name }))}
+        reviewFunnelSlug={reviewSite?.slug || null}
+      />
+    </div>
   );
 }

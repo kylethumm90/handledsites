@@ -33,7 +33,7 @@ export default async function ContractorSettingsPage() {
   const hasStripeCustomer = !!sub?.stripe_customer_id;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" style={{ maxWidth: 760 }}>
       <ContractorSettingsEditor business={business as Business} />
       <div>
         <h2 style={{ fontSize: 20, fontWeight: 700, color: "#1c1c1e", letterSpacing: "-0.02em", marginBottom: 12 }}>

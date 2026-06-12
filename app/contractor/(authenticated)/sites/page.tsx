@@ -143,5 +143,9 @@ export default async function ContractorSitesPage() {
   // Get business slug for team URLs
   const businessSlug = sites.length > 0 ? sites[0].slug : "";
 
-  return <ContractorSitesEditor sites={sites} customDomain={customDomain} siteMetrics={siteMetrics} websiteData={websiteData} hasGoogle={hasGoogle} employees={employees || []} businessSlug={businessSlug} />;
+  return (
+    <div style={{ maxWidth: 820 }}>
+      <ContractorSitesEditor sites={sites} customDomain={customDomain} siteMetrics={siteMetrics} websiteData={websiteData} hasGoogle={hasGoogle} employees={employees || []} businessSlug={businessSlug} />
+    </div>
+  );
 }

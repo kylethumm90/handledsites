@@ -191,22 +191,26 @@ export default function PipelineV2({
 
   return (
     <div
+      className="pipeline-bleed"
       style={{
-        // Break out of the contractor layout's 680px centered container
-        // so the full-bleed design-system screen can span the viewport.
-        marginLeft: "calc(50% - 50vw)",
-        marginRight: "calc(50% - 50vw)",
-        marginTop: -24,
-        marginBottom: -48,
         backgroundColor: colors.bg,
         fontFamily: fonts.body,
         color: colors.navy,
         minHeight: "calc(100vh - 52px)",
       }}
     >
+      {/* Cancel the contractor shell's content padding so the design-system
+          screen's background spans the main column edge to edge. Margins
+          mirror the .hsd-content padding in ContractorShell. */}
+      <style>{`
+        .pipeline-bleed { margin: -24px -16px -64px; }
+        @media (min-width: 1024px) {
+          .pipeline-bleed { margin: -32px -36px -90px; }
+        }
+      `}</style>
       <div
         style={{
-          maxWidth: 680,
+          maxWidth: 720,
           margin: "0 auto",
           paddingBottom: 0,
         }}
