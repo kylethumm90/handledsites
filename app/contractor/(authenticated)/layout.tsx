@@ -16,6 +16,7 @@ const TABS: Tab[] = [
   { label: "Dashboard", href: "/contractor/dashboard" },
   { label: "Sites", href: "/contractor/sites" },
   { label: "Pipeline", href: "/contractor/customers" },
+  { label: "Contacts", href: "/contractor/contacts" },
   { label: "Reputation", href: "/contractor/reputation" },
   { label: "Settings", href: "/contractor/settings", icon: "settings" },
 ];

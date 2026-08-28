@@ -181,6 +181,10 @@ export type Lead = {
   sentiment_score: number | null;
   job_value_cents: number | null;
   referred_by_lead_id: string | null;
+  // Present in the database but previously missing from this type.
+  address: string | null;
+  custom_fields: Record<string, unknown> | null;
+  ai_lead_profile: string | null;
 };
 
 export type ContactImport = {
