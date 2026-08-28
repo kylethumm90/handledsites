@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { ArrowLeft, Upload, Check, Copy, ExternalLink } from "lucide-react";
 import { getSupabaseClient } from "@/lib/supabase";
-import { generateUniqueSlug, checkDuplicateContact } from "@/lib/slug";
+import { uploadKey } from "@/lib/utils";
 import { TRADE_ICONS } from "@/lib/icons";
 import PhonePreview from "./PhonePreview";
 import QuizPreview from "./QuizPreview";
@@ -116,16 +116,12 @@ export default function OnboardingWizard() {
   };
 
   const doBackgroundWork = async (): Promise<string> => {
-    const duplicateError = await checkDuplicateContact(phoneDigits, email || null);
-    if (duplicateError) throw new Error(duplicateError);
-
-    const generatedSlug = await generateUniqueSlug(businessName);
     const supabase = getSupabaseClient();
 
     let logoUrl: string | null = null;
     if (logoFile) {
       const ext = logoFile.name.split(".").pop() || "png";
-      const path = `logos/${generatedSlug}.${ext}`;
+      const path = `logos/${uploadKey()}.${ext}`;
       const { error: uploadError } = await supabase.storage
         .from("contractor-assets").upload(path, logoFile, { upsert: true });
       if (uploadError) throw new Error("Logo upload failed");
@@ -134,26 +130,37 @@ export default function OnboardingWizard() {
       setUploadedLogoUrl(logoUrl);
     }
 
-    const { data: bizData, error: bizError } = await supabase.from("businesses").insert({
-      name: businessName, owner_name: ownerName.trim() || businessName, phone: phoneDigits,
-      email: email || null, city, state, trade, services: [], logo_url: logoUrl, about_bio: null,
-      google_place_id: googlePlaceId || null,
-      street_address: streetAddress || null,
-      google_rating: googleRating,
-      google_review_count: googleReviewCount,
-      google_reviews: googleReviews,
-      google_review_url: googleReviewUrl || null,
-    }).select("id").single();
-    if (bizError) throw new Error(bizError.message);
+    // Business + sites are created server-side so the browser never needs
+    // write access to those tables.
+    const res = await fetch("/api/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        businessName,
+        ownerName: ownerName.trim() || businessName,
+        phone: phoneDigits,
+        email: email || null,
+        city,
+        state,
+        trade,
+        services: [],
+        logoUrl,
+        google: {
+          placeId: googlePlaceId || null,
+          streetAddress: streetAddress || null,
+          rating: googleRating,
+          reviewCount: googleReviewCount,
+          reviews: googleReviews,
+          reviewUrl: googleReviewUrl || null,
+        },
+      }),
+    });
 
-    const { error: siteError } = await supabase.from("sites").insert([
-      { business_id: bizData.id, type: "business_card", slug: generatedSlug },
-      { business_id: bizData.id, type: "quiz_funnel", slug: generatedSlug },
-      { business_id: bizData.id, type: "review_funnel", slug: generatedSlug },
-      { business_id: bizData.id, type: "website", slug: generatedSlug },
-      { business_id: bizData.id, type: "review_wall", slug: generatedSlug },
-    ]);
-    if (siteError) throw new Error(siteError.message);
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.error || "Something went wrong.");
+
+    const generatedSlug: string = result.slug;
+    const bizData = { id: result.businessId as string };
 
     // Seed demo leads + create user + sync to Resend
     try {

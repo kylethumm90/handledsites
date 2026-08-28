@@ -1,12 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase";
-import { getAdminToken } from "@/lib/admin-auth";
+import { isAdminRequest } from "@/lib/admin-auth";
 import { sanitizeSlug, isReservedSlug, containsProfanity } from "@/lib/slug";
-
-function isAuthed(request: NextRequest): boolean {
-  const cookie = request.cookies.get("admin_session");
-  return cookie?.value === getAdminToken();
-}
 
 async function generateUniqueSlugServer(businessName: string): Promise<string> {
   let slug = sanitizeSlug(businessName);
@@ -32,7 +27,7 @@ async function generateUniqueSlugServer(businessName: string): Promise<string> {
 }
 
 export async function POST(request: NextRequest) {
-  if (!isAuthed(request)) {
+  if (!isAdminRequest(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

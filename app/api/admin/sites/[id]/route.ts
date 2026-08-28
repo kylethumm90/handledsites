@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase";
-import { getAdminToken } from "@/lib/admin-auth";
-
-function isAuthed(request: NextRequest): boolean {
-  const cookie = request.cookies.get("admin_session");
-  return cookie?.value === getAdminToken();
-}
+import { isAdminRequest } from "@/lib/admin-auth";
 
 const BUSINESS_FIELDS = new Set([
   "name", "owner_name", "phone", "email", "city", "state", "trade", "services", "logo_url",
@@ -29,7 +24,7 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  if (!isAuthed(request)) {
+  if (!isAdminRequest(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -86,7 +81,7 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  if (!isAuthed(request)) {
+  if (!isAdminRequest(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

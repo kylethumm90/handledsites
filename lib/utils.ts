@@ -49,3 +49,14 @@ export function formatPhone(p: string): string {
   if (d.length === 10) return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`;
   return p;
 }
+
+/**
+ * Random key for a storage upload path. Used at signup, where the logo is
+ * uploaded before the slug exists (the slug is now assigned server-side).
+ */
+export function uploadKey(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}

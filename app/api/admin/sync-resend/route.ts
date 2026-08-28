@@ -1,15 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase";
-import { getAdminToken } from "@/lib/admin-auth";
+import { isAdminRequest } from "@/lib/admin-auth";
 import { getResend } from "@/lib/email";
 
-function isAuthed(request: NextRequest): boolean {
-  const cookie = request.cookies.get("admin_session");
-  return cookie?.value === getAdminToken();
-}
-
 export async function POST(request: NextRequest) {
-  if (!isAuthed(request)) {
+  if (!isAdminRequest(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

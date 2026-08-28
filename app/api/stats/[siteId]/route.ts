@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import { validateSessionFromRequest } from "@/lib/contractor-auth";
+import { isAdminRequest } from "@/lib/admin-auth";
 
 const PERIOD_DAYS: Record<string, number> = {
   "7d": 7,
@@ -58,12 +59,8 @@ export async function GET(
     if (!targetSite || targetSite.business_id !== auth.businessId) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
-  } else {
-    // Check admin auth
-    const adminCookie = request.cookies.get("admin_session")?.value;
-    if (!adminCookie) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  } else if (!isAdminRequest(request)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const period = request.nextUrl.searchParams.get("period") || "30d";

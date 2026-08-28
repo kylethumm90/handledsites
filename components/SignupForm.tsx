@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { getSupabaseClient } from "@/lib/supabase";
-import { generateUniqueSlug, checkDuplicateContact } from "@/lib/slug";
+import { uploadKey } from "@/lib/utils";
 import { TRADES, TRADE_SERVICES, US_STATES, Trade } from "@/lib/constants";
 import PhonePreview from "./PhonePreview";
 import SuccessState from "./SuccessState";
@@ -137,23 +137,12 @@ export default function SignupForm() {
     setSubmitting(true);
 
     try {
-      const duplicateError = await checkDuplicateContact(
-        phoneDigits,
-        form.email || null
-      );
-      if (duplicateError) {
-        setError(duplicateError);
-        setSubmitting(false);
-        return;
-      }
-
-      const slug = await generateUniqueSlug(form.businessName);
       const supabase = getSupabaseClient();
 
       let logoUrl: string | null = null;
       if (logoFile) {
         const ext = logoFile.name.split(".").pop() || "png";
-        const path = `logos/${slug}.${ext}`;
+        const path = `logos/${uploadKey()}.${ext}`;
         const { error: uploadError } = await supabase.storage
           .from("contractor-assets")
           .upload(path, logoFile, { upsert: true });
@@ -164,64 +153,36 @@ export default function SignupForm() {
         logoUrl = urlData.publicUrl;
       }
 
-      // Create business record
-      const { data: bizData, error: bizError } = await supabase
-        .from("businesses")
-        .insert({
-          name: form.businessName,
-          owner_name: form.ownerName,
+      // Business + sites are created server-side so the browser never needs
+      // write access to those tables.
+      const res = await fetch("/api/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          businessName: form.businessName,
+          ownerName: form.ownerName,
           phone: phoneDigits,
           email: form.email || null,
           city: form.city,
           state: form.state,
           trade: form.trade,
           services: form.services,
-          logo_url: logoUrl,
-        })
-        .select("id")
-        .single();
+          logoUrl,
+          badges: {
+            licensed: form.badgeLicensed,
+            freeEstimates: form.badgeFreeEstimates,
+            emergency: form.badgeEmergency,
+            familyOwned: form.badgeFamilyOwned,
+          },
+          honeypot,
+        }),
+      });
 
-      if (bizError) {
-        throw new Error(bizError.message);
-      }
-
-      // Create all three site types
-      const { error: siteError } = await supabase
-        .from("sites")
-        .insert([
-          {
-            business_id: bizData.id,
-            type: "business_card",
-            slug,
-            badge_licensed: form.badgeLicensed,
-            badge_free_estimates: form.badgeFreeEstimates,
-            badge_emergency: form.badgeEmergency,
-            badge_family_owned: form.badgeFamilyOwned,
-          },
-          {
-            business_id: bizData.id,
-            type: "quiz_funnel",
-            slug,
-          },
-          {
-            business_id: bizData.id,
-            type: "review_funnel",
-            slug,
-          },
-          {
-            business_id: bizData.id,
-            type: "website",
-            slug,
-          },
-          {
-            business_id: bizData.id,
-            type: "review_wall",
-            slug,
-          },
-        ]);
-
-      if (siteError) {
-        throw new Error(siteError.message);
+      const result = await res.json();
+      if (!res.ok) {
+        setError(result.error || "Something went wrong. Try again.");
+        setSubmitting(false);
+        return;
       }
 
       // Seed demo leads + sync contact to Resend
@@ -229,14 +190,13 @@ export default function SignupForm() {
         await fetch("/api/seed-demo", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ business_id: bizData.id }),
+          body: JSON.stringify({ business_id: result.businessId }),
         });
       } catch {
         // Non-critical — don't block signup
       }
 
-
-      setSuccessSlug(slug);
+      setSuccessSlug(result.slug);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Something went wrong. Try again."
