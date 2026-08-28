@@ -12,13 +12,23 @@
 -- integration was never finished.
 --
 -- DO THIS FIRST -- revoking is not something the migration can do:
---   1. Sign in as the affected Google account.
---   2. Go to https://myaccount.google.com/permissions
---   3. Remove this application's access.
---   4. Confirm the grant is gone, then run this migration.
 --
--- Running the migration without revoking first destroys the record of which
--- grant to revoke while leaving the grant itself live at Google.
+--   npx tsx scripts/revoke-google-oauth.ts            # report
+--   npx tsx scripts/revoke-google-oauth.ts --revoke   # revoke
+--
+-- The usual route -- signing into the Google account and removing the app at
+-- https://myaccount.google.com/permissions -- is not available: the account
+-- (kthumm@rooftoppowerco.com) is no longer accessible.
+--
+-- Google's revocation endpoint accepts the token itself as the credential, so
+-- possession is enough and no session or password is needed. The script reads
+-- the refresh token straight from this table and revokes it, which also kills
+-- every access token derived from it. It never prints the token.
+--
+-- Run the migration only once the script reports REVOKED (or reports that the
+-- token was already invalid). Running it first destroys the only copy of the
+-- token, which is also the only means of revoking the grant without the
+-- account -- the grant would then stay live at Google with no way to reach it.
 --
 -- If the GBP integration is picked back up later, store tokens encrypted
 -- (pgsodium / Supabase Vault) rather than as plaintext columns.
