@@ -302,7 +302,7 @@ export default function ContactDetailPanel({
           )}
         </button>
         <Link
-          href={`/contractor/customers/${lead.id}`}
+          href={`/contractor/contacts/${lead.id}`}
           style={{
             ...buttonSecondary,
             textAlign: "center",

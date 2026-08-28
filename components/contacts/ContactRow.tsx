@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import type { Lead } from "@/lib/supabase";
 import {
   STATUS_COLORS,
@@ -160,21 +161,33 @@ export default function ContactRow({
 
       {/* Next action */}
       <td style={{ ...tableCell, textAlign: "right", whiteSpace: "nowrap" }}>
-        <button
-          type="button"
-          disabled={busy}
-          onClick={(e) => {
-            e.stopPropagation();
-            onAction();
-          }}
-          style={{
-            ...buttonSecondary,
-            opacity: busy ? 0.5 : 1,
-            cursor: busy ? "default" : "pointer",
-          }}
-        >
-          {busy ? "Sending…" : action.label}
-        </button>
+        {action.kind === "profile" ? (
+          // Clicking the row opens the quick-look panel; this button is the
+          // deliberate gesture for the full profile, so it navigates.
+          <Link
+            href={`/contractor/contacts/${lead.id}`}
+            onClick={(e) => e.stopPropagation()}
+            style={{ ...buttonSecondary, textDecoration: "none", display: "inline-block" }}
+          >
+            {action.label}
+          </Link>
+        ) : (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={(e) => {
+              e.stopPropagation();
+              onAction();
+            }}
+            style={{
+              ...buttonSecondary,
+              opacity: busy ? 0.5 : 1,
+              cursor: busy ? "default" : "pointer",
+            }}
+          >
+            {busy ? "Sending…" : action.label}
+          </button>
+        )}
       </td>
     </tr>
   );

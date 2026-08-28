@@ -113,8 +113,12 @@ export const SENTIMENT_COLORS: Record<Sentiment, string> = {
 
 export type NextAction = {
   label: string;
-  /** `review_ask` POSTs to the review-request-sent route; others just open the contact. */
-  kind: "review_ask" | "open";
+  /**
+   * `review_ask` POSTs to the review-request-sent route.
+   * `profile`    navigates to the full profile page.
+   * `open`       opens the side panel for a quick look.
+   */
+  kind: "review_ask" | "profile" | "open";
 };
 
 export function nextActionFor(status: ContactStatus): NextAction {
@@ -127,7 +131,7 @@ export function nextActionFor(status: ContactStatus): NextAction {
     case "unhappy":
       return { label: "Follow Up", kind: "open" };
     default:
-      return { label: "View Profile", kind: "open" };
+      return { label: "View Profile", kind: "profile" };
   }
 }
 
