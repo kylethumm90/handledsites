@@ -898,8 +898,20 @@ export default function ReviewClient({
           <p className="text-center" style={{ fontSize: 14, color: "#6B7280" }}>
             Your feedback has been sent directly to {businessName}.
             <br />
-            We take this seriously and will follow up.
+            The owner will personally follow up within one business day.
           </p>
+          {googleReviewUrl && (
+            <p className="text-center" style={{ marginTop: 20 }}>
+              <a
+                href={googleReviewUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ fontSize: 14, color: "#6B7280", textDecoration: "underline" }}
+              >
+                Post this publicly on Google
+              </a>
+            </p>
+          )}
         </div>
       )}
     </Shell>

@@ -12,7 +12,8 @@ function interpolateTemplate(
 
 export async function fireEmailTrigger(
   triggerType: string,
-  businessId: string
+  businessId: string,
+  extraVariables?: Record<string, string>
 ) {
   const supabase = getSupabaseAdmin();
 
@@ -74,6 +75,12 @@ export async function fireEmailTrigger(
     slug,
     site_url: slug ? `${baseUrl}/${slug}` : baseUrl,
   };
+
+  // Event-specific values (e.g. a customer/submission for a negative-feedback
+  // alert) merge in last so they win on key collision with business fields.
+  if (extraVariables) {
+    Object.assign(variables, extraVariables);
+  }
 
   const resend = getResend();
   const from = process.env.EMAIL_FROM || "Handled Sites <onboarding@resend.dev>";

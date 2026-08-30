@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase";
+import { fireEmailTrigger } from "@/lib/email-automation";
 import Anthropic from "@anthropic-ai/sdk";
+
+// Minimum length of *typed* feedback required before we'll produce an
+// AI-drafted Google review. Preset highlight chips are a legitimate
+// sentiment signal but are NOT authored content — drafting a full review
+// off chips alone is what platform spam detection flags. Generation
+// requires the customer to have written something real.
+const MIN_FEEDBACK_CHARS = 40;
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
@@ -50,6 +58,14 @@ export async function POST(request: NextRequest) {
   // - Negative + text → sentiment only (generated_review: null).
   // - No text + no highlights → skip Claude; use the rating * 20 fallback.
   const hasTextSignal = !!feedback?.trim() || hasHighlights;
+
+  // Review generation is gated separately from sentiment. It requires real
+  // typed feedback of at least MIN_FEEDBACK_CHARS — chips alone never
+  // qualify. This is the intent we pass to the model; the code below is the
+  // actual enforcement (only assigns generatedReview when this is true).
+  const allowGeneration =
+    isPositive && !!feedback?.trim() && feedback.trim().length >= MIN_FEEDBACK_CHARS;
+
   if (hasTextSignal) {
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (apiKey) {
@@ -76,8 +92,8 @@ sentiment:
 - A neutral review with no strong signal should score near rating * 20
 
 generated_review:
-- If positive_hint is true, write a natural, genuine 2-3 sentence Google review based on their feedback
-- If positive_hint is false, set this to null
+- If allow_generation is true, write a natural, genuine 2-3 sentence Google review based on their feedback
+- If allow_generation is false, set this to null (no exceptions — even for glowing sentiment)
 - When writing: sound like a real customer not marketing copy, include specifics from their feedback, keep it under 60 words, don't start with "I", no em dashes, no exclamation marks in the first sentence${repInstruction}
 
 Output ONLY the JSON object. No prose, no markdown fences, no commentary.`,
@@ -85,6 +101,7 @@ Output ONLY the JSON object. No prose, no markdown fences, no commentary.`,
             {
               role: "user",
               content: `positive_hint: ${isPositive}
+allow_generation: ${allowGeneration}
 Star rating: ${rating}/5
 Professionalism: ${professionalism || "not answered"}
 Communication: ${communication || "not answered"}${hasHighlights ? `\nWhat stood out to them: ${highlights.join(", ")}` : ""}
@@ -116,8 +133,10 @@ Feedback: "${feedback || ""}"`,
                 Math.min(100, Math.round(parsed.sentiment)),
               );
             }
+            // The code is the guard, not the model: only accept a draft when
+            // generation is actually allowed (positive + real typed feedback).
             if (
-              isPositive &&
+              allowGeneration &&
               typeof parsed.generated_review === "string" &&
               parsed.generated_review.trim().length > 0
             ) {
@@ -210,13 +229,57 @@ Feedback: "${feedback || ""}"`,
     }
   }
 
-  if (isPositive) {
-    return NextResponse.json({
-      is_positive: true,
-      generated_review: generatedReview,
-      google_review_url: site.google_review_url,
-    });
+  // Fire the negative-feedback alert to the business owner. Trigger on a low
+  // rating OR a low sentiment score — the second clause catches the
+  // angry-but-polite 4-star customer that a rating-only trigger would miss
+  // (see the sentiment notes above; < 60 is the recovery threshold documented
+  // in lib/supabase.ts). Best-effort: a failed alert must never fail the
+  // submission, matching the activity_log / leads error handling above.
+  const needsRecovery =
+    !isPositive || (sentimentScore != null && sentimentScore < 60);
+  if (needsRecovery) {
+    // Only pay for the extra lead read when we actually need name + phone.
+    let customerName = "Anonymous";
+    let customerPhone = "Not provided";
+    if (lead_id) {
+      const { data: leadRow } = await supabase
+        .from("leads")
+        .select("name, phone")
+        .eq("id", lead_id)
+        .single();
+      if (leadRow) {
+        customerName = leadRow.name || "Anonymous";
+        customerPhone = leadRow.phone || "Not provided";
+      }
+    }
+
+    const baseUrl =
+      process.env.NEXT_PUBLIC_BASE_URL || "https://www.handledsites.com";
+
+    await fireEmailTrigger("negative_feedback", site.business_id, {
+      rating: String(rating),
+      sentiment_score: sentimentScore != null ? String(sentimentScore) : "not scored",
+      feedback_text: feedback?.trim() || "No written feedback",
+      tech_name: resolvedRepName || "Not specified",
+      customer_name: customerName,
+      customer_phone: customerPhone,
+      submitted_at: new Date().toLocaleString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      }),
+      highlights: hasHighlights ? highlights.join(", ") : "None selected",
+      customer_url: lead_id
+        ? `${baseUrl}/contractor/customers/${lead_id}`
+        : `${baseUrl}/contractor/customers`,
+    }).then(() => {}, () => {});
   }
 
-  return NextResponse.json({ is_positive: false });
+  return NextResponse.json({
+    is_positive: isPositive,
+    generated_review: generatedReview,
+    google_review_url: site.google_review_url,
+  });
 }
